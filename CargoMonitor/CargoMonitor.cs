@@ -204,6 +204,10 @@ namespace EddiCargoMonitor
             {
                 handleTechnologyBrokerEvent((TechnologyBrokerEvent)@event);
             }
+            else if (@event is DiedEvent)
+            {
+                handleDiedEvent((DiedEvent)@event);
+            }
         }
 
         private void handleCargoInventoryEvent(CargoInventoryEvent @event)
@@ -829,7 +833,7 @@ namespace EddiCargoMonitor
 
         public void _handleSearchAndRescueEvent(SearchAndRescueEvent @event)
         {
-            Cargo cargo = GetCargoWithEDName(@event.commodityDefinition?.edname);
+            Cargo cargo = GetCargoWithEDName(@event.commodity?.edname);
             if (cargo != null)
             {
                 cargo.owned -= Math.Min(cargo.owned, @event.amount ?? 0);
@@ -880,6 +884,12 @@ namespace EddiCargoMonitor
                     RemoveCargo(cargo);
                 }
             }
+        }
+
+        private void handleDiedEvent(DiedEvent @event)
+        {
+            inventory.Clear();
+            writeInventory();
         }
 
         public IDictionary<string, object> GetVariables()

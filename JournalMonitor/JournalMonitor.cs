@@ -100,8 +100,7 @@ namespace EddiJournalMonitor
                                 decimal? distancefromstar = JsonParsing.getOptionalDecimal(data, "DistFromStarLS");
 
                                 // Get station services data
-                                object val;
-                                data.TryGetValue("StationServices", out val);
+                                data.TryGetValue("StationServices", out object val);
                                 List<string> stationservices = (val as List<object>)?.Cast<string>()?.ToList();
 
                                 events.Add(new DockedEvent(timestamp, systemName, stationName, stationState, stationModel, allegiance, faction, factionState, economy, government, distancefromstar, stationservices) { raw = line });
@@ -151,10 +150,9 @@ namespace EddiJournalMonitor
                             break;
                         case "FSDJump":
                             {
-                                object val;
 
                                 string systemName = JsonParsing.getString(data, "StarSystem");
-                                data.TryGetValue("StarPos", out val);
+                                data.TryGetValue("StarPos", out object val);
                                 List<object> starPos = (List<object>)val;
                                 decimal x = Math.Round(JsonParsing.getDecimal("X", starPos[0]) * 32) / (decimal)32.0;
                                 decimal y = Math.Round(JsonParsing.getDecimal("Y", starPos[1]) * 32) / (decimal)32.0;
@@ -177,7 +175,6 @@ namespace EddiJournalMonitor
                             break;
                         case "Location":
                             {
-                                object val;
 
                                 string systemName = JsonParsing.getString(data, "StarSystem");
 
@@ -187,7 +184,7 @@ namespace EddiJournalMonitor
                                     break;
                                 }
 
-                                data.TryGetValue("StarPos", out val);
+                                data.TryGetValue("StarPos", out object val);
                                 List<object> starPos = (List<object>)val;
                                 decimal x = Math.Round(JsonParsing.getDecimal("X", starPos[0]) * 32) / (decimal)32.0;
                                 decimal y = Math.Round(JsonParsing.getDecimal("Y", starPos[1]) * 32) / (decimal)32.0;
@@ -215,7 +212,6 @@ namespace EddiJournalMonitor
                             break;
                         case "Bounty":
                             {
-                                object val;
 
                                 string target = JsonParsing.getString(data, "Target");
                                 if (target != null)
@@ -227,7 +223,7 @@ namespace EddiJournalMonitor
 
                                 string victimFaction = getFaction(data, "VictimFaction");
 
-                                data.TryGetValue("SharedWithOthers", out val);
+                                data.TryGetValue("SharedWithOthers", out object val);
                                 bool shared = false;
                                 if (val != null && (long)val == 1)
                                 {
@@ -283,8 +279,7 @@ namespace EddiJournalMonitor
                         case "DatalinkVoucher":
                         case "FactionKillBond":
                             {
-                                object val;
-                                data.TryGetValue("Reward", out val);
+                                data.TryGetValue("Reward", out object val);
                                 long reward = (long)val;
                                 string victimFaction = JsonParsing.getString(data, "VictimFaction");
 
@@ -380,14 +375,13 @@ namespace EddiJournalMonitor
                             break;
                         case "EjectCargo":
                             {
-                                object val;
                                 string commodityName = JsonParsing.getString(data, "Type");
                                 CommodityDefinition commodity = CommodityDefinition.FromName(commodityName);
                                 if (commodity == null)
                                 {
                                     Logging.Error("Failed to map ejectcargo type " + commodityName + " to commodity");
                                 }
-                                data.TryGetValue("Count", out val);
+                                data.TryGetValue("Count", out object val);
                                 int amount = (int)(long)val;
                                 bool abandoned = JsonParsing.getBool(data, "Abandoned");
                                 events.Add(new CommodityEjectedEvent(timestamp, commodity, amount, abandoned) { raw = line });
@@ -396,9 +390,8 @@ namespace EddiJournalMonitor
                             break;
                         case "Loadout":
                             {
-                                object val;
 
-                                data.TryGetValue("ShipID", out val);
+                                data.TryGetValue("ShipID", out object val);
                                 int shipId = (int)(long)val;
                                 string ship = JsonParsing.getString(data, "Ship");
                                 string shipName = JsonParsing.getString(data, "ShipName");
@@ -564,10 +557,9 @@ namespace EddiJournalMonitor
                             break;
                         case "ApproachSettlement":
                             {
-                                object val;
                                 string name = JsonParsing.getString(data, "Name");
                                 // Replace with localised name if available
-                                if (data.TryGetValue("Name_Localised", out val))
+                                if (data.TryGetValue("Name_Localised", out object val))
                                 {
                                     name = (string)val;
                                 }
@@ -577,7 +569,6 @@ namespace EddiJournalMonitor
                             break;
                         case "Scan":
                             {
-                                object val;
                                 string name = JsonParsing.getString(data, "BodyName");
                                 decimal distancefromarrival = JsonParsing.getDecimal(data, "DistanceFromArrivalLS");
 
@@ -614,7 +605,7 @@ namespace EddiJournalMonitor
                                 }
 
                                 // Rings
-                                data.TryGetValue("Rings", out val);
+                                data.TryGetValue("Rings", out object val);
                                 List<object> ringsData = (List<object>)val;
                                 List<Ring> rings = new List<Ring>();
                                 if (ringsData != null)
@@ -685,11 +676,8 @@ namespace EddiJournalMonitor
                                                 }
                                             }
                                         }
-                                        else if (val is List<object>)
+                                        else if (val is List<object> materialsJson) // 2.3 style
                                         {
-                                            // 2.3 style
-                                            List<object> materialsJson = (List<object>)val;
-
                                             foreach (Dictionary<string, object> materialJson in materialsJson)
                                             {
                                                 Material material = Material.FromEDName((string)materialJson["Name"]);
@@ -723,11 +711,10 @@ namespace EddiJournalMonitor
                             break;
                         case "ShipyardBuy":
                             {
-                                object val;
                                 // We don't have a ship ID at this point so use the ship type
                                 string ship = JsonParsing.getString(data, "ShipType");
 
-                                data.TryGetValue("ShipPrice", out val);
+                                data.TryGetValue("ShipPrice", out object val);
                                 long price = (long)val;
 
                                 data.TryGetValue("StoreShipID", out val);
@@ -746,8 +733,7 @@ namespace EddiJournalMonitor
                             break;
                         case "ShipyardNew":
                             {
-                                object val;
-                                data.TryGetValue("NewShipID", out val);
+                                data.TryGetValue("NewShipID", out object val);
                                 int shipId = (int)(long)val;
                                 string ship = JsonParsing.getString(data, "ShipType");
 
@@ -757,8 +743,7 @@ namespace EddiJournalMonitor
                             break;
                         case "ShipyardSell":
                             {
-                                object val;
-                                data.TryGetValue("SellShipID", out val);
+                                data.TryGetValue("SellShipID", out object val);
                                 int shipId = (int)(long)val;
                                 string ship = JsonParsing.getString(data, "ShipType");
                                 data.TryGetValue("ShipPrice", out val);
@@ -770,8 +755,7 @@ namespace EddiJournalMonitor
                             break;
                         case "SellShipOnRebuy":
                             {
-                                object val;
-                                data.TryGetValue("SellShipId", out val);
+                                data.TryGetValue("SellShipId", out object val);
                                 int shipId = (int)(long)val;
                                 string ship = JsonParsing.getString(data, "ShipType");
                                 data.TryGetValue("ShipPrice", out val);
@@ -783,8 +767,7 @@ namespace EddiJournalMonitor
                             break;
                         case "ShipyardArrived":
                             {
-                                object val;
-                                data.TryGetValue("ShipID", out val);
+                                data.TryGetValue("ShipID", out object val);
                                 int shipId = (int)(long)val;
                                 string ship = JsonParsing.getString(data, "ShipType");
                                 string system = JsonParsing.getString(data, "System");
@@ -798,9 +781,8 @@ namespace EddiJournalMonitor
                             break;
                         case "ShipyardSwap":
                             {
-                                object val;
 
-                                data.TryGetValue("ShipID", out val);
+                                data.TryGetValue("ShipID", out object val);
                                 int shipId = (int)(long)val;
                                 string ship = JsonParsing.getString(data, "ShipType");
 
@@ -818,12 +800,11 @@ namespace EddiJournalMonitor
                             break;
                         case "TechnologyBroker":
                             {
-                                object val;
 
                                 string brokerType = JsonParsing.getString(data, "BrokerType");
                                 long marketId = JsonParsing.getLong(data, "MarketID");
 
-                                data.TryGetValue("ItemsUnlocked", out val);
+                                data.TryGetValue("ItemsUnlocked", out object val);
                                 List<object> itemsUnlocked = (List<object>)val;
                                 List<Module> items = new List<Module>();
                                 foreach (object item in itemsUnlocked)
@@ -873,8 +854,7 @@ namespace EddiJournalMonitor
                             break;
                         case "ShipyardTransfer":
                             {
-                                object val;
-                                data.TryGetValue("ShipID", out val);
+                                data.TryGetValue("ShipID", out object val);
                                 int shipId = (int)(long)val;
                                 string ship = JsonParsing.getString(data, "ShipType");
 
@@ -903,9 +883,8 @@ namespace EddiJournalMonitor
                             break;
                         case "FetchRemoteModule":
                             {
-                                object val;
 
-                                data.TryGetValue("ShipID", out val);
+                                data.TryGetValue("ShipID", out object val);
                                 int shipId = (int)(long)val;
                                 string ship = JsonParsing.getString(data, "Ship");
 
@@ -941,9 +920,8 @@ namespace EddiJournalMonitor
                             break;
                         case "MassModuleStore":
                             {
-                                object val;
 
-                                data.TryGetValue("ShipID", out val);
+                                data.TryGetValue("ShipID", out object val);
                                 int shipId = (int)(long)val;
                                 string ship = JsonParsing.getString(data, "Ship");
 
@@ -974,9 +952,8 @@ namespace EddiJournalMonitor
                             break;
                         case "ModuleArrived":
                             {
-                                object val;
 
-                                data.TryGetValue("ShipID", out val);
+                                data.TryGetValue("ShipID", out object val);
                                 int shipId = (int)(long)val;
                                 string ship = JsonParsing.getString(data, "Ship");
 
@@ -1000,9 +977,8 @@ namespace EddiJournalMonitor
                             break;
                         case "ModuleBuy":
                             {
-                                object val;
 
-                                data.TryGetValue("ShipID", out val);
+                                data.TryGetValue("ShipID", out object val);
                                 int shipId = (int)(long)val;
                                 string ship = JsonParsing.getString(data, "Ship");
 
@@ -1028,9 +1004,8 @@ namespace EddiJournalMonitor
                             break;
                         case "ModuleRetrieve":
                             {
-                                object val;
 
-                                data.TryGetValue("ShipID", out val);
+                                data.TryGetValue("ShipID", out object val);
                                 int shipId = (int)(long)val;
                                 string ship = JsonParsing.getString(data, "Ship");
 
@@ -1055,9 +1030,8 @@ namespace EddiJournalMonitor
                             break;
                         case "ModuleSell":
                             {
-                                object val;
 
-                                data.TryGetValue("ShipID", out val);
+                                data.TryGetValue("ShipID", out object val);
                                 int shipId = (int)(long)val;
                                 string ship = JsonParsing.getString(data, "Ship");
 
@@ -1073,9 +1047,8 @@ namespace EddiJournalMonitor
                             break;
                         case "ModuleSellRemote":
                             {
-                                object val;
 
-                                data.TryGetValue("ShipID", out val);
+                                data.TryGetValue("ShipID", out object val);
                                 int shipId = (int)(long)val;
                                 string ship = JsonParsing.getString(data, "Ship");
 
@@ -1095,9 +1068,8 @@ namespace EddiJournalMonitor
                             break;
                         case "ModuleStore":
                             {
-                                object val;
 
-                                data.TryGetValue("ShipID", out val);
+                                data.TryGetValue("ShipID", out object val);
                                 int shipId = (int)(long)val;
                                 string ship = JsonParsing.getString(data, "Ship");
 
@@ -1125,9 +1097,8 @@ namespace EddiJournalMonitor
                             break;
                         case "ModuleSwap":
                             {
-                                object val;
 
-                                data.TryGetValue("ShipID", out val);
+                                data.TryGetValue("ShipID", out object val);
                                 int shipId = (int)(long)val;
                                 string ship = JsonParsing.getString(data, "Ship");
 
@@ -1142,8 +1113,7 @@ namespace EddiJournalMonitor
                             break;
                         case "SetUserShipName":
                             {
-                                object val;
-                                data.TryGetValue("ShipID", out val);
+                                data.TryGetValue("ShipID", out object val);
                                 int shipId = (int)(long)val;
                                 string ship = JsonParsing.getString(data, "Ship");
                                 string name = JsonParsing.getString(data, "UserShipName");
@@ -1223,11 +1193,10 @@ namespace EddiJournalMonitor
                             break;
                         case "Interdicted":
                             {
-                                object val;
                                 bool submitted = JsonParsing.getBool(data, "Submitted");
                                 string interdictor = JsonParsing.getString(data, "Interdictor");
                                 bool iscommander = JsonParsing.getBool(data, "IsPlayer");
-                                data.TryGetValue("CombatRank", out val);
+                                data.TryGetValue("CombatRank", out object val);
                                 CombatRating rating = (val == null ? null : CombatRating.FromRank((int)val));
                                 string faction = getFaction(data, "Faction");
                                 string power = JsonParsing.getString(data, "Power");
@@ -1247,11 +1216,10 @@ namespace EddiJournalMonitor
                             break;
                         case "Interdiction":
                             {
-                                object val;
                                 bool success = JsonParsing.getBool(data, "Success");
                                 string interdictee = JsonParsing.getString(data, "Interdicted");
                                 bool iscommander = JsonParsing.getBool(data, "IsPlayer");
-                                data.TryGetValue("CombatRank", out val);
+                                data.TryGetValue("CombatRank", out object val);
                                 CombatRating rating = (val == null ? null : CombatRating.FromRank((int)val));
                                 string faction = getFaction(data, "Faction");
                                 string power = JsonParsing.getString(data, "Power");
@@ -1262,9 +1230,8 @@ namespace EddiJournalMonitor
                             break;
                         case "PVPKill":
                             {
-                                object val;
                                 string victim = JsonParsing.getString(data, "Victim");
-                                data.TryGetValue("CombatRank", out val);
+                                data.TryGetValue("CombatRank", out object val);
                                 CombatRating rating = (val == null ? null : CombatRating.FromRank((int)val));
 
                                 events.Add(new KilledEvent(timestamp, victim, rating) { raw = line });
@@ -1273,9 +1240,8 @@ namespace EddiJournalMonitor
                             break;
                         case "MaterialCollected":
                             {
-                                object val;
                                 Material material = Material.FromEDName(JsonParsing.getString(data, "Name"));
-                                data.TryGetValue("Count", out val);
+                                data.TryGetValue("Count", out object val);
                                 int amount = (int)(long)val;
                                 events.Add(new MaterialCollectedEvent(timestamp, material, amount) { raw = line });
                                 handled = true;
@@ -1283,9 +1249,8 @@ namespace EddiJournalMonitor
                             break;
                         case "MaterialDiscarded":
                             {
-                                object val;
                                 Material material = Material.FromEDName(JsonParsing.getString(data, "Name"));
-                                data.TryGetValue("Count", out val);
+                                data.TryGetValue("Count", out object val);
                                 int amount = (int)(long)val;
                                 events.Add(new MaterialDiscardedEvent(timestamp, material, amount) { raw = line });
                                 handled = true;
@@ -1300,12 +1265,11 @@ namespace EddiJournalMonitor
                             break;
                         case "MaterialTrade":
                             {
-                                object val;
 
                                 long marketId = JsonParsing.getLong(data, "MarketID");
                                 string traderType = JsonParsing.getString(data, "TraderType");
 
-                                data.TryGetValue("Paid", out val);
+                                data.TryGetValue("Paid", out object val);
                                 Dictionary<string, object> paid = (Dictionary<string, object>)val;
 
                                 string materialEdName = JsonParsing.getString(paid, "Material");
@@ -1337,8 +1301,7 @@ namespace EddiJournalMonitor
                             }
                         case "ScientificResearch":
                             {
-                                object val;
-                                data.TryGetValue("Name", out val);
+                                data.TryGetValue("Name", out object val);
                                 Material material = Material.FromEDName(JsonParsing.getString(data, "Name"));
                                 data.TryGetValue("Count", out val);
                                 int amount = (int)(long)val;
@@ -1373,7 +1336,7 @@ namespace EddiJournalMonitor
                                 {
                                     // Give priority to player messages
                                     source = channel == "wing" ? "Wing mate" : (channel == null ? "Crew mate" : "Commander");
-                                    channel = channel == null ? "multicrew" : channel;
+                                    channel = channel ?? "multicrew";
                                     events.Add(new MessageReceivedEvent(timestamp, from, source, true, channel, message) { raw = line });
                                 }
                                 else
@@ -1446,39 +1409,43 @@ namespace EddiJournalMonitor
                         case "DockingRequested":
                             {
                                 string stationName = JsonParsing.getString(data, "StationName");
-                                events.Add(new DockingRequestedEvent(timestamp, stationName) { raw = line });
+                                string stationType = JsonParsing.getString(data, "StationType");
+                                events.Add(new DockingRequestedEvent(timestamp, stationName, stationType) { raw = line });
                             }
                             handled = true;
                             break;
                         case "DockingGranted":
                             {
-                                object val;
                                 string stationName = JsonParsing.getString(data, "StationName");
-                                data.TryGetValue("LandingPad", out val);
+                                string stationType = JsonParsing.getString(data, "StationType");
+                                data.TryGetValue("LandingPad", out object val);
                                 int landingPad = (int)(long)val;
-                                events.Add(new DockingGrantedEvent(timestamp, stationName, landingPad) { raw = line });
+                                events.Add(new DockingGrantedEvent(timestamp, stationName, stationType, landingPad) { raw = line });
                             }
                             handled = true;
                             break;
                         case "DockingDenied":
                             {
                                 string stationName = JsonParsing.getString(data, "StationName");
+                                string stationType = JsonParsing.getString(data, "StationType");
                                 string reason = JsonParsing.getString(data, "Reason");
-                                events.Add(new DockingDeniedEvent(timestamp, stationName, reason) { raw = line });
+                                events.Add(new DockingDeniedEvent(timestamp, stationName, stationType, reason) { raw = line });
                             }
                             handled = true;
                             break;
                         case "DockingCancelled":
                             {
                                 string stationName = JsonParsing.getString(data, "StationName");
-                                events.Add(new DockingCancelledEvent(timestamp, stationName) { raw = line });
+                                string stationType = JsonParsing.getString(data, "StationType");
+                                events.Add(new DockingCancelledEvent(timestamp, stationName, stationType) { raw = line });
                             }
                             handled = true;
                             break;
                         case "DockingTimeout":
                             {
                                 string stationName = JsonParsing.getString(data, "StationName");
-                                events.Add(new DockingTimedOutEvent(timestamp, stationName) { raw = line });
+                                string stationType = JsonParsing.getString(data, "StationType");
+                                events.Add(new DockingTimedOutEvent(timestamp, stationName, stationType) { raw = line });
                             }
                             handled = true;
                             break;
@@ -1593,7 +1560,6 @@ namespace EddiJournalMonitor
                             break;
                         case "Died":
                             {
-                                object val;
 
                                 List<string> names = new List<string>();
                                 List<string> ships = new List<string>();
@@ -1609,7 +1575,7 @@ namespace EddiJournalMonitor
                                 if (data.ContainsKey("killers"))
                                 {
                                     // Multiple killers
-                                    data.TryGetValue("Killers", out val);
+                                    data.TryGetValue("Killers", out object val);
                                     List<object> killers = (List<object>)val;
                                     foreach (IDictionary<string, object> killer in killers)
                                     {
@@ -1636,8 +1602,7 @@ namespace EddiJournalMonitor
                             break;
                         case "NavBeaconScan":
                             {
-                                object val;
-                                data.TryGetValue("NumBodies", out val);
+                                data.TryGetValue("NumBodies", out object val);
                                 int numbodies = (int)(long)val;
                                 events.Add(new NavBeaconScanEvent(timestamp, numbodies) { raw = line });
                             }
@@ -1653,8 +1618,7 @@ namespace EddiJournalMonitor
                             }
                         case "SellExplorationData":
                             {
-                                object val;
-                                data.TryGetValue("Systems", out val);
+                                data.TryGetValue("Systems", out object val);
                                 List<string> systems = ((List<object>)val).Cast<string>().ToList();
                                 data.TryGetValue("Discovered", out val);
                                 List<string> firsts = ((List<object>)val).Cast<string>().ToList();
@@ -1668,9 +1632,8 @@ namespace EddiJournalMonitor
                             }
                         case "USSDrop":
                             {
-                                object val;
                                 string source = JsonParsing.getString(data, "USSType");
-                                data.TryGetValue("USSThreat", out val);
+                                data.TryGetValue("USSThreat", out object val);
                                 int threat = (int)(long)val;
                                 events.Add(new EnteredSignalSourceEvent(timestamp, source, threat) { raw = line });
                             }
@@ -1678,8 +1641,7 @@ namespace EddiJournalMonitor
                             break;
                         case "MarketBuy":
                             {
-                                object val;
-                                data.TryGetValue("MarketID", out val);
+                                data.TryGetValue("MarketID", out object val);
                                 long marketid = (long)val;
                                 string commodityName = JsonParsing.getString(data, "Type");
                                 CommodityDefinition commodity = CommodityDefinition.FromName(commodityName);
@@ -1697,8 +1659,7 @@ namespace EddiJournalMonitor
                             }
                         case "MarketSell":
                             {
-                                object val;
-                                data.TryGetValue("MarketID", out val);
+                                data.TryGetValue("MarketID", out object val);
                                 long marketid = (long)val;
                                 string commodityName = JsonParsing.getString(data, "Type");
                                 CommodityDefinition commodity = CommodityDefinition.FromName(commodityName);
@@ -1726,20 +1687,18 @@ namespace EddiJournalMonitor
                             }
                         case "EngineerCraft":
                             {
-                                object val;
                                 string engineer = JsonParsing.getString(data, "Engineer");
                                 string blueprint = JsonParsing.getString(data, "Blueprint");
-                                data.TryGetValue("Level", out val);
+                                data.TryGetValue("Level", out object val);
                                 int level = (int)(long)val;
 
                                 List<CommodityAmount> commodities = new List<CommodityAmount>();
                                 List<MaterialAmount> materials = new List<MaterialAmount>();
                                 if (data.TryGetValue("Ingredients", out val))
                                 {
-                                    if (val is Dictionary<string, object>)
+                                    // 2.2 style
+                                    if (val is Dictionary<string, object> usedData)
                                     {
-                                        // 2.2 style
-                                        Dictionary<string, object> usedData = (Dictionary<string, object>)val;
                                         foreach (KeyValuePair<string, object> used in usedData)
                                         {
                                             // Used could be a material or a commodity
@@ -1757,11 +1716,8 @@ namespace EddiJournalMonitor
                                             }
                                         }
                                     }
-                                    else if (val is List<object>)
+                                    else if (val is List<object> materialsJson) // 2.3 style
                                     {
-                                        // 2.3 style
-                                        List<object> materialsJson = (List<object>)val;
-
                                         foreach (Dictionary<string, object> materialJson in materialsJson)
                                         {
                                             Material material = Material.FromEDName(JsonParsing.getString(materialJson, "Name"));
@@ -1775,10 +1731,9 @@ namespace EddiJournalMonitor
                             }
                         case "EngineerApply":
                             {
-                                object val;
                                 string engineer = JsonParsing.getString(data, "Engineer");
                                 string blueprint = JsonParsing.getString(data, "Blueprint");
-                                data.TryGetValue("Level", out val);
+                                data.TryGetValue("Level", out object val);
                                 int level = (int)(long)val;
 
                                 events.Add(new ModificationAppliedEvent(timestamp, engineer, blueprint, level) { raw = line });
@@ -1787,9 +1742,8 @@ namespace EddiJournalMonitor
                             }
                         case "EngineerProgress":
                             {
-                                object val;
                                 string engineer = JsonParsing.getString(data, "Engineer");
-                                data.TryGetValue("Rank", out val);
+                                data.TryGetValue("Rank", out object val);
                                 if (val == null)
                                 {
                                     // There are other non-rank events for engineers but we don't pay attention to them
@@ -1803,10 +1757,9 @@ namespace EddiJournalMonitor
                             }
                         case "LoadGame":
                             {
-                                object val;
                                 string commander = JsonParsing.getString(data, "Commander");
 
-                                data.TryGetValue("ShipID", out val);
+                                data.TryGetValue("ShipID", out object val);
                                 int? shipId = (int?)(long?)val;
 
                                 if (shipId == null)
@@ -1929,8 +1882,7 @@ namespace EddiJournalMonitor
                             }
                         case "BuyAmmo":
                             {
-                                object val;
-                                data.TryGetValue("Cost", out val);
+                                data.TryGetValue("Cost", out object val);
                                 long price = (long)val;
                                 events.Add(new ShipRestockedEvent(timestamp, price) { raw = line });
                                 handled = true;
@@ -1938,8 +1890,7 @@ namespace EddiJournalMonitor
                             }
                         case "BuyDrones":
                             {
-                                object val;
-                                data.TryGetValue("Count", out val);
+                                data.TryGetValue("Count", out object val);
                                 int amount = (int)(long)val;
                                 data.TryGetValue("BuyPrice", out val);
                                 int price = (int)(long)val;
@@ -1949,8 +1900,7 @@ namespace EddiJournalMonitor
                             }
                         case "SellDrones":
                             {
-                                object val;
-                                data.TryGetValue("Count", out val);
+                                data.TryGetValue("Count", out object val);
                                 int amount = (int)(long)val;
                                 data.TryGetValue("SellPrice", out val);
                                 int price = (int)(long)val;
@@ -1982,8 +1932,7 @@ namespace EddiJournalMonitor
                             }
                         case "Progress":
                             {
-                                object val;
-                                data.TryGetValue("Combat", out val);
+                                data.TryGetValue("Combat", out object val);
                                 decimal combat = (long)val;
                                 data.TryGetValue("Trade", out val);
                                 decimal trade = (long)val;
@@ -2002,8 +1951,7 @@ namespace EddiJournalMonitor
                             }
                         case "Rank":
                             {
-                                object val;
-                                data.TryGetValue("Combat", out val);
+                                data.TryGetValue("Combat", out object val);
                                 CombatRating combat = CombatRating.FromRank((int)((long)val));
                                 data.TryGetValue("Trade", out val);
                                 TradeRating trade = TradeRating.FromRank((int)((long)val));
@@ -2022,9 +1970,8 @@ namespace EddiJournalMonitor
                             }
                         case "Screenshot":
                             {
-                                object val;
                                 string filename = JsonParsing.getString(data, "Filename");
-                                data.TryGetValue("Width", out val);
+                                data.TryGetValue("Width", out object val);
                                 int width = (int)(long)val;
                                 data.TryGetValue("Height", out val);
                                 int height = (int)(long)val;
@@ -2039,9 +1986,8 @@ namespace EddiJournalMonitor
                             }
                         case "BuyTradeData":
                             {
-                                object val;
                                 string system = JsonParsing.getString(data, "System");
-                                data.TryGetValue("Cost", out val);
+                                data.TryGetValue("Cost", out object val);
                                 long price = (long)val;
 
                                 events.Add(new TradeDataPurchasedEvent(timestamp, system, price) { raw = line });
@@ -2050,8 +1996,7 @@ namespace EddiJournalMonitor
                             }
                         case "PayFines":
                             {
-                                object val;
-                                data.TryGetValue("Amount", out val);
+                                data.TryGetValue("Amount", out object val);
                                 long amount = (long)val;
                                 decimal? brokerpercentage = JsonParsing.getOptionalDecimal(data, "BrokerPercentage");
 
@@ -2061,8 +2006,7 @@ namespace EddiJournalMonitor
                             }
                         case "PayLegacyFines":
                             {
-                                object val;
-                                data.TryGetValue("Amount", out val);
+                                data.TryGetValue("Amount", out object val);
                                 long amount = (long)val;
                                 decimal? brokerpercentage = JsonParsing.getOptionalDecimal(data, "BrokerPercentage");
 
@@ -2072,23 +2016,21 @@ namespace EddiJournalMonitor
                             }
                         case "RefuelPartial":
                             {
-                                object val;
                                 decimal amount = JsonParsing.getDecimal(data, "Amount");
-                                data.TryGetValue("Cost", out val);
+                                data.TryGetValue("Cost", out object val);
                                 long price = (long)val;
 
-                                events.Add(new ShipRefuelledEvent(timestamp, "Market", price, amount, null) { raw = line });
+                                events.Add(new ShipRefuelledEvent(timestamp, "Market", price, amount, null, false) { raw = line });
                                 handled = true;
                                 break;
                             }
                         case "RefuelAll":
                             {
-                                object val;
                                 decimal amount = JsonParsing.getDecimal(data, "Amount");
-                                data.TryGetValue("Cost", out val);
+                                data.TryGetValue("Cost", out object val);
                                 long price = (long)val;
 
-                                events.Add(new ShipRefuelledEvent(timestamp, "Market", price, amount, null) { raw = line });
+                                events.Add(new ShipRefuelledEvent(timestamp, "Market", price, amount, null, true) { raw = line });
                                 handled = true;
                                 break;
                             }
@@ -2096,8 +2038,11 @@ namespace EddiJournalMonitor
                             {
                                 decimal amount = JsonParsing.getDecimal(data, "Scooped");
                                 decimal total = JsonParsing.getDecimal(data, "Total");
+                                bool full = EDDI.Instance.CurrentShip?.fueltanktotalcapacity == null 
+                                    ? false 
+                                    : Math.Round(total) == EDDI.Instance.CurrentShip.fueltanktotalcapacity;
 
-                                events.Add(new ShipRefuelledEvent(timestamp, "Scoop", null, amount, total) { raw = line });
+                                events.Add(new ShipRefuelledEvent(timestamp, "Scoop", null, amount, total, full) { raw = line });
                                 handled = true;
                                 break;
                             }
@@ -2107,9 +2052,11 @@ namespace EddiJournalMonitor
                                 string name = JsonParsing.getString(data, "Name");
                                 name = name.Replace("$cmdr_decorate:#name=", "Commander ").Replace(";", "").Replace("&", "Commander ");
 
-                                Friend cmdr = new Friend();
-                                cmdr.name = name;
-                                cmdr.status = status;
+                                Friend cmdr = new Friend
+                                {
+                                    name = name,
+                                    status = status
+                                };
 
                                 /// Does this friend exist in our friends list?
                                 List<Friend> friends = EDDI.Instance.Cmdr.friends;
@@ -2164,13 +2111,12 @@ namespace EddiJournalMonitor
                             }
                         case "RedeemVoucher":
                             {
-                                object val;
 
                                 string type = JsonParsing.getString(data, "Type");
                                 List<Reward> rewards = new List<Reward>();
 
                                 // Obtain list of factions
-                                data.TryGetValue("Factions", out val);
+                                data.TryGetValue("Factions", out object val);
                                 List<object> factionsData = (List<object>)val;
                                 if (factionsData != null)
                                 {
@@ -2222,10 +2168,9 @@ namespace EddiJournalMonitor
                             }
                         case "CommunityGoal":
                             {
-                                object val;
 
                                 // There may be multiple goals in each event. We add them all to lists
-                                data.TryGetValue("CurrentGoals", out val);
+                                data.TryGetValue("CurrentGoals", out object val);
                                 List<object> goalsdata = (List<object>)val;
 
                                 // Create empty lists
@@ -2289,10 +2234,9 @@ namespace EddiJournalMonitor
                             }
                         case "CommunityGoalReward":
                             {
-                                object val;
                                 string name = JsonParsing.getString(data, "Name");
                                 string system = JsonParsing.getString(data, "System");
-                                data.TryGetValue("Reward", out val);
+                                data.TryGetValue("Reward", out object val);
                                 long reward = (val == null ? 0 : (long)val);
 
                                 events.Add(new MissionCompletedEvent(timestamp, null, name, null, null, null, true, reward, null, 0) { raw = line });
@@ -2301,8 +2245,7 @@ namespace EddiJournalMonitor
                             }
                         case "MissionAccepted":
                             {
-                                object val;
-                                data.TryGetValue("MissionID", out val);
+                                data.TryGetValue("MissionID", out object val);
                                 long missionid = (long)val;
                                 data.TryGetValue("Expiry", out val);
                                 DateTime? expiry = (val == null ? (DateTime?)null : (DateTime)val);
@@ -2347,8 +2290,7 @@ namespace EddiJournalMonitor
                             }
                         case "MissionCompleted":
                             {
-                                object val;
-                                data.TryGetValue("MissionID", out val);
+                                data.TryGetValue("MissionID", out object val);
                                 long missionid = (long)val;
                                 string name = JsonParsing.getString(data, "Name");
                                 data.TryGetValue("Reward", out val);
@@ -2382,8 +2324,7 @@ namespace EddiJournalMonitor
                             }
                         case "MissionAbandoned":
                             {
-                                object val;
-                                data.TryGetValue("MissionID", out val);
+                                data.TryGetValue("MissionID", out object val);
                                 long missionid = (long)val;
                                 string name = JsonParsing.getString(data, "Name");
                                 events.Add(new MissionAbandonedEvent(timestamp, missionid, name) { raw = line });
@@ -2392,8 +2333,7 @@ namespace EddiJournalMonitor
                             }
                         case "MissionRedirected":
                             {
-                                object val;
-                                data.TryGetValue("MissionID", out val);
+                                data.TryGetValue("MissionID", out object val);
                                 long missionid = (long)val;
                                 string name = JsonParsing.getString(data, "MissionName");
                                 string newdestinationstation = JsonParsing.getString(data, "NewDestinationStation");  
@@ -2406,8 +2346,7 @@ namespace EddiJournalMonitor
                             }
                         case "MissionFailed":
                             {
-                                object val;
-                                data.TryGetValue("MissionID", out val);
+                                data.TryGetValue("MissionID", out object val);
                                 long missionid = (long)val;
                                 string name = JsonParsing.getString(data, "Name");
                                 events.Add(new MissionFailedEvent(timestamp, missionid, name) { raw = line });
@@ -2416,14 +2355,13 @@ namespace EddiJournalMonitor
                             }
                         case "SearchAndRescue":
                             {
-                                object val;
                                 string commodityName = JsonParsing.getString(data, "Name");
                                 CommodityDefinition commodity = CommodityDefinition.FromName(JsonParsing.getString(data, "Name"));
                                 if (commodity == null)
                                 {
                                     Logging.Error("Failed to map SearchAndRescue commodity type " + commodityName + " to commodity");
                                 }
-                                data.TryGetValue("Count", out val);
+                                data.TryGetValue("Count", out object val);
                                 int? amount = (int?)(long?)val;
                                 data.TryGetValue("Reward", out val);
                                 long reward = (val == null ? 0 : (long)val);                                
@@ -2471,7 +2409,6 @@ namespace EddiJournalMonitor
                             }
                         case "Repair":
                             {
-                                object val;
                                 string item = JsonParsing.getString(data, "Item");
                                 // Item might be a module
                                 Module module = Module.FromEDName(item);
@@ -2500,7 +2437,7 @@ namespace EddiJournalMonitor
                                         item = module.localizedName;
                                     }
                                 }
-                                data.TryGetValue("Cost", out val);
+                                data.TryGetValue("Cost", out object val);
                                 long price = (long)val;
                                 events.Add(new ShipRepairedEvent(timestamp, item, price) { raw = line });
                                 handled = true;
@@ -2518,8 +2455,7 @@ namespace EddiJournalMonitor
                             }
                         case "RepairAll":
                             {
-                                object val;
-                                data.TryGetValue("Cost", out val);
+                                data.TryGetValue("Cost", out object val);
                                 long price = (long)val;
                                 events.Add(new ShipRepairedEvent(timestamp, null, price) { raw = line });
                                 handled = true;
@@ -2527,8 +2463,7 @@ namespace EddiJournalMonitor
                             }
                         case "RebootRepair":
                             {
-                                object val;
-                                data.TryGetValue("Modules", out val);
+                                data.TryGetValue("Modules", out object val);
                                 List<object> modulesJson = (List<object>)val;
 
                                 List<string> modules = new List<string>();
@@ -2542,15 +2477,13 @@ namespace EddiJournalMonitor
                             }
                         case "Synthesis":
                             {
-                                object val;
                                 string synthesis = JsonParsing.getString(data, "Name");
 
-                                data.TryGetValue("Materials", out val);
+                                data.TryGetValue("Materials", out object val);
                                 List<MaterialAmount> materials = new List<MaterialAmount>();
-                                if (val is Dictionary<string, object>)
+                                // 2.2 style
+                                if (val is Dictionary<string, object> materialsData)
                                 {
-                                    // 2.2 style
-                                    Dictionary<string, object> materialsData = (Dictionary<string, object>)val;
                                     if (materialsData != null)
                                     {
                                         foreach (KeyValuePair<string, object> materialData in materialsData)
@@ -2560,11 +2493,8 @@ namespace EddiJournalMonitor
                                         }
                                     }
                                 }
-                                else if (val is List<object>)
+                                else if (val is List<object> materialsJson) // 2.3 style
                                 {
-                                    // 2.3 style
-                                    List<object> materialsJson = (List<object>)val;
-
                                     foreach (Dictionary<string, object> materialJson in materialsJson)
                                     {
                                         Material material = Material.FromEDName(JsonParsing.getString(materialJson, "Name"));
@@ -2578,10 +2508,9 @@ namespace EddiJournalMonitor
                             }
                         case "Materials":
                             {
-                                object val;
                                 List<MaterialAmount> materials = new List<MaterialAmount>();
 
-                                data.TryGetValue("Raw", out val);
+                                data.TryGetValue("Raw", out object val);
                                 if (val != null)
                                 {
                                     List<object> materialsJson = (List<object>)val;
@@ -2621,10 +2550,9 @@ namespace EddiJournalMonitor
                         case "Cargo":
                             {
                                 int cargocarried = 0;
-                                object val;
                                 List<Cargo> inventory = new List<Cargo>();
 
-                                data.TryGetValue("Inventory", out val);
+                                data.TryGetValue("Inventory", out object val);
                                 if (val != null)
                                 {
                                     List<object> inventoryJson = (List<object>)val;
@@ -2633,9 +2561,11 @@ namespace EddiJournalMonitor
                                         string name = JsonParsing.getString(cargoJson, "Name");
                                         int amount = JsonParsing.getInt(cargoJson, "Count");
                                         cargocarried += amount;
-                                        Cargo cargo = new Cargo(name, amount);
-                                        cargo.haulage = 0;
-                                        cargo.stolen = JsonParsing.getInt(cargoJson, "Stolen");
+                                        Cargo cargo = new Cargo(name, amount)
+                                        {
+                                            haulage = 0,
+                                            stolen = JsonParsing.getInt(cargoJson, "Stolen")
+                                        };
                                         cargo.owned = amount - cargo.stolen;
                                         inventory.Add(cargo);
                                     }
@@ -2673,10 +2603,9 @@ namespace EddiJournalMonitor
                             }
                         case "PowerplayVote":
                             {
-                                object val;
                                 string power = JsonParsing.getString(data, "Power");
                                 string system = JsonParsing.getString(data, "System");
-                                data.TryGetValue("Votes", out val);
+                                data.TryGetValue("Votes", out object val);
                                 int amount = (int)(long)val;
 
                                 events.Add(new PowerPreparationVoteCast(timestamp, power, system, amount) { raw = line });
@@ -2685,9 +2614,8 @@ namespace EddiJournalMonitor
                             }
                         case "PowerplaySalary":
                             {
-                                object val;
                                 string power = JsonParsing.getString(data, "Power");
-                                data.TryGetValue("Amount", out val);
+                                data.TryGetValue("Amount", out object val);
                                 int amount = (int)(long)val;
 
                                 events.Add(new PowerSalaryClaimedEvent(timestamp, power, amount) { raw = line });
@@ -2696,11 +2624,10 @@ namespace EddiJournalMonitor
                             }
                         case "PowerplayCollect":
                             {
-                                object val;
                                 string power = JsonParsing.getString(data, "Power");
                                 CommodityDefinition commodity = CommodityDefinition.FromName(JsonParsing.getString(data, "Type"));
                                 commodity.fallbackLocalizedName = JsonParsing.getString(data, "Type_Localised");
-                                data.TryGetValue("Count", out val);
+                                data.TryGetValue("Count", out object val);
                                 int amount = (int)(long)val;
 
                                 events.Add(new PowerCommodityObtainedEvent(timestamp, power, commodity, amount) { raw = line });
@@ -2709,11 +2636,10 @@ namespace EddiJournalMonitor
                             }
                         case "PowerplayDeliver":
                             {
-                                object val;
                                 string power = JsonParsing.getString(data, "Power");
                                 CommodityDefinition commodity = CommodityDefinition.FromName(JsonParsing.getString(data, "Type"));
                                 commodity.fallbackLocalizedName = JsonParsing.getString(data, "Type_Localised");
-                                data.TryGetValue("Count", out val);
+                                data.TryGetValue("Count", out object val);
                                 int amount = (int)(long)val;
 
                                 events.Add(new PowerCommodityDeliveredEvent(timestamp, power, commodity, amount) { raw = line });
@@ -2722,9 +2648,8 @@ namespace EddiJournalMonitor
                             }
                         case "PowerplayFastTrack":
                             {
-                                object val;
                                 string power = JsonParsing.getString(data, "Power");
-                                data.TryGetValue("Cost", out val);
+                                data.TryGetValue("Cost", out object val);
                                 int amount = (int)(long)val;
 
                                 events.Add(new PowerCommodityFastTrackedEvent(timestamp, power, amount) { raw = line });
@@ -2733,9 +2658,8 @@ namespace EddiJournalMonitor
                             }
                         case "PowerplayVoucher":
                             {
-                                object val;
                                 string power = JsonParsing.getString(data, "Power");
-                                data.TryGetValue("Systems", out val);
+                                data.TryGetValue("Systems", out object val);
                                 List<string> systems = ((List<object>)val).Cast<string>().ToList();
 
                                 events.Add(new PowerVoucherReceivedEvent(timestamp, power, systems) { raw = line });
@@ -2958,8 +2882,7 @@ namespace EddiJournalMonitor
 
         private static string GetSavedGamesDir()
         {
-            IntPtr path;
-            int result = NativeMethods.SHGetKnownFolderPath(new Guid("4C5C32FF-BB9D-43B0-B5B4-2D72E54EAAA4"), 0, new IntPtr(0), out path);
+            int result = NativeMethods.SHGetKnownFolderPath(new Guid("4C5C32FF-BB9D-43B0-B5B4-2D72E54EAAA4"), 0, new IntPtr(0), out IntPtr path);
             if (result >= 0)
             {
                 return Marshal.PtrToStringUni(path) + @"\Frontier Developments\Elite Dangerous";
@@ -2995,8 +2918,7 @@ namespace EddiJournalMonitor
 
         private static Superpower getAllegiance(IDictionary<string, object> data, string key)
         {
-            object val;
-            data.TryGetValue(key, out val);
+            data.TryGetValue(key, out object val);
             // FD sends "" rather than null; fix that here
             if (((string)val) == "") { val = null; }
             return Superpower.From((string)val);

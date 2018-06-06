@@ -456,7 +456,7 @@
       "enabled": true,
       "priority": 3,
       "responder": true,
-      "script": "{_ Context }\r\n{SetState('eddi_context_last_subject', 'landing pad')}\r\n{SetState('eddi_context_landing_pad_system', system.name)}\r\n{SetState('eddi_context_landing_pad_station', event.station)}\r\n{SetState('eddi_context_landing_pad_pad', event.landingpad)}\r\n\r\n{set station to StationDetails(event.station)}\r\n{if station.model = \"Coriolis Starport\" || station.model = \"Orbis Starport\" || station.model = \"Ocellus Starport\" || station.model = \"Asteroid Base\" || station.model = \"Unknown Starport\":\r\n    {Pause(8000)}\r\n    {F(\"Landing pad report\")}\r\n}\r\n",
+      "script": "{_ Context }\r\n{SetState('eddi_context_last_subject', 'landing pad')}\r\n{SetState('eddi_context_landing_pad_system', system.name)}\r\n{SetState('eddi_context_landing_pad_station', event.station)}\r\n{SetState('eddi_context_landing_pad_station_model', event.stationtype)}\r\n{SetState('eddi_context_landing_pad_pad', event.landingpad)}\r\n\r\n{if event.stationDefinition.basename = \"Coriolis\" || \r\n    event.stationDefinition.basename = \"Orbis\" || \r\n    event.stationDefinition.basename = \"Bernal\" || \r\n    event.stationDefinition.basename = \"AsteroidBase\":\r\n    {Pause(8000)}\r\n    {F(\"Landing pad report\")}\r\n}\r\n",
       "default": true,
       "name": "Docking granted",
       "description": "Triggered when your ship is granted docking permission at a station or outpost"
@@ -1482,7 +1482,7 @@
       "enabled": true,
       "priority": 3,
       "responder": true,
-      "script": "{if event.total:\r\n   {SetState('eddi_context_fuel_remaining', event.total)}\r\n|else:\r\n   {SetState('eddi_context_fuel_remaining', state.eddi_context_fuel_remaining + event.amount)}\r\n}\r\n\r\n{Pause(2000)}\r\n{if event.total = ship.fueltanktotalcapacity:\r\n   {set refueled_desc to OneOf(\"fully refuelled\", \"at maximum fuel capacity\",\"at 100% fuel capacity\")}\r\n   {OneOf(\"Refueled\", \"Fuel at maximum\", \"Maximum fuel\", \"{ShipName()} is now {refueled_desc}\" )}\r\n|else:\r\n   {if event.amount <= 5.0000:\r\n      {F('Fuel check')}\r\n   }\r\n}",
+      "script": "{if event.source = \"Scoop\":\r\n   {SetState('eddi_context_fuel_remaining', event.total)}\r\n|elif event.full:\r\n   {SetState('eddi_context_fuel_remaining', ship.fueltanktotalcapacity)}\r\n|else:\r\n   {SetState('eddi_context_fuel_remaining', state.eddi_context_fuel_remaining + event.amount)}\r\n}\r\n\r\n{Pause(2000)}\r\n{if event.full:\r\n   {set refueled_desc to OneOf(\"fully refuelled\", \"at maximum fuel capacity\",\"at 100% fuel capacity\")}\r\n   {OneOf(\"Refueled\", \"Fuel at maximum\", \"Maximum fuel\", \"{ShipName()} is now {refueled_desc}\" )}\r\n|else:\r\n   {if event.amount <= 5.0000:\r\n      {F('Fuel check')}\r\n   }\r\n}",
       "default": true,
       "name": "Ship refuelled",
       "description": "Triggered when you refuel your ship"
