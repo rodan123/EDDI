@@ -254,7 +254,7 @@ namespace GalnetMonitor
                     }
                     break;
                 default:
-                    if (content.IndexOf("The campaign begins on", StringComparison.CurrentCultureIgnoreCase) >= 0 || content.IndexOf("Pilots who contributed to", StringComparison.CurrentCultureIgnoreCase) >= 0)
+                    if (content.IndexOf("The campaign begins on", StringComparison.CurrentCultureIgnoreCase) >= 0 || content.IndexOf("Pilots who", StringComparison.CurrentCultureIgnoreCase) >= 0)
                     {
                         CG = true;
                     }
