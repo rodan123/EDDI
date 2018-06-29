@@ -2,12 +2,22 @@
 
 Full details of the variables available for each noted event, and VoiceAttack integrations, are available in the individual [event pages](https://github.com/EDCD/EDDI/wiki/Events).
 
+### 3.0.1-rc3
+  * Core
+    * Added data definitions for the new ships and modules in Chapter 2.
+
+### 3.0.1-rc2
+  * Core
+    * Revised EDDI's logging code and removed an unintended recursion that could cause the log to bloat.
+
 ### 3.0.1-rc1
   * Core
-    * Updated system definition to include new variable `lastVisitSeconds`. 
     * The Search and rescue event was having its `commodity` property set to just the commodity name, rather than the commodity definition object that scripts expect. Fixed.
     * Updated the `Ship refueled` event to include new boolean value `full`. True if this is a full refill and false if this is a partial refill.
+    * Updated system definition to include new variable `lastVisitSeconds`. 
   * Speech responder
+    * Added the following Cottle function, documented in [the SpeechResponder documentation](https://github.com/EDCD/EDDI/blob/master/SpeechResponder/Help.md):
+       * `CommodityMarketDetails()` for retrieving market information about commodities.
     * Updated the following events to include new properties `stationtype` and `stationDefinition`:
       * `Docking cancelled`
       * `Docking denied`
@@ -19,12 +29,13 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Fixed a bug that had made `{ship.role}` inaccessible via scripts.
     * Updated `FSD engaged` script to correct a bug that was preventing sub-function `System report` from ever running.
     * Updated `Ship refueled` script to correct a bug that would cause it to sometimes report more than 100% fuel after refueling.
+    * Revised punctuation in the various module scripts to speak more naturally (mostly removing commas as in `You have sold a 4-D, Power Plant`).
   * Cargo monitor
     * Discard all cargo if your ship is destroyed.
-  * Added the following Cottle function, documented in [the SpeechResponder documentation](https://github.com/EDCD/EDDI/blob/master/SpeechResponder/Help.md):
-     * `CommodityMarketDetails()` for retrieving market information about commodities.
+  * Localization
+    * Fixed the English pronunciation of "Biowaste" by localizing it to "bio-waste". And there was much rejoicing.
   * VoiceAttack
-    * The Search and rescue event has a new variable `{TXT:localizedcommodityname}` as the `commodity` varaible is now an object.
+    * The Search and rescue event has a new variable `{TXT:localizedcommodityname}` because the `commodity` varaible is now an object.
 
 ### 3.0.1-b4
   * Core

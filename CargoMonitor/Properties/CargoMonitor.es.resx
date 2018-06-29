@@ -156,4 +156,7 @@
     <value>De propiedad</value>
     <comment>Tons of owned cargo carried</comment>
   </data>
+  <data name="para3" xml:space="preserve">
+    <value>Nota: Para misiones de ala en las que aún no ha realizado alguna recolección o entrega, el artículo se mostrará como 'Desconocido'. Una vez recolectado o entregado su nombre será actualizado.</value>
+  </data>
 </root>

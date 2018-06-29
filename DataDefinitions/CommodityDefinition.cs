@@ -10,14 +10,15 @@ namespace EddiDataDefinitions
         static CommodityDefinition()
         {
             resourceManager = Properties.Commodities.ResourceManager;
-            resourceManager.IgnoreCase = false;
-            missingEDNameHandler = (edname) => new CommodityDefinition(0, 0, edname, Unknown);
+            resourceManager.IgnoreCase = true;
+            missingEDNameHandler = (edname) => new CommodityDefinition(0, null, edname, Unknown);
             CommoditiesByEliteID = new Dictionary<long, CommodityDefinition>();
 
             // 2xxxxxxxx & 3xxxxxxxx series Frontier IDs are placeholders, to use until an actual Frontier ID is identified
             // Check https://eddb.io/archive/v5/commodities.json (for any undefined EDDBID's or undefined FDevID's) and https://github.com/EDCD/FDevIDs (for any undefined FDevID's)
             var _ = new List<CommodityDefinition>
             {
+                new CommodityDefinition(0, 0, "Unknown", Unknown, 0, false),
                 new CommodityDefinition(128049204, 1, "Explosives", Chemicals, 261, false),
                 new CommodityDefinition(128049202, 2, "HydrogenFuel", Chemicals, 110, false),
                 new CommodityDefinition(128049203, 3, "MineralOil", Chemicals, 181, false),
@@ -156,7 +157,7 @@ namespace EddiDataDefinitions
                 new CommodityDefinition(128667024, 139, "GiantIrukamaSnails", Foods, 9174, true),
                 new CommodityDefinition(128667025, 140, "BaltahSineVacuumKrill", Foods, 8479, true),
                 new CommodityDefinition(128667026, 141, "CetiRabbits", Foods, 9079, true),
-                new CommodityDefinition(128667027, 142, "KachiriginFilterLeeches", Medicines, 8227, true),
+                new CommodityDefinition(128667027, 142, "KachiriginLeaches", Medicines, 8227, true),
                 new CommodityDefinition(128667028, 143, "LyraeWeed", Narcotics, 8937, true),
                 new CommodityDefinition(128667032, 144, "BorasetaniPathogenetics", Weapons, 13679, true),
                 new CommodityDefinition(128667033, 145, "HIP118311Swarm", Weapons, 13448, true),
@@ -170,9 +171,9 @@ namespace EddiDataDefinitions
                 new CommodityDefinition(128667042, 153, "CD-75KittenBrandCoffee", Foods, 9571, true),
                 new CommodityDefinition(128667043, 154, "GomanYauponCoffee", Foods, 8921, true),
                 new CommodityDefinition(128667044, 155, "VolkhabBeeDrones", Machinery, 10198, true),
-                new CommodityDefinition(128667045, 156, "KinagoViolins", ConsumerItems, 13030, true),
+                new CommodityDefinition(128667045, 156, "KinagoInstruments", ConsumerItems, 13030, true),
                 new CommodityDefinition(128667046, 157, "NgunaModernAntiques", ConsumerItems, 8545, true),
-                new CommodityDefinition(128667047, 158, "RajukruMulti-Stoves", ConsumerItems, 8378, true),
+                new CommodityDefinition(128667047, 158, "RajukruStoves", ConsumerItems, 8378, true),
                 new CommodityDefinition(128667048, 159, "TiolceWaste2PasteUnits", ConsumerItems, 8710, true),
                 new CommodityDefinition(128667049, 160, "ChiEridaniMarinePaste", Foods, 8450, true),
                 new CommodityDefinition(128667050, 161, "EsusekuCaviar", Foods, 9625, true),
@@ -189,7 +190,7 @@ namespace EddiDataDefinitions
                 new CommodityDefinition(128667061, 172, "BelalansRayLeather", Textiles, 8519, true),
                 new CommodityDefinition(128667062, 173, "DamnaCarapaces", Textiles, 8120, true),
                 new CommodityDefinition(128667063, 174, "RapaBaoSnakeSkins", Textiles, 8285, true),
-                new CommodityDefinition(128667064, 175, "VanayequiCeratomorphaFur", Textiles, 8331, true),
+                new CommodityDefinition(128667064, 175, "VanayequiRhinoFur", Textiles, 8331, true),
                 new CommodityDefinition(128667065, 176, "BastSnakeGin", Narcotics, 8659, true),
                 new CommodityDefinition(128667066, 177, "ThrutisCream", Narcotics, 8550, true),
                 new CommodityDefinition(128667067, 178, "WulpaHyperboreSystems", Machinery, 8726, true),
@@ -245,7 +246,7 @@ namespace EddiDataDefinitions
                 new CommodityDefinition(128667704, 228, "IndiBourbon", Narcotics, 8806, true),
                 new CommodityDefinition(128667705, 229, "AroucaConventualSweets", Foods, 8737, true),
                 new CommodityDefinition(128667706, 230, "TauriChimes", Medicines, 8549, true),
-                new CommodityDefinition(128667707, 231, "ZeesszeAntGrubGlue", ConsumerItems, 8161, true),
+                new CommodityDefinition(128667707, 231, "ZeesszeAntGlue", ConsumerItems, 8161, true),
                 new CommodityDefinition(128667708, 232, "PantaaPrayerSticks", Medicines, 9177, true),
                 new CommodityDefinition(128667709, 233, "FujinTea", Medicines, 8597, true),
                 new CommodityDefinition(128667710, 234, "ChameleonCloth", Textiles, 9071, true),
@@ -329,9 +330,9 @@ namespace EddiDataDefinitions
                 new CommodityDefinition(128682053, 312, "AntimatterContainmentUnit", Salvage, 26608, false),
                 new CommodityDefinition(128682054, 313, "SpacePioneerRelics", Salvage, 7342, false),
                 new CommodityDefinition(128682055, 314, "FossilRemnants", Salvage, 9927, false),
-                new CommodityDefinition(128672159, 10016, "AntiqueJewellery", Salvage, 0, false),
-                new CommodityDefinition(128672162, 10018, "GeneBank", Salvage, 0, false),
-                new CommodityDefinition(128672163, 10019, "TimeCapsule", Salvage, 0, false),
+                new CommodityDefinition(128672159, null, "AntiqueJewellery", Salvage, 0, false),
+                new CommodityDefinition(128672162, null, "GeneBank", Salvage, 0, false),
+                new CommodityDefinition(128672163, null, "TimeCapsule", Salvage, 0, false),
                 new CommodityDefinition(128673876, 315, "UnknownArtifact2", Salvage, 411003, false),
                 new CommodityDefinition(128672160, 316, "PreciousGems", Salvage, 109641, false),
                 new CommodityDefinition(128740752, 317, "UnknownArtifact3", Salvage, 31350, false),
@@ -344,49 +345,75 @@ namespace EddiDataDefinitions
                 new CommodityDefinition(128732186, 324, "AncientTablet", Salvage, 0, false),
                 new CommodityDefinition(128732187, 325, "AncientUrn", Salvage, 0, false),
                 new CommodityDefinition(128732188, 326, "AncientTotem", Salvage, 0, false),
-                new CommodityDefinition(128793127, 10022, "ThargoidHeart", Salvage, 0, false),
-                new CommodityDefinition(128793128, 10020, "ThargoidTissueSampleType1", Salvage, 14081, false),
-                new CommodityDefinition(128793129, 10023, "ThargoidTissueSampleType2", Salvage, 0, false),
-                new CommodityDefinition(128793130, 10024, "ThargoidTissueSampleType3", Salvage, 0, false),
+                new CommodityDefinition(128793127, null, "ThargoidHeart", Salvage, 0, false),
+                new CommodityDefinition(128793128, null, "ThargoidTissueSampleType1", Salvage, 14081, false),
+                new CommodityDefinition(128793129, null, "ThargoidTissueSampleType2", Salvage, 0, false),
+                new CommodityDefinition(128793130, null, "ThargoidTissueSampleType3", Salvage, 0, false),
                 new CommodityDefinition(128672137, 327, "SmallExplorationDataCash", Salvage, 0, false),
                 new CommodityDefinition(128672136, 328, "LargeExplorationDataCash", Salvage, 0, false),
                 new CommodityDefinition(128672811, 329, "DamagedEscapePod", Salvage, 11912, false),
                 new CommodityDefinition(128672161, 330, "EarthRelics", Salvage, 0, false),
                 new CommodityDefinition(128824468, 331, "ThargoidScoutTissueSample", Salvage, 15215, false),
+                new CommodityDefinition(128748428, null, "BuckyballBeerMats", ConsumerItems, 0, false),
+                new CommodityDefinition(128793113, null, "HarmaSilverSeaRum", Narcotics, 0, false),
+                new CommodityDefinition(128793114, null, "PlatinumAloy", Metals, 0, false),
 
-                // Items for which we do not have EDDB IDs
-                new CommodityDefinition(200000000, 10000, "aislingpromotionalmaterials", Powerplay, 0, false),
-                new CommodityDefinition(200000001, 10001, "alliancelegaslativerecords", Powerplay, 0, false),
-                new CommodityDefinition(200000002, 10002, "torvaldeeds", Powerplay, 0, false),
-                new CommodityDefinition(200000003, 10003, "aislingmediamaterials", Powerplay, 0, false),
-                new CommodityDefinition(200000004, 10004, "torvalcommercialcontracts", Powerplay, 0, false),
-                new CommodityDefinition(200000012, 10012, "siriuscommercialcontracts", Powerplay, 0, false),
-                new CommodityDefinition(200000013, 10013, "siriusindustrialequipment", Powerplay, 0, false),
-                new CommodityDefinition(200000014, 10014, "siriusfranchisepackage", Powerplay, 0, false),
-                new CommodityDefinition(200000015, 10015, "republicangarisonsupplies", Powerplay, 0, false),
-                new CommodityDefinition(200000016, 10016, "lavignygarisonsupplies", Powerplay, 0, false),
-                new CommodityDefinition(200000017, 10017, "RajukruStoves", ConsumerItems, 8378, true),
-                new CommodityDefinition(200000018, 10018, "KinagoInstruments", ConsumerItems, 13030, true),
-                new CommodityDefinition(200000019, 10019, "KachiriginLeaches", Medicines, 8227, true),
-                new CommodityDefinition(200000020, 10020, "VanayequiRhinoFur", Textiles, 8331, true),
-                new CommodityDefinition(200000021, 10021, "ZeesszeAntGlue", ConsumerItems, 8161, true),
-                new CommodityDefinition(200000022, 10022, "imperialprisoner", Salvage, 0, false),
-                new CommodityDefinition(200000023, 10023, "undergroundsupport", Powerplay, 0, false),
+                // PowerPlay
+                new CommodityDefinition(128671289, null, "AislingMediaMaterials", Powerplay, 0, false),
+                new CommodityDefinition(128671290, null, "AislingMediaResources", Powerplay, 0, false),
+                new CommodityDefinition(128671291, null, "AislingPromotionalMaterials", Powerplay, 0, false),
+                new CommodityDefinition(128671292, null, "AllianceTradeAgreements", Powerplay, 0, false),
+                new CommodityDefinition(128671293, null, "AllianceLegaslativeContracts", Powerplay, 0, false),
+                new CommodityDefinition(128671294, null, "AllianceLegaslativeRecords", Powerplay, 0, false),
+                new CommodityDefinition(128671295, null, "LavignyCorruptionDossiers", Powerplay, 0, false),
+                new CommodityDefinition(128671296, null, "LavignyFieldSupplies", Powerplay, 0, false),
+                new CommodityDefinition(128671297, null, "LavignyGarisonSupplies", Powerplay, 0, false),
+                new CommodityDefinition(128671298, null, "RestrictedPackage", Powerplay, 0, false),
+                new CommodityDefinition(128671300, null, "LiberalCampaignMaterials", Powerplay, 0, false),
+                new CommodityDefinition(128671301, null, "FederalAid", Powerplay, 0, false),
+                new CommodityDefinition(128671302, null, "FederalTradeContracts", Powerplay, 0, false),
+                new CommodityDefinition(128671303, null, "LoanedArms", Powerplay, 0, false),
+                new CommodityDefinition(128671304, null, "PatreusFieldSupplies", Powerplay, 0, false),
+                new CommodityDefinition(128671305, null, "PatreusGarisonSupplies", Powerplay, 0, false),
+                new CommodityDefinition(128671306, null, "RestrictedIntel", Powerplay, 0, false),
+                new CommodityDefinition(128671307, null, "RepublicanFieldSupplies", Powerplay, 0, false),
+                new CommodityDefinition(128671308, null, "RepublicanGarisonSupplies", Powerplay, 0, false),
+                new CommodityDefinition(128671309, null, "SiriusFranchisePackage", Powerplay, 0, false),
+                new CommodityDefinition(128671310, null, "SiriusCommercialContracts", Powerplay, 0, false),
+                new CommodityDefinition(128671311, null, "SiriusIndustrialEquipment", Powerplay, 0, false),
+                new CommodityDefinition(128671312, null, "TorvalCommercialContracts", Powerplay, 0, false),
+                new CommodityDefinition(128671313, null, "ImperialPrisoner", Powerplay, 0, false),
+                new CommodityDefinition(128671314, null, "UtopianPublicity", Powerplay, 0, false),
+                new CommodityDefinition(128671315, null, "UtopianFieldSupplies", Powerplay, 0, false),
+                new CommodityDefinition(128671316, null, "UtopianDissident", Powerplay, 0, false),
+                new CommodityDefinition(128671317, null, "IllicitConsignment", Powerplay, 0, false),
+                new CommodityDefinition(128671318, null, "UnmarkedWeapons", Powerplay, 0, false),
+                new CommodityDefinition(128671319, null, "OnionheadSamples", Powerplay, 0, false),
+                new CommodityDefinition(128671320, null, "CounterCultureSupport", Powerplay, 0, false),
+                new CommodityDefinition(128671445, null, "MarkedSlaves", Powerplay, 0, false),
+                new CommodityDefinition(128671446, null, "TorvalDeeds", Powerplay, 0, false),
+                new CommodityDefinition(128671447, null, "OnionheadDerivatives", Powerplay, 0, false),
+                new CommodityDefinition(128671450, null, "OutOfDateGoods", Powerplay, 0, false),
+                new CommodityDefinition(128732548, null, "UndergroundSupport", Powerplay, 0, false),
+                new CommodityDefinition(128732549, null, "GromCounterIntelligence", Powerplay, 0, false),
+                new CommodityDefinition(128732550, null, "GromWarTrophies", Powerplay, 0, false),
+                
+                // Items for which we do not have Elite IDs
             };
         }
         private static Dictionary<long, CommodityDefinition> CommoditiesByEliteID;
 
         public readonly long EliteID;
-        public readonly long EDDBID;
+        public readonly long? EDDBID;
         public readonly CommodityCategory category;
         public readonly int avgprice;
         public readonly bool rare;
 
         // dummy used to ensure that the static constructor has run
-        public CommodityDefinition() : this(0, 0, "", Unknown)
+        public CommodityDefinition() : this(0, null, "", Unknown)
         {}
 
-        private CommodityDefinition(long EliteID, long EDDBID, string edname, CommodityCategory Category, int AveragePrice = 0, bool Rare = false) : base(edname, edname)
+        private CommodityDefinition(long EliteID, long? EDDBID, string edname, CommodityCategory Category, int AveragePrice = 0, bool Rare = false) : base(edname, edname)
         {
             this.EDDBID = EDDBID;
             this.category = Category;
@@ -403,11 +430,11 @@ namespace EddiDataDefinitions
             }
             catch(KeyNotFoundException)
             {
-                Logging.Report($"Unrecognized Commodity Definition EliteID {id}");
+                Logging.Info($"Unrecognized Commodity Definition EliteID {id}");
                 throw;
             }
         }
-        
+
         private static string NormalizedName(string rawName)
         {
             return rawName?.ToLowerInvariant()

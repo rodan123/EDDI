@@ -23,15 +23,10 @@ namespace Utilities
             Error(ex.Message, ex.ToString(), memberName, filePath);
         }
 
-        public static void Error(string message, string data = null, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "")
+        public static void Error(string message, string data = "", [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "")
         {
-            log(filePath, memberName, "E", message + " " + data);
-            Report(message, data, memberName, filePath);
-        }
-
-        public static void Warn(string message, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "")
-        {
-            Warn(message, (string)null, memberName, filePath);
+            log(ErrorLevel.Error, message + " " + data, memberName, filePath);
+            Report(ErrorLevel.Error, message, data, memberName, filePath);
         }
 
         public static void Warn(string message, Exception ex, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "")
@@ -44,14 +39,9 @@ namespace Utilities
             Warn(ex.Message, ex.ToString(), memberName, filePath);
         }
 
-        public static void Warn(string message, string data, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "")
+        public static void Warn(string message, string data = "", [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "")
         {
-            log(filePath, memberName, "W", message + " " + data);
-        }
-
-        public static void Info(string message, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "")
-        {
-            Info(message, (string)null, memberName, filePath);
+            log(ErrorLevel.Warning, message + " " + data, memberName, filePath);
         }
 
         public static void Info(string message, Exception ex, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "")
@@ -64,17 +54,9 @@ namespace Utilities
             Info(ex.Message, ex.ToString(), memberName, filePath);
         }
 
-        public static void Info(string message, string data, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "")
+        public static void Info(string message, string data = "", [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "")
         {
-            log(filePath, memberName, "I", message + " " + data);
-        }
-
-        public static void Debug(string message, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "")
-        {
-            if (Verbose)
-            {
-                Debug(message, (string)null, memberName, filePath);
-            }
+            log(ErrorLevel.Info, message + " " + data, memberName, filePath);
         }
 
         public static void Debug(string message, Exception ex, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "")
@@ -93,15 +75,16 @@ namespace Utilities
             }
         }
 
-        public static void Debug(string message, string data, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "")
+        public static void Debug(string message, string data = "", [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "")
         {
             if (Verbose)
             {
-                log(filePath, memberName, "D", message + " " + data);
+                log(ErrorLevel.Debug, message + " " + data, memberName, filePath);
             }
         }
+
         private static readonly object logLock = new object();
-        private static void log(string path, string method, string level, string data)
+        private static void log(ErrorLevel errorlevel, string data, string method, string path)
         {
             lock (logLock)
             {
@@ -109,7 +92,9 @@ namespace Utilities
                 {
                     using (StreamWriter file = new StreamWriter(LogFile, true))
                     {
-                        file.WriteLine(DateTime.UtcNow.ToString("s", System.Globalization.CultureInfo.InvariantCulture) + " " + Path.GetFileNameWithoutExtension(path) + ":" + method + " [" + level + "] " + data);
+                        string timestamp = DateTime.UtcNow.ToString("s", System.Globalization.CultureInfo.InvariantCulture);
+                        string shortPath = Path.GetFileNameWithoutExtension(path);
+                        file.WriteLine($"{timestamp} [{errorlevel}] {shortPath}:{method} {data}");
                     }
                 }
                 catch (Exception)
@@ -119,26 +104,35 @@ namespace Utilities
             }
         }
 
-        public static void Report(string message, object data = null, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "")
+        internal static void Report(ErrorLevel errorLevel, string message, object data = null, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "")
         {
-#if DEBUG
-            Debug(message, data?.ToString(), memberName, filePath);
-#else
+            Dictionary<string, object> thisData = PrepRollbarData(message, ref data);
+            if (thisData != null)
+            {
+                var rollbarReport = System.Threading.Tasks.Task.Run(() => SendToRollbar(errorLevel, message, data, thisData, memberName, filePath));
+            }
+        }
+
+        private static Dictionary<string, object> PrepRollbarData(string message, ref object data)
+        {
             try
             {
-                if (data is Exception)
+                // It's not possible to scrub filepaths from exception messages, so since we don't want  
+                // to collect this personal data these exceptions need to be handled locally only.
+                if (data is Exception ex)
                 {
-                    // Scrub out data directories, if present in the Rollbar message
-                    message.Replace(Constants.DATA_DIR, "");
-                    ((Exception)data).Message.Replace(Constants.DATA_DIR, "");
+                    if (ex.Message.Contains(Constants.DATA_DIR))
+                    {
+                        return null;
+                    }
                 }
                 else if (!(data is Dictionary<string, object>))
                 {
-                    var wrapppedData = new Dictionary<string, object>()
+                    var wrappedData = new Dictionary<string, object>()
                     {
                         {"data", data}
                     };
-                    data = wrapppedData;
+                    data = wrappedData;
                 }
 
                 // The Frontier API uses lowercase keys while the journal uses Titlecased keys. Establish case insensitivity before we proceed.
@@ -161,27 +155,33 @@ namespace Utilities
                 thisData.Remove("demand");
                 thisData.Remove("demandbracket");
                 thisData.Remove("StatusFlags");
-
-                var rollbarReport = System.Threading.Tasks.Task.Run(() => _Report(message, data, thisData));
+                return thisData;
             }
             catch (Exception)
             {
-                // Nothing to do
+                // Return null and don't send data to Rollbar
+                return null;
             }
-#endif
+
         }
 
-        private static void _Report(string message, object data, Dictionary<string, object> thisData)
+        private static void SendToRollbar(ErrorLevel errorLevel, string message, object data, Dictionary<string, object> thisData, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "")
         {
-            // Report only unique messages and data
-            if (isUniqueMessage(message, thisData))
+            string personID = RollbarLocator.RollbarInstance.Config.Person.Id;
+            switch (errorLevel)
             {
-                RollbarLocator.RollbarInstance.Info(message, thisData);
-                Info("Reporting unique data, anonymous ID " + RollbarLocator.RollbarInstance.Config.Person.Id + ": " + message + thisData);
-            }
-            else
-            {
-                Warn(@"Unable to report message """ + message + @""". Invalid data type " + data.GetType());
+                case ErrorLevel.Error:
+                    RollbarLocator.RollbarInstance.Error(message, thisData);
+                    log(errorLevel, $"{message} {data}", memberName, $"Reporting error, anonymous ID {personID}: {filePath}");
+                    break;
+                default:
+                    // If this is an Info Report, report only unique messages and data
+                    if (isUniqueMessage(message, thisData))
+                    {
+                        RollbarLocator.RollbarInstance.Log(errorLevel, message, thisData);
+                        log(errorLevel, $"{message} {data}", memberName, $"Reporting unique data, anonymous ID {personID}: {filePath}");
+                    }
+                    break;
             }
         }
     }
@@ -214,14 +214,21 @@ namespace Utilities
                     Root = "/"
                 },
                 MaxReportsPerMinute = 1,
+#if DEBUG
+                Enabled = false,
+#else
+                Enabled = true,
+#endif
             };
             RollbarLocator.RollbarInstance.Configure(config);
         }
 
         public static void ExceptionHandler(Exception exception)
         {
-            Dictionary<string, object> trace = new Dictionary<string, object>();
-            trace.Add("StackTrace", exception.StackTrace ?? "StackTrace not available");
+            Dictionary<string, object> trace = new Dictionary<string, object>
+            {
+                { "StackTrace", exception.StackTrace ?? "StackTrace not available" }
+            };
 
             if (isUniqueMessage(exception.GetType() + ": " + exception.Message, trace))
             {
@@ -243,8 +250,7 @@ namespace Utilities
             var clientResponse = client.Execute<Dictionary<string, object>>(request);
             Dictionary<string, object> response = clientResponse.Data;
 
-            object val;
-            response.TryGetValue("err", out val); // Check for errors before we proceed
+            response.TryGetValue("err", out object val); // Check for errors before we proceed
             if ((long)val == 0)
             {
                 response.TryGetValue("result", out val);
@@ -297,8 +303,7 @@ namespace Utilities
             var clientResponse = client.Execute<Dictionary<string, object>>(request);
             Dictionary<string, object> response = clientResponse.Data;
 
-            object val;
-            response.TryGetValue("err", out val); // Check for errors before we proceed
+            response.TryGetValue("err", out object val); // Check for errors before we proceed
             if ((long)val == 0)
             {
                 response.TryGetValue("result", out val);

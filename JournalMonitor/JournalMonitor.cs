@@ -457,8 +457,7 @@ namespace EddiJournalMonitor
                                             Module module = Module.FromEDName(item);
                                             if (module == null)
                                             {
-                                                Logging.Info("Unknown module " + item);
-                                                Logging.Report("Unknown module " + item, JsonConvert.SerializeObject(moduleData));
+                                                Logging.Info("Unknown module " + item, JsonConvert.SerializeObject(moduleData));
                                             }
                                             else
                                             {
@@ -516,8 +515,7 @@ namespace EddiJournalMonitor
                                             Module module = Module.FromEDName(item);
                                             if (module == null)
                                             {
-                                                Logging.Info("Unknown module " + item);
-                                                Logging.Report("Unknown module " + item, JsonConvert.SerializeObject(moduleData));
+                                                Logging.Info("Unknown module " + item, JsonConvert.SerializeObject(moduleData));
                                             }
                                             else
                                             {
@@ -815,8 +813,7 @@ namespace EddiJournalMonitor
                                     if (module == null)
                                     {
                                         // Unknown module
-                                        Logging.Info("Unknown module " + moduleEdName);
-                                        Logging.Report("Unknown module " + moduleEdName, JsonConvert.SerializeObject(item));
+                                        Logging.Info("Unknown module " + moduleEdName, JsonConvert.SerializeObject(item));
                                     }
                                     items.Add(module);
                                 }
@@ -832,7 +829,7 @@ namespace EddiJournalMonitor
                                     if (commodity == null)
                                     {
                                         Logging.Info("Unknown commodity " + commodityEdName);
-                                        Logging.Report("Unknown commodity " + commodityEdName, JsonConvert.SerializeObject(_commodity));
+                                        Logging.Info("Unknown commodity " + commodityEdName, JsonConvert.SerializeObject(_commodity));
                                     }
                                     Commodities.Add(new CommodityAmount(commodity, count));
                                 }
@@ -1279,7 +1276,7 @@ namespace EddiJournalMonitor
                                 if (materialPaid == null)
                                 {
                                     Logging.Info("Unknown material " + materialEdName);
-                                    Logging.Report("Unknown material " + materialEdName, JsonConvert.SerializeObject(paid));
+                                    Logging.Info("Unknown material " + materialEdName, JsonConvert.SerializeObject(paid));
                                 }
 
                                 data.TryGetValue("Received", out val);
@@ -1290,8 +1287,7 @@ namespace EddiJournalMonitor
 
                                 if (materialReceived == null)
                                 {
-                                    Logging.Info("Unknown material " + materialEdName);
-                                    Logging.Report("Unknown material " + materialEdName, JsonConvert.SerializeObject(received));
+                                    Logging.Info("Unknown material " + materialEdName, JsonConvert.SerializeObject(received));
                                 }
 
                                 events.Add(new MaterialTradedEvent(timestamp, marketId, traderType, materialPaid, materialPaidQty, materialReceived, materialReceivedQty) { raw = line });
@@ -2161,7 +2157,7 @@ namespace EddiJournalMonitor
                                 else
                                 {
                                     Logging.Warn("Unhandled voucher type " + type);
-                                    Logging.Report("Unhandled voucher type " + type);
+                                    Logging.Info("Unhandled voucher type " + type);
                                 }
                                 handled = true;
                                 break;
@@ -2240,6 +2236,27 @@ namespace EddiJournalMonitor
                                 long reward = (val == null ? 0 : (long)val);
 
                                 events.Add(new MissionCompletedEvent(timestamp, null, name, null, null, null, true, reward, null, 0) { raw = line });
+                                handled = true;
+                                break;
+                            }
+                        case "CargoDepot":
+                            {
+                                data.TryGetValue("MissionID", out object val);
+                                long missionid = (long)val;
+                                string updatetype = JsonParsing.getString(data, "UpdateType");
+
+                                // Not available in 'WingUpdate'
+                                CommodityDefinition commodity = CommodityDefinition.FromEDName(JsonParsing.getString(data, "CargoType"));
+                                data.TryGetValue("Count", out val);
+                                int? amount = (int?)(long?)val;
+
+                                int startmarketid = JsonParsing.getInt(data, "StartMarketID");
+                                int endmarketid = JsonParsing.getInt(data, "EndMarketID");
+                                int collected = JsonParsing.getInt(data, "ItemsCollected");
+                                int delivered = JsonParsing.getInt(data, "ItemsDelivered");
+                                int totaltodeliver = JsonParsing.getInt(data, "TotalItemsToDeliver");
+
+                                events.Add(new CargoDepotEvent(timestamp, missionid, updatetype, commodity, amount, startmarketid, endmarketid, collected, delivered, totaltodeliver) { raw = line });
                                 handled = true;
                                 break;
                             }

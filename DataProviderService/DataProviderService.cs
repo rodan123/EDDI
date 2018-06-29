@@ -90,8 +90,7 @@ namespace EddiDataProviderService
                 StarSystem.government = (string)json["government"];
                 StarSystem.faction = (string)json["faction"];
                 StarSystem.primaryeconomy = (string)json["primary_economy"];
-                string stateName = (string)json["state"];
-                StarSystem.systemState = stateName == "None" ? null : SystemState.FromEDName(stateName);
+                StarSystem.systemState = SystemState.FromEDName((string)json["state"]) ?? SystemState.None;
                 StarSystem.security = (string)json["security"];
                 StarSystem.power = (string)json["power"] == "None" ? null : (string)json["power"];
                 StarSystem.powerstate = (string)json["power_state"];
@@ -141,7 +140,7 @@ namespace EddiDataProviderService
                         Station.model = ((string)station["type"]);
                         if (!stationModels.Contains((string)station["type"]))
                         {
-                            Logging.Report("Unknown station model " + ((string)station["type"]));
+                            Logging.Info("Unknown station model " + ((string)station["type"]));
                         }
                     }
 
