@@ -14,6 +14,7 @@ using System.Threading;
 using System.Windows.Data;
 using System.Windows;
 using System.Windows.Threading;
+using System.IO;
 
 namespace EddiMaterialMonitor
 {
@@ -429,6 +430,13 @@ namespace EddiMaterialMonitor
         private void populateMaterialBlueprints()
         {
             string data = Net.DownloadString(Constants.EDDI_SERVER_URL + "materialuses.json");
+            // Read local copy if download fails
+            if (data == null)
+            {
+                var pathToJson = Path.Combine("Apps", "EDDI", "materialuses.json");
+                var r = new StreamReader(pathToJson);
+                data = r.ReadToEnd();
+            }
             if (data != null)
             {
                 Dictionary<string, List<Blueprint>> blueprints = JsonConvert.DeserializeObject<Dictionary<string, List<Blueprint>>>(data);
@@ -446,6 +454,13 @@ namespace EddiMaterialMonitor
         private void populateMaterialLocations()
         {            
             string data = Net.DownloadString(Constants.EDDI_SERVER_URL + "materiallocations.json");
+            // Read local copy if download fails
+            if (data == null)
+            {
+                var pathToJson = Path.Combine("Apps", "EDDI", "materiallocations.json");
+                var r = new StreamReader(pathToJson);
+                data = r.ReadToEnd();
+            }
             if (data != null)
             {
                 Dictionary<string, Dictionary<string, object>> locations= JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, object>>>(data);
