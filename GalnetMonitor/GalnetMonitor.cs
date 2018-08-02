@@ -171,9 +171,15 @@ namespace GalnetMonitor
                                     break;
                                 }
 
-                                if (isInteresting(item.Title))
+                                if (isInteresting(item.Content,locale))
                                 {
-                                    News newsItem = new News(item.Id, categoryFromTitle(item.Title), item.Title, item.GetContent(), item.PublishDate.DateTime, false);
+                                    News newsItem = new News(item.Id, "Community Goal", item.Title, item.GetContent(), item.PublishDate.DateTime, false);
+                                    newsItems.Add(newsItem);
+                                    GalnetSqLiteRepository.Instance.SaveNews(newsItem);
+                                }
+                                else
+                                {
+                                    News newsItem = new News(item.Id, categoryFromTitle(item.Title,locale), item.Title, item.GetContent(), item.PublishDate.DateTime, false);
                                     newsItems.Add(newsItem);
                                     GalnetSqLiteRepository.Instance.SaveNews(newsItem);
                                 }
@@ -199,7 +205,7 @@ namespace GalnetMonitor
                         {
                             try
                             {
-                                EDDI.Instance.eventHandler(new GalnetNewsPublishedEvent(DateTime.UtcNow, newsItems));
+                                EDDI.Instance.eventHandler(new GalnetNewsPublishedEvent(DateTime.Now, newsItems));
                             }
                             catch (ThreadAbortException)
                             {
@@ -230,9 +236,31 @@ namespace GalnetMonitor
             return null;
         }
 
-        private static bool isInteresting(string title)
+        private static bool isInteresting(string content, string locale)
         {
-            return title != "Powerplay: Incoming Update" && title != "Luttes d'influence galactiques" && title != "Machtspiele: Neues Update";
+           bool CG = false;
+            switch (locale)
+            {
+                case "fr":
+                    if (content.IndexOf("Cette opération commencera", StringComparison.CurrentCultureIgnoreCase) >= 0 || content.IndexOf("Les pilotes ayant participé", StringComparison.CurrentCultureIgnoreCase) >= 0)
+                    {
+                        CG = true;
+                    }
+                    break;
+                case "de":
+                    if (content.IndexOf("Die Kampagne beginnt", StringComparison.CurrentCultureIgnoreCase) >= 0 || content.IndexOf("Piloten, die an diese", StringComparison.CurrentCultureIgnoreCase) >= 0)
+                    {
+                        CG = true;
+                    }
+                    break;
+                default:
+                    if (content.IndexOf("The campaign begins on", StringComparison.CurrentCultureIgnoreCase) >= 0 || content.IndexOf("Pilots who", StringComparison.CurrentCultureIgnoreCase) >= 0)
+                    {
+                        CG = true;
+                    }
+                    break;
+            }
+           return CG;
         }
 
         /// <summary>
@@ -240,116 +268,43 @@ namespace GalnetMonitor
         /// </summary>
         /// <param name="title"></param>
         /// <returns></returns>
-        private string categoryFromTitle(string title)
+        private string categoryFromTitle(string title, string locale)
         {
-            if (configuration.language == "English")
+            string category = "Article";
+            switch (locale)
             {
-                if (title.StartsWith("Galactic News: Weekly "))
-                {
-                    return title.Replace("Galactic News: Weekly ", "");
-                }
-
-                if (title.StartsWith("Community Goal: "))
-                {
-                    return "Community Goal";
-                }
-
-                if (title == "Galactic News: Starport Status Update")
-                {
-                    return "Starport Status Update";
-                }
-
-                return "Article";
+                default:
+                    if (title.StartsWith("Week in Review"))
+                    {
+                        category = "Week in Review";
+                    }
+                    if (title.StartsWith("Starport Status"))
+                    {
+                        category = "Starport Status Update";
+                    }
+                    break;
+                case "fr":
+                    if (title.StartsWith("L'actualité de la semaine"))
+                    {
+                        category = "Week in Review";
+                    }
+                    if (title.StartsWith("Mise à jour - État des spatioports"))
+                    {
+                        category = "Starport Status Update";
+                    }
+                    break;
+                case "de":
+                    if (title.StartsWith("Wochenrückblick"))
+                    {
+                        category = "Week in Review";
+                    }
+                    if (title.StartsWith("Sternenhafen-Status-Update"))
+                    {
+                        category = "Starport Status Update";
+                    }
+                    break;
             }
-            else if (configuration.language == "Français")
-            {
-                if (title.StartsWith("Actualité galactique : Rapport hebdomadaire - "))
-                {
-                    string subtitle = title.Replace("Actualité galactique : Rapport hebdomadaire - ", "");
-                    if (subtitle == "Démocratie")
-                    {
-                        return "Democracy Report";
-                    }
-                    else if (subtitle == "Conflits")
-                    {
-                        return "Conflict Report";
-                    }
-                    else if (subtitle == "Santé")
-                    {
-                        return "Health Report";
-                    }
-                    else if (subtitle == "Économie")
-                    {
-                        return "Economic Report";
-                    }
-                    else if (subtitle == "Sécurité")
-                    {
-                        return "Security Report";
-                    }
-                    else if (subtitle == "Expansions")
-                    {
-                        return "Expansion Report";
-                    }
-                }
-
-                if (title.StartsWith("Opération communautaire"))
-                {
-                    return "Community Goal";
-                }
-
-                if (title == "Actualité galactique : Mise à jour - État des spatioports")
-                {
-                    return "Starport Status Update";
-                }
-
-                return "Article";
-            }
-            else if (configuration.language == "Deutsch")
-            {
-                if (title.StartsWith("Galaktische News: Wöchentlicher "))
-                {
-                    string subtitle = title.Replace("Galaktische News: Wöchentlicher ", "");
-                    if (subtitle == "Demokratiereport")
-                    {
-                        return "Democracy Report";
-                    }
-                    else if (subtitle == "Konfliktreport")
-                    {
-                        return "Conflict Report";
-                    }
-                    else if (subtitle == "Gesundheitsreport")
-                    {
-                        return "Health Report";
-                    }
-                    else if (subtitle == "Wirtschaftsreport")
-                    {
-                        return "Economic Report";
-                    }
-                    else if (subtitle == "Sicherheitsreport")
-                    {
-                        return "Security Report";
-                    }
-                    else if (subtitle == "Expansionsreport")
-                    {
-                        return "Expansion Report";
-                    }
-                }
-                if (title.StartsWith("Community-Ziel"))
-                {
-                    return "Community Goal";
-                }
-
-                if (title == "Galaktische News: Sternenhafen-Status-Update")
-                {
-                    return "Starport Status Update";
-                }
-
-                return "Article";
-            }
-            else
-            {
-                return "Article";
-            }
+            return category;
         }
     }
 }

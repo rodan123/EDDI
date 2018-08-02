@@ -125,7 +125,8 @@ namespace Eddi
                 Logging.Info(Constants.EDDI_NAME + " " + Constants.EDDI_VERSION + " starting");
 
                 // Start by fetching information from the update server, and handling appropriately
-                CheckUpgrade();
+                //Never Upgrade
+                //CheckUpgrade();
                 if (UpgradeRequired)
                 {
                     // We are too old to continue; initialize in a "safe mode". 

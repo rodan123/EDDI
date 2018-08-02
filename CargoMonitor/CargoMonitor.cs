@@ -481,6 +481,15 @@ namespace EddiCargoMonitor
                 }
                 else if (@event.blackmarket)
                 {
+                    // Remove cargo stolen or owned by the commander first
+                    if (cargo.stolen > 0)
+                    {
+                        cargo.stolen -= Math.Min(cargo.stolen, @event.amount);
+                    }
+                    if (cargo.owned > 0)
+                    {
+                        cargo.owned -= Math.Min(cargo.owned, @event.amount);
+                    }
                     // Cargo is mission-related
                     int amount = Math.Min(cargo.haulage, @event.amount);
                     cargo.haulage -= amount;

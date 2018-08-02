@@ -167,22 +167,23 @@ namespace Utilities
 
         private static void SendToRollbar(ErrorLevel errorLevel, string message, object data, Dictionary<string, object> thisData, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "")
         {
-            string personID = RollbarLocator.RollbarInstance.Config.Person.Id;
-            switch (errorLevel)
-            {
-                case ErrorLevel.Error:
-                    RollbarLocator.RollbarInstance.Error(message, thisData);
-                    log(errorLevel, $"{message} {data}", memberName, $"Reporting error, anonymous ID {personID}: {filePath}");
-                    break;
-                default:
-                    // If this is an Info Report, report only unique messages and data
-                    if (isUniqueMessage(message, thisData))
-                    {
-                        RollbarLocator.RollbarInstance.Log(errorLevel, message, thisData);
-                        log(errorLevel, $"{message} {data}", memberName, $"Reporting unique data, anonymous ID {personID}: {filePath}");
-                    }
-                    break;
-            }
+            // Don't report to Rollbar, ever
+            //string personID = RollbarLocator.RollbarInstance.Config.Person.Id;
+            //switch (errorLevel)
+            //{
+            //    case ErrorLevel.Error:
+            //        RollbarLocator.RollbarInstance.Error(message, thisData);
+            //        log(errorLevel, $"{message} {data}", memberName, $"Reporting error, anonymous ID {personID}: {filePath}");
+            //        break;
+            //    default:
+            //        // If this is an Info Report, report only unique messages and data
+            //        if (isUniqueMessage(message, thisData))
+            //        {
+            //            RollbarLocator.RollbarInstance.Log(errorLevel, message, thisData);
+            //            log(errorLevel, $"{message} {data}", memberName, $"Reporting unique data, anonymous ID {personID}: {filePath}");
+            //        }
+            //        break;
+            //}
         }
     }
 
@@ -225,20 +226,24 @@ namespace Utilities
 
         public static void ExceptionHandler(Exception exception)
         {
-            Dictionary<string, object> trace = new Dictionary<string, object>
-            {
-                { "StackTrace", exception.StackTrace ?? "StackTrace not available" }
-            };
+            // Don't report to Rollbar, ever
+            //Dictionary<string, object> trace = new Dictionary<string, object>
+            //{
+            //    { "StackTrace", exception.StackTrace ?? "StackTrace not available" }
+            //};
 
-            if (isUniqueMessage(exception.GetType() + ": " + exception.Message, trace))
-            {
-                Logging.Info("Reporting unhandled exception, anonymous ID " + RollbarLocator.RollbarInstance.Config.Person.Id + ":" + exception);
-                RollbarLocator.RollbarInstance.Error(exception, trace);
-            }
+            //if (isUniqueMessage(exception.GetType() + ": " + exception.Message, trace))
+            //{
+            //    Logging.Info("Reporting unhandled exception, anonymous ID " + RollbarLocator.RollbarInstance.Config.Person.Id + ":" + exception);
+            //    RollbarLocator.RollbarInstance.Error(exception, trace);
+            //}
         }
 
         public static bool isUniqueMessage(string message, Dictionary<string, object> thisData = null)
         {
+            // filter eveything - Don't send anything to rollbar
+            filterMessages = false;
+            // ---
             if (!filterMessages)
             {
                 return true;
@@ -292,6 +297,10 @@ namespace Utilities
 
         public static bool isUniqueData(long itemId, Dictionary<string, object> thisData = null)
         {
+            // Don't send anything to rollbar
+            thisData = null;
+            // --
+
             if (thisData is null)
             {
                 return true;
