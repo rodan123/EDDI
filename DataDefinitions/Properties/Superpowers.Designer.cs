@@ -106,6 +106,15 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Pilots Federation.
+        /// </summary>
+        public static string PilotsFederation {
+            get {
+                return ResourceManager.GetString("PilotsFederation", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Pirate.
         /// </summary>
         public static string Pirate {

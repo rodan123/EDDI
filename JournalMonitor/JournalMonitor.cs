@@ -1319,6 +1319,7 @@ namespace EddiJournalMonitor
                                 string from = JsonParsing.getString(data, "From");
                                 string channel = JsonParsing.getString(data, "Channel");
                                 string message = JsonParsing.getString(data, "Message");
+                                string localised = JsonParsing.getString(data, "Message_Localised");
                                 string source = "";
 
                                 if (
@@ -1356,7 +1357,7 @@ namespace EddiJournalMonitor
                                     {
                                         source = "NPC";
                                     }
-                                    events.Add(new MessageReceivedEvent(timestamp, from, source, false, channel, JsonParsing.getString(data, "Message_Localised")));
+                                    events.Add(new MessageReceivedEvent(timestamp, from, source, false, channel, localised));
 
                                     // See if we also want to spawn a specific event as well?
                                     if (message == "$STATION_NoFireZone_entered;")
@@ -1385,6 +1386,12 @@ namespace EddiJournalMonitor
                                         events.Add(new NPCAttackCommencedEvent(timestamp, by) { raw = line });
                                     }
                                     else if (message.Contains("_OnStartScanCargo"))
+                                    {
+                                        // Find out who is doing the scanning
+                                        string by = npcSpeechBy(from, message);
+                                        events.Add(new NPCCargoScanCommencedEvent(timestamp, by) { raw = line });
+                                    }
+                                    else if (localised.ToLower().Contains("scans"))
                                     {
                                         // Find out who is doing the scanning
                                         string by = npcSpeechBy(from, message);

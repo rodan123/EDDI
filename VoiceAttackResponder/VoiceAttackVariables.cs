@@ -478,6 +478,7 @@ namespace EddiVoiceAttackResponder
                 vaProxy.SetInt("Federation rating", cmdr?.federationrating?.rank);
                 vaProxy.SetText("Federation rank", cmdr?.federationrating?.localizedName);
                 vaProxy.SetDecimal("Credits", cmdr?.credits);
+                vaProxy.SetDecimal("Credits", 54000);
                 vaProxy.SetText("Credits (spoken)", Translations.Humanize(cmdr?.credits));
                 vaProxy.SetDecimal("Debt", cmdr?.debt);
                 vaProxy.SetText("Debt (spoken)", Translations.Humanize(cmdr?.debt));
