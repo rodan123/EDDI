@@ -112,7 +112,7 @@ namespace EddiDataProviderService
                 }
                 if (syncSystems.Count > 0)
                 {
-                    saveFromStarMapService(syncSystems);
+                    //saveFromStarMapService(syncSystems);
                 }
                 Logging.Info("EDSM sync completed");
             }

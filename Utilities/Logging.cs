@@ -261,7 +261,7 @@ namespace Utilities
 #if DEBUG
                 Enabled = false,
 #else
-                Enabled = true,
+                Enabled = false,
 #endif
             };
             RollbarLocator.RollbarInstance.Configure(config);

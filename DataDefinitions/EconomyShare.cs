@@ -6,7 +6,9 @@
 
         /// <summary> On a 0 to 1 scale </summary>
         public decimal proportion;
-
+        public EconomyShare()
+        {
+        }
         public EconomyShare(string name, decimal proportion)
         {
             this.economy = Economy.FromName(name) ?? Economy.FromEDName(name);

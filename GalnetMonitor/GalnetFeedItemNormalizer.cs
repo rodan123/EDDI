@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.ServiceModel.Syndication;
 using System.Text.RegularExpressions;
+using System.Text;
 
 namespace GalnetMonitor
 {
@@ -67,6 +68,7 @@ namespace GalnetMonitor
                 value = StripHTML(value);
                 value = StripDoubleOrMoreWhiteSpace(RemoveControlChars(value));
                 value = value.Normalize().Trim();
+                value = ReplaceStrings(value);
             }
             return value;
         }
@@ -84,6 +86,19 @@ namespace GalnetMonitor
         private static string StripHTML(string value)
         {
             return _htmlRegex.Replace(value, " ");
+        }
+
+        private static string ReplaceStrings(string value)
+        {
+            StringBuilder sb = new StringBuilder(value);
+            //sb.Replace("hargoid", "hargoyd");
+            //Example expanded replacement for English
+            sb.Replace(" 3100", " thirty-one hundred").Replace(" 3200", " thirty-two hundred").Replace(" 3300", " thirty-three hundred")
+                   .Replace(" 3301", " thirty-three o-one").Replace(" 3302", " thirty-three o-two").Replace(" 3303", " thirty-three o-three")
+                   .Replace(" 3304", " thirty-three o-four").Replace(" 3305", " thirty-three o-five").Replace(" 3306", " thirty-three o-six")
+                   .Replace(" 3307", " thirty-three o-seven").Replace(" 3308", " thirty-three o-eight").Replace(" 3309", " thirty-three o-nine")
+                   .Replace("hargoid", "hargoyd");
+            return sb.ToString();
         }
 
         private static string HtmlDecode(string value, int threshold = 5)
