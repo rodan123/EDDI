@@ -24,6 +24,7 @@ namespace EddiVoiceAttackResponder
         private static StarSystem CurrentStarSystem { get; set; } = new StarSystem();
         private static StarSystem HomeStarSystem { get; set; } = new StarSystem();
         private static StarSystem LastStarSystem { get; set; } = new StarSystem();
+        private static StarSystem SquadronStarSystem { get; set; } = new StarSystem();
         private static Body CurrentStellarBody { get; set; } = new Body();
         private static Station CurrentStation { get; set; } = new Station();
         private static Ship Ship { get; set; } = new Ship();
@@ -256,6 +257,19 @@ namespace EddiVoiceAttackResponder
                 {
                     setStarSystemValues(EDDI.Instance.LastStarSystem, "Last system", ref vaProxy);
                     LastStarSystem = EDDI.Instance.LastStarSystem;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logging.Error("Failed to set last system", ex);
+            }
+
+            try
+            {
+                if (EDDI.Instance.SquadronStarSystem != SquadronStarSystem)
+                {
+                    setStarSystemValues(EDDI.Instance.SquadronStarSystem, "Squadron system", ref vaProxy);
+                    SquadronStarSystem = EDDI.Instance.SquadronStarSystem;
                 }
             }
             catch (Exception ex)
@@ -527,6 +541,13 @@ namespace EddiVoiceAttackResponder
                 vaProxy.SetText("Debt (spoken)", Translations.Humanize(cmdr?.debt));
                 vaProxy.SetText("Title", cmdr?.title ?? Eddi.Properties.EddiResources.Commander);
                 vaProxy.SetText("Gender", cmdr?.gender ?? Eddi.Properties.MainWindow.tab_commander_gender_n);
+                vaProxy.SetText("Squadron name", cmdr?.squadronname);
+                vaProxy.SetText("Squadron id", cmdr?.squadronid);
+                vaProxy.SetInt("Squadron rating", cmdr?.squadronrank?.rank);
+                vaProxy.SetText("Squadron rank", cmdr?.squadronrank?.localizedName);
+                vaProxy.SetText("Squadron allegiance", cmdr?.squadronallegiance?.localizedName);
+                vaProxy.SetText("Squadron power", cmdr?.squadronpower?.localizedName);
+                vaProxy.SetText("Squadron faction", cmdr?.squadronfaction);
 
                 // Backwards-compatibility with 1.x
                 vaProxy.SetText("System rank", cmdr?.title);
@@ -811,6 +832,7 @@ namespace EddiVoiceAttackResponder
             vaProxy.SetDecimal(prefix + " EDDB id", body?.EDDBID);
             vaProxy.SetText(prefix + " type", (body?.Type ?? BodyType.None).localizedName);
             vaProxy.SetText(prefix + " name", body?.name);
+            vaProxy.SetText(prefix + " short name", body?.shortname);
             vaProxy.SetText(prefix + " system name", body?.systemname);
             if (body?.age == null)
             {
@@ -835,6 +857,8 @@ namespace EddiVoiceAttackResponder
             vaProxy.SetDecimal(prefix + " mass probability", body?.massprobability);
             vaProxy.SetDecimal(prefix + " temp probability", body?.tempprobability);
             vaProxy.SetDecimal(prefix + " age probability", body?.ageprobability);
+            vaProxy.SetDecimal(prefix + " estimated inner hab zone", body?.estimatedhabzoneinner);
+            vaProxy.SetDecimal(prefix + " estimated outer hab zone", body?.estimatedhabzoneouter);
             // Body specific items 
             vaProxy.SetDecimal(prefix + " periapsis", body?.periapsis);
             vaProxy.SetText(prefix + " atmosphere", (body?.atmosphereclass ?? AtmosphereClass.None).localizedName);
@@ -907,6 +931,8 @@ namespace EddiVoiceAttackResponder
                 vaProxy.SetBoolean(prefix + " landing gear down", status?.landing_gear_down);
                 vaProxy.SetBoolean(prefix + " landed", status?.landed);
                 vaProxy.SetBoolean(prefix + " docked", status?.docked);
+                vaProxy.SetBoolean(prefix + " analysis mode", status?.analysis_mode);
+                vaProxy.SetBoolean(prefix + " night vision", status?.night_vision);
 
                 // Variables set from pips (these are not always present in the event)
                 vaProxy.SetDecimal(prefix + " system pips", status?.pips_sys);
@@ -920,6 +946,9 @@ namespace EddiVoiceAttackResponder
                 vaProxy.SetDecimal(prefix + " longitude", status?.longitude);
                 vaProxy.SetDecimal(prefix + " altitude", status?.altitude);
                 vaProxy.SetDecimal(prefix + " heading", status?.heading);
+                vaProxy.SetDecimal(prefix + " fuel", status?.fuel);
+                vaProxy.SetDecimal(prefix + " fuel percent", status?.fuel_percent);
+                vaProxy.SetDecimal(prefix + " fuel rate", status?.fuel_seconds);
             }
             catch (Exception e)
             {

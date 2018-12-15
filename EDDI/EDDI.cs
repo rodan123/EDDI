@@ -16,6 +16,7 @@ using System.Runtime.InteropServices;
 using System.Security.Permissions;
 using System.Text;
 using System.Threading;
+using System.Windows;
 using Utilities;
 
 namespace Eddi
@@ -98,6 +99,7 @@ namespace Eddi
         // Information obtained from the configuration
         public StarSystem HomeStarSystem { get; private set; }
         public Station HomeStation { get; private set; }
+        public StarSystem SquadronStarSystem { get; private set; }
 
         // Information obtained from the log watcher
         public string Environment { get; private set; }
@@ -143,6 +145,7 @@ namespace Eddi
                 // Set up the EDDI configuration
                 EDDIConfiguration configuration = EDDIConfiguration.FromFile();
                 updateHomeSystemStation(configuration);
+                updateSquadronSystem(configuration);
 
                 if (running)
                 {
@@ -165,6 +168,12 @@ namespace Eddi
                     }
 
                     Cmdr.gender = configuration.Gender;
+                    Cmdr.squadronname = configuration.SquadronName;
+                    Cmdr.squadronid = configuration.SquadronID;
+                    Cmdr.squadronrank = configuration.SquadronRank;
+                    Cmdr.squadronallegiance = configuration.SquadronAllegiance;
+                    Cmdr.squadronpower = configuration.SquadronPower;
+                    Cmdr.squadronfaction = configuration.SquadronFaction;
                     if (Cmdr.name != null)
                     {
                         Logging.Info("EDDI access to the companion app is enabled");
@@ -677,6 +686,14 @@ namespace Eddi
                     {
                         passEvent = eventNearSurface((NearSurfaceEvent)@event);
                     }
+                    else if (@event is SquadronStatusEvent)
+                    {
+                        passEvent = eventSquadronStatus((SquadronStatusEvent)@event);
+                    }
+                    else if (@event is SquadronRankEvent)
+                    {
+                        passEvent = eventSquadronRank((SquadronRankEvent)@event);
+                    }
                     // Additional processing is over, send to the event responders if required
                     if (passEvent)
                     {
@@ -797,7 +814,8 @@ namespace Eddi
                 {
                     name = theEvent.faction,
                     Government = theEvent.Government,
-                    Allegiance = theEvent.Allegiance
+                    Allegiance = theEvent.Allegiance,
+                    FactionState = theEvent.factions?.FirstOrDefault(f => f.name == theEvent.faction)?.FactionState,
                 };
                 CurrentStarSystem.Faction = controllingFaction;
             }
@@ -1060,12 +1078,14 @@ namespace Eddi
             CurrentStarSystem.x = theEvent.x;
             CurrentStarSystem.y = theEvent.y;
             CurrentStarSystem.z = theEvent.z;
+            CurrentStellarBody = CurrentStarSystem.bodies.FirstOrDefault(b => b.name == theEvent.star);
 
             Faction controllingFaction = new Faction
             {
                 name = theEvent.faction,
                 Allegiance = theEvent.Allegiance,
-                Government = theEvent.Government
+                Government = theEvent.Government,
+                FactionState = theEvent.factionState,
             };
             CurrentStarSystem.Faction = controllingFaction;
 
@@ -1234,6 +1254,101 @@ namespace Eddi
             return true;
         }
 
+        private bool eventSquadronStatus(SquadronStatusEvent theEvent)
+        {
+            MainWindow mw = new MainWindow();
+
+            // Update the configuration file
+            EDDIConfiguration configuration = EDDIConfiguration.FromFile();
+
+            switch (theEvent.status)
+            {
+                case "created":
+                    {
+                        SquadronRank rank = SquadronRank.FromRank(1);
+
+                        // Update the configuration file
+                        configuration.SquadronName = theEvent.name;
+                        configuration.SquadronRank = rank;
+
+                        // Update the squadron UI data
+                        mw.eddiSquadronNameText.Text = theEvent.name;
+                        mw.squadronRankDropDown.SelectedItem = rank.localizedName;
+                        configuration = mw.resetSquadronRank(configuration);
+
+                        // Update the commander object, if it exists
+                        if (Cmdr != null)
+                        {
+                            Cmdr.squadronname = theEvent.name;
+                            Cmdr.squadronrank = rank;
+                        }
+                        break;
+                    }
+                case "joined":
+                    {
+                        // Update the configuration file
+                        configuration.SquadronName = theEvent.name;
+
+                        // Update the squadron UI data
+                        mw.eddiSquadronNameText.Text = theEvent.name;
+
+                        // Update the commander object, if it exists
+                        if (Cmdr != null)
+                        {
+                            Cmdr.squadronname = theEvent.name;
+                        }
+                        break;
+                    }
+                case "disbanded":
+                case "kicked":
+                case "left":
+                    {
+                        // Update the configuration file
+                        configuration.SquadronName = null;
+                        configuration.SquadronID = null;
+
+                        // Update the squadron UI data
+                        mw.eddiSquadronNameText.Text = string.Empty;
+                        mw.eddiSquadronIDText.Text = string.Empty;
+                        configuration = mw.resetSquadronRank(configuration);
+
+                        // Update the commander object, if it exists
+                        if (Cmdr != null)
+                        {
+                            Cmdr.squadronname = null;
+                        }
+                        break;
+                    }
+            }
+            configuration.ToFile();
+            return true;
+        }
+
+        private bool eventSquadronRank(SquadronRankEvent theEvent)
+        {
+            MainWindow mw = new MainWindow();
+            SquadronRank rank = SquadronRank.FromRank(theEvent.newrank + 1);
+
+            // Update the configuration file
+            EDDIConfiguration configuration = EDDIConfiguration.FromFile();
+            configuration.SquadronName = theEvent.name;
+            configuration.SquadronRank = rank;
+            configuration.ToFile();
+
+            // Update the squadron UI data
+            mw.eddiSquadronNameText.Text = theEvent.name;
+            mw.squadronRankDropDown.SelectedItem = rank.localizedName;
+
+            // Update the commander object, if it exists
+            if (Cmdr != null)
+            {
+                Cmdr.squadronname = theEvent.name;
+                Cmdr.squadronrank = rank;
+            }
+            return true;
+        }
+
+
         private bool eventEnteredCQC(EnteredCQCEvent theEvent)
         {
             // In CQC we don't want to report anything, so set our CQC flag
@@ -1391,7 +1506,6 @@ namespace Eddi
                 star.distance = (long?)theEvent.distancefromarrival;
                 star.luminosityclass = theEvent.luminosityclass;
                 star.temperature = (long?)theEvent.temperature;
-                star.mainstar = theEvent.distancefromarrival == 0 ? true : false;
                 star.stellarclass = theEvent.stellarclass;
                 star.solarmass = theEvent.solarmass;
                 star.solarradius = theEvent.solarradius;
@@ -1434,18 +1548,18 @@ namespace Eddi
                 body.tidallylocked = theEvent.tidallylocked;
                 body.temperature = (long?)theEvent.temperature;
                 body.periapsis = theEvent.periapsis;
-                body.atmosphereclass = theEvent.atmosphereclass ?? AtmosphereClass.None;
+                body.atmosphereclass = theEvent.atmosphereclass;
                 body.atmospherecompositions = theEvent.atmospherecomposition;
                 body.solidcompositions = theEvent.solidcomposition;
                 body.gravity = theEvent.gravity;
                 body.eccentricity = theEvent.eccentricity;
                 body.inclination = theEvent.orbitalinclination;
-                body.orbitalperiod = Math.Round(theEvent.orbitalperiod / 86400, 2);
-                body.rotationalperiod = Math.Round(theEvent.rotationperiod / 86400, 2);
+                body.orbitalperiod = theEvent.orbitalperiod;
+                body.rotationalperiod = theEvent.rotationperiod;
                 body.semimajoraxis = theEvent.semimajoraxis;
                 body.pressure = theEvent.pressure;
-                body.terraformState = TerraformState.FromEDName(theEvent.terraformstate) ?? TerraformState.NotTerraformable;
-                body.planetClass = PlanetClass.FromName(theEvent.bodyclass) ?? PlanetClass.None;
+                body.terraformState = theEvent.terraformState;
+                body.planetClass = theEvent.planetClass;
                 body.volcanism = theEvent.volcanism;
                 body.materials = new List<MaterialPresence>();
                 foreach (MaterialPresence presence in theEvent.materials)
@@ -1866,14 +1980,19 @@ namespace Eddi
         public EDDIConfiguration updateHomeSystem(EDDIConfiguration configuration)
         {
             Logging.Verbose = configuration.Debug;
+            configuration.validHomeSystem = false;
             if (configuration.HomeSystem != null && configuration.HomeSystem.Trim().Length > 0)
             {
-                HomeStarSystem = StarSystemSqLiteRepository.Instance.GetOrCreateStarSystem(configuration.HomeSystem.Trim());
+                HomeStarSystem = StarSystemSqLiteRepository.Instance.GetStarSystem(configuration.HomeSystem.Trim());
                 if (HomeStarSystem != null)
                 {
                     Logging.Debug("Home star system is " + HomeStarSystem.name);
-                    configuration.validSystem = HomeStarSystem.bodies.Count > 0 || HomeStarSystem.stations.Count > 0 || HomeStarSystem.population > 0;
+                    configuration.validHomeSystem = HomeStarSystem.bodies.Count > 0 || HomeStarSystem.stations.Count > 0 || HomeStarSystem.population > 0;
                 }
+            }
+            else
+            {
+                HomeStarSystem = null;
             }
             return configuration;
         }
@@ -1881,8 +2000,8 @@ namespace Eddi
         public EDDIConfiguration updateHomeStation(EDDIConfiguration configuration)
         {
             Logging.Verbose = configuration.Debug;
-            configuration.validStation = false;
-            if (configuration.HomeStation != null && configuration.HomeStation.Trim().Length > 0)
+            configuration.validHomeStation = false;
+            if (configuration.HomeStation != null)
             {
                 string homeStationName = configuration.HomeStation.Trim();
                 foreach (Station station in HomeStarSystem.stations)
@@ -1891,10 +2010,36 @@ namespace Eddi
                     {
                         HomeStation = station;
                         Logging.Debug("Home station is " + HomeStation.name);
-                        configuration.validStation = true;
+                        configuration.validHomeStation = true;
                         break;
                     }
                 }
+            }
+            return configuration;
+        }
+
+        public EDDIConfiguration updateSquadronSystem(EDDIConfiguration configuration)
+        {
+            Logging.Verbose = configuration.Debug;
+            configuration.validSquadronSystem = false;
+            if (configuration.SquadronSystem != null && configuration.SquadronSystem.Trim().Length > 0)
+            {
+                SquadronStarSystem = StarSystemSqLiteRepository.Instance.GetStarSystem(configuration.SquadronSystem.Trim());
+                if (SquadronStarSystem != null)
+                {
+                    Logging.Debug("Squadron star system is " + SquadronStarSystem.name);
+                    configuration.validSquadronSystem = SquadronStarSystem.bodies.Count > 0 || SquadronStarSystem.stations.Count > 0
+                        || SquadronStarSystem.population > 0;
+                    Power power = Power.AllOfThem.FirstOrDefault(p => p.localizedName == SquadronStarSystem.power);
+                    if (power != null)
+                    {
+                        configuration.validSquadronSystem = configuration.validSquadronSystem && power == configuration.SquadronPower;
+                    }
+                }
+            }
+            else
+            {
+                SquadronStarSystem = null;
             }
             return configuration;
         }
