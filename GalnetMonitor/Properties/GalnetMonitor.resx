@@ -153,7 +153,7 @@
     <comment>The URL the Galnet monitor should access for obtaining new news feed items. Though adding new languages to the Galnet monitor is not yet supported, this helps lay the groundwork for Galnet in more languages in the future.</comment>
   </data>
   <data name="contentFilterCgRegex" xml:space="preserve">
-    <value>&gt;@"(has promised to reward pilots)|(The campaign.+will run for one week)|(will begin on the)|(collect their rewards)|(the campaign will end immediately)|(Pilots who)|(has concluded)"</value>
+    <value>&gt;@"(has promised to reward pilots)|(will run for one week)|(will begin on the)|(collect their rewards)|(the campaign will end immediately)|(Pilots who)|(has concluded)"</value>
     <comment>Regex filter for determining whether an item's contents match a Community Goal related item.</comment>
   </data>
   <data name="categoryArticle" xml:space="preserve">

@@ -106,7 +106,7 @@ namespace EddiGalnetMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to &gt;@&quot;(has promised to reward pilots)|(The campaign.+will run for one week)|(will begin on the)|(Pilots.+can now collect their rewards)|(the campaign will end immediately)|(Pilots who)&quot;.
+        ///   Looks up a localized string similar to &gt;@&quot;(has promised to reward pilots)|(will run for one week)|(will begin on the)|(collect their rewards)|(the campaign will end immediately)|(Pilots who)|(has concluded)&quot;.
         /// </summary>
         public static string contentFilterCgRegex {
             get {
