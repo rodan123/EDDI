@@ -245,12 +245,6 @@ namespace GalnetMonitor
                 return GetGalnetResource("categoryPowerplay");
             }
 
-            if (title.StartsWith(GetGalnetResource("titleFilterCg")) ||
-                Regex.IsMatch(content, GetGalnetResource("contentFilterCgRegex")))
-            {
-                return GetGalnetResource("categoryCG");
-            }
-
             if (title.StartsWith(GetGalnetResource("titleFilterStarportStatus")))
             {
                 return GetGalnetResource("categoryStarportStatus");
@@ -259,6 +253,11 @@ namespace GalnetMonitor
             if (title.StartsWith(GetGalnetResource("titleFilterWeekInReview")))
             {
                 return GetGalnetResource("categoryWeekInReview");
+            }
+            if (title.StartsWith(GetGalnetResource("titleFilterCg")) ||
+                Regex.IsMatch(content, GetGalnetResource("contentFilterCgRegex")))
+            {
+                return GetGalnetResource("categoryCG");
             }
 
             return GetGalnetResource("categoryArticle");
