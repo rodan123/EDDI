@@ -275,7 +275,15 @@ namespace EddiStatusMonitor
                     status.longitude = JsonParsing.getOptionalDecimal(data, "Longitude");
                     status.altitude = JsonParsing.getOptionalDecimal(data, "Altitude");
                     status.heading = JsonParsing.getOptionalDecimal(data, "Heading");
-                    status.fuel = JsonParsing.getOptionalDecimal(data, "Fuel");
+                    if (data.TryGetValue("Fuel", out object fuelData))
+                    {
+                        if (fuelData is IDictionary<string, object> fuelInfo)
+                        {
+                            decimal? mainFuel = JsonParsing.getOptionalDecimal(fuelInfo, "FuelMain");
+                            decimal? reserveFuel = JsonParsing.getOptionalDecimal(fuelInfo, "FuelReservoir");
+                            status.fuel = mainFuel + reserveFuel;
+                        }
+                    }
                     status.cargo_carried = (int?)JsonParsing.getOptionalDecimal(data, "Cargo");
 
                     // Calculated data
@@ -425,7 +433,7 @@ namespace EddiStatusMonitor
             {
                 gliding = true;
                 EnteredNormalSpaceEvent theEvent = (EnteredNormalSpaceEvent)@event;
-                EDDI.Instance.eventHandler(new GlideEvent(DateTime.UtcNow, gliding, theEvent.system, theEvent.systemAddress, theEvent.body, theEvent.bodyType));
+                EDDI.Instance.eventHandler(new GlideEvent(DateTime.UtcNow, gliding, theEvent.system, theEvent.systemAddress, theEvent.body, theEvent.bodyType) { raw = @event.raw, fromLoad = @event.fromLoad });
             }
         }
 
@@ -435,7 +443,7 @@ namespace EddiStatusMonitor
             {
                 jumping = true;
             }
-            EDDI.Instance.eventHandler(new ShipFsdEvent(DateTime.UtcNow, "charging complete"));
+            EDDI.Instance.eventHandler(new ShipFsdEvent(DateTime.UtcNow, "charging complete") { raw = @event.raw, fromLoad = @event.fromLoad });
         }
 
         public void PostHandle(Event @event)
