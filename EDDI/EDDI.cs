@@ -239,7 +239,7 @@ namespace Eddi
             UpgradeLocation = null;
             UpgradeVersion = null;
             Motd = null;
-
+            return; //Never Check upgrade
             try
             {
                 ServerInfo updateServerInfo = ServerInfo.FromServer(Constants.EDDI_SERVER_URL);
