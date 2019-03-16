@@ -79,6 +79,15 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Damaged.
+        /// </summary>
+        public static string Damaged {
+            get {
+                return ResourceManager.GetString("Damaged", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Extraction.
         /// </summary>
         public static string Extraction {
@@ -88,7 +97,7 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to High Tech.
+        ///   Looks up a localized string similar to HighTech.
         /// </summary>
         public static string HighTech {
             get {
@@ -124,11 +133,38 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Prison.
+        /// </summary>
+        public static string Prison {
+            get {
+                return ResourceManager.GetString("Prison", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Refinery.
         /// </summary>
         public static string Refinery {
             get {
                 return ResourceManager.GetString("Refinery", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Repair.
+        /// </summary>
+        public static string Repair {
+            get {
+                return ResourceManager.GetString("Repair", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Rescue.
+        /// </summary>
+        public static string Rescue {
+            get {
+                return ResourceManager.GetString("Rescue", resourceCulture);
             }
         }
         

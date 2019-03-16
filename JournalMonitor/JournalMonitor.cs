@@ -3237,6 +3237,7 @@ namespace EddiJournalMonitor
                             case "ProspectedAsteroid":
                             case "CrimeVictim":
                             case "Scanned":
+                            case "Powerplay":
                                 // we silently ignore these, but forward them to the responders
                                 break;
                             default:
