@@ -73,7 +73,7 @@ namespace GalnetMonitor
                 {
                     start = value.IndexOf("Body") + 5;
                     end = value.LastIndexOf("Date") - start;
-                    value = value.Substring(start, end-1);
+                    value = value.Substring(start, end - 1);
                 }
                 value = ReplaceStrings(value);
             }
