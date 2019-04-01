@@ -47,17 +47,17 @@ namespace GalnetMonitor
 
             return new ExtendedFeedItem
             {
-                Id = string.IsNullOrEmpty(item.Id) ? null : item.Id.Split(' ')[0].Trim(),
-                Title = item.Title == null ? null : Normalize(item.Title.Text, false),
-                Content = item.Content == null ? null : Normalize(((TextSyndicationContent)item.Content).Text, false),
-                Summary = item.Summary == null ? null : Normalize(item.Summary.Text, true),
+                Id = string.IsNullOrEmpty(item.Id) ? null : item.Id.Trim(),
+                Title = item.Title == null ? null : Normalize(item.Title.Text),
+                Content = item.Content == null ? null : Normalize(((TextSyndicationContent)item.Content).Text),
+                Summary = item.Summary == null ? null : Normalize(item.Summary.Text),
                 PublishDate = item.PublishDate,
                 LastUpdatedDate = item.LastUpdatedTime == DateTimeOffset.MinValue ? item.PublishDate : item.LastUpdatedTime,
                 Uri = itemuri
             };
         }
 
-        private static string Normalize(string value, bool content)
+        private static string Normalize(string value)
         {
             int start, end;
             if (!string.IsNullOrEmpty(value))
@@ -69,12 +69,6 @@ namespace GalnetMonitor
                 value = StripHTML(value);
                 value = StripDoubleOrMoreWhiteSpace(RemoveControlChars(value));
                 value = value.Normalize().Trim();
-                if (content)
-                {
-                    start = value.IndexOf("Body") + 5;
-                    end = value.LastIndexOf("Date") - start;
-                    value = value.Substring(start, end - 1);
-                }
                 value = ReplaceStrings(value);
             }
             return value;
