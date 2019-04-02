@@ -29,6 +29,8 @@ namespace GalnetMonitor
 
         private bool running = false;
 
+        public static bool altURL { get; private set; }
+
         public GalnetMonitor()
         {
             // Remove the old configuration file if it still exists
@@ -152,12 +154,24 @@ namespace GalnetMonitor
                 {
                     List<News> newsItems = new List<News>();
                     string firstUid = null;
-                    try
+                    
+                    locales.TryGetValue(configuration.language, out locale);
+                    string url = GetGalnetResource("sourceURL");
+                    altURL = false;
+                    try {
+                        WebRequest request = WebRequest.Create(url);
+                        HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                        Logging.Info(response.StatusCode.ToString() + " Galnet " + url);
+                    }
+                    catch (Exception ex)
                     {
-                        locales.TryGetValue(configuration.language, out locale);
-                        string url = GetGalnetResource("sourceURL");
-
-                        Logging.Debug("Fetching Galnet articles from " + url);
+                        Logging.Warn("Exception attempting primary galnet feed, trying alternate: ", ex.Message);
+                        url = GetGalnetResource("alternateURL");
+                        altURL = true;
+                    }
+                    Logging.Debug("Fetching Galnet articles from " + url);
+                    try
+                    { 
                         FeedReader feedReader = new FeedReader(new GalnetFeedItemNormalizer(), true);
                         IEnumerable<FeedItem> items = feedReader.RetrieveFeed(url);
                         if (items != null)
@@ -190,6 +204,7 @@ namespace GalnetMonitor
                     {
                         Logging.Error("Exception attempting to obtain galnet feed: ", xex);
                     }
+                    
 
                     if (firstUid != configuration.lastuuid)
                     {

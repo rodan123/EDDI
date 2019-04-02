@@ -176,4 +176,8 @@
     <value>Week in Review</value>
     <comment>Category (as seen by the user): Week in Review</comment>
   </data>
+  <data name="alternateURL" xml:space="preserve">
+    <value>http://elitedangerous-website-backend-production.elitedangerous.com/galnet.rss</value>
+    <comment>The URL the Galnet monitor should access for obtaining new news feed items, if sourceURL is not available.</comment>
+  </data>
 </root>

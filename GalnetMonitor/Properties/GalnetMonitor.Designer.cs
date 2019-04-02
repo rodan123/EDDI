@@ -61,6 +61,15 @@ namespace EddiGalnetMonitor.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to http://elitedangerous-website-backend-production.elitedangerous.com/galnet.rss.
+        /// </summary>
+        public static string alternateURL {
+            get {
+                return ResourceManager.GetString("alternateURL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Article.
         /// </summary>
         public static string categoryArticle {
