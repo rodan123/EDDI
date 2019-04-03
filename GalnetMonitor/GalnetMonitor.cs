@@ -161,11 +161,10 @@ namespace GalnetMonitor
                     try {
                         WebRequest request = WebRequest.Create(url);
                         HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-                        Logging.Info(response.StatusCode.ToString() + " Galnet " + url);
                     }
-                    catch (Exception ex)
+                    catch (WebException wex)
                     {
-                        Logging.Warn("Exception attempting primary galnet feed, trying alternate: ", ex.Message);
+                        Logging.Warn("Exception contacting primary galnet feed, trying alternate: ", wex.Message);
                         url = GetGalnetResource("alternateURL");
                         altURL = true;
                     }
