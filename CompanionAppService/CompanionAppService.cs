@@ -620,6 +620,9 @@ namespace EddiCompanionAppService
                     cqcrating = CQCRating.FromRank((int)json["commander"]["rank"]["cqc"]),
                     empirerating = EmpireRating.FromRank((int)json["commander"]["rank"]["empire"]),
                     federationrating = FederationRating.FromRank((int)json["commander"]["rank"]["federation"]),
+                    crimerating = (int)json["commander"]["rank"]["crime"],
+                    servicerating = (int)json["commander"]["rank"]["service"],
+                    powerrating = (int)json["commander"]["rank"]["power"],
 
                     credits = (long)json["commander"]["credits"],
                     debt = (long)json["commander"]["debt"]
@@ -644,7 +647,7 @@ namespace EddiCompanionAppService
                         };
                     }
 
-                    Profile.LastStation.systemname = Profile.CurrentStarSystem.name;
+                    Profile.LastStation.systemname = Profile.CurrentStarSystem.systemname;
                     Profile.LastStation.systemAddress = Profile.CurrentStarSystem.systemAddress;
                     Profile.LastStation.marketId = (long?)json["lastStarport"]["id"];
 
@@ -675,7 +678,7 @@ namespace EddiCompanionAppService
                                 long id = (long)moduleJson["id"];
                                 string edName = (string)moduleJson["name"];
 
-                                Module Module = new Module(Module.FromEliteID(id) ?? Module.FromEDName(edName) ?? new Module());
+                                Module Module = new Module(Module.FromEliteID(id, moduleJson) ?? Module.FromEDName(edName, moduleJson) ?? new Module());
                                 if (Module.invariantName == null)
                                 {
                                     // Unknown module; report the full object so that we can update the definitions

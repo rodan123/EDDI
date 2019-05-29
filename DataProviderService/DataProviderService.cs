@@ -18,7 +18,7 @@ namespace EddiDataProviderService
             if (system == null || string.IsNullOrEmpty(system)) { return null; }
 
             StarSystem starSystem = StarMapService.GetStarMapSystem(system, showCoordinates, showSystemInformation);
-            starSystem = GetSystemExtras(starSystem, showSystemInformation, showBodies, showStations, showFactions) ?? new StarSystem() { name = system };
+            starSystem = GetSystemExtras(starSystem, showSystemInformation, showBodies, showStations, showFactions) ?? new StarSystem() { systemname = system };
             return starSystem;
         }
 
@@ -32,7 +32,7 @@ namespace EddiDataProviderService
             {
                 if (!string.IsNullOrEmpty(systemName))
                 {
-                    fullStarSystems.Add(GetSystemExtras(starSystems.Find(s => s.name == systemName), showSystemInformation, showBodies, showStations, showFactions) ?? new StarSystem() { name = systemName });
+                    fullStarSystems.Add(GetSystemExtras(starSystems.Find(s => s.systemname == systemName), showSystemInformation, showBodies, showStations, showFactions) ?? new StarSystem() { systemname = systemName });
                 }
             }
             return starSystems;
@@ -44,14 +44,15 @@ namespace EddiDataProviderService
             {
                 if (showBodies)
                 {
-                    List<Body> bodies = StarMapService.GetStarMapBodies(starSystem.name) ?? new List<Body>();
+                    List<Body> bodies = StarMapService.GetStarMapBodies(starSystem.systemname) ?? new List<Body>();
                     foreach (Body body in bodies)
                     {
-                        body.systemname = starSystem.name;
+                        body.systemname = starSystem.systemname;
                         body.systemAddress = starSystem.systemAddress;
                         body.systemEDDBID = starSystem.EDDBID;
                         starSystem.bodies.Add(body);
                     }
+                    starSystem.bodies = starSystem.bodies.OrderBy(b => b.bodyId).ToList();
                 }
 
                 if (starSystem?.population > 0)
@@ -59,12 +60,12 @@ namespace EddiDataProviderService
                     List<Faction> factions = new List<Faction>();
                     if (showFactions || showStations)
                     {
-                        factions = StarMapService.GetStarMapFactions(starSystem.name);
+                        factions = StarMapService.GetStarMapFactions(starSystem.systemname);
                         starSystem.factions = factions;
                     }
                     if (showStations)
                     {
-                        List<Station> stations = StarMapService.GetStarMapStations(starSystem.name);
+                        List<Station> stations = StarMapService.GetStarMapStations(starSystem.systemname);
                         starSystem.stations = SetStationFactionData(stations, factions);
                         starSystem.stations = stations;
                     }
@@ -97,6 +98,8 @@ namespace EddiDataProviderService
         /// If a systemName is provided, we can filter factions that share a name according to whether they have a presence in a known system </summary>
         public static Faction GetFactionByName(string factionName, string systemName = null)
         {
+            if (string.IsNullOrEmpty(factionName)) { return null; }
+
             List<KeyValuePair<string, object>> queryList = new List<KeyValuePair<string, object>>()
             {
                 new KeyValuePair<string, object>(BgsService.FactionParameters.factionName, factionName)
@@ -116,6 +119,24 @@ namespace EddiDataProviderService
             {
                 name = factionName
             };
+        }
+
+        public static Traffic GetSystemTraffic(string systemName, long? edsmId = null)
+        {
+            if (string.IsNullOrEmpty(systemName)) { return null; }
+            return StarMapService.GetStarMapTraffic(systemName, edsmId);
+        }
+
+        public static Traffic GetSystemDeaths(string systemName, long? edsmId = null)
+        {
+            if (string.IsNullOrEmpty(systemName)) { return null; }
+            return StarMapService.GetStarMapDeaths(systemName, edsmId);
+        }
+
+        public static Traffic GetSystemHostility(string systemName, long? edsmId = null)
+        {
+            if (string.IsNullOrEmpty(systemName)) { return null; }
+            return StarMapService.GetStarMapHostility(systemName, edsmId);
         }
 
         // EDSM flight log synchronization
@@ -156,7 +177,7 @@ namespace EddiDataProviderService
             List<StarSystem> starSystems = StarSystemSqLiteRepository.Instance.GetOrCreateStarSystems(batchNames, false);
             foreach (string name in batchNames)
             {
-                StarSystem CurrentStarSystem = starSystems.FirstOrDefault(s => s.name == name);
+                StarSystem CurrentStarSystem = starSystems.FirstOrDefault(s => s.systemname == name);
                 if (CurrentStarSystem == null) { continue; }
                 CurrentStarSystem.visits = systems[name].visits;
                 CurrentStarSystem.lastvisit = systems[name].lastVisit;

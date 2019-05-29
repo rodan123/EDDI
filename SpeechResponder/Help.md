@@ -134,6 +134,23 @@ Common usage of this is to provide further information about your rating, for ex
 
     You have been promoted {ExplorationRatingDetails("Surveyor").rank} times.
 
+### FactionDetails()
+
+This function will provide full information for a minor faction given its name.
+
+FactionDetails() typically takes a single argument of the faction name, but may add a system name for filtering.
+
+Common usage of this is to obtain a `Faction` object, providing current specifics of a minor faction, for example:
+
+    {set faction to FactionDetails("Lavigny's Legion")}
+    {if faction.name != "":
+        {faction.name} is present in the
+        {for presence in faction.presences:
+            {presence.systemName},
+        }
+        {if len(faction.presences) = 1: system |else: systems}.
+    }		    
+
 ### FederationRatingDetails()
 
 This function will provide full information for an federation rating given its name.
@@ -160,7 +177,7 @@ HaulageDetails() takes one mandatory argument, a mission ID associated with the 
 
 Common usage of this is to provide further information about a particular mission haulage, for example:
 
-    {set haulage to HaulageDetails(event.missionid)}
+	{set haulage to HaulageDetails(event.missionid)}
     {if haulage && haulage.deleivered > 0:
         {set total to haulage.amount + haulage.deleivered}
 	    {haulage.type} mission to the cargo depot is {round(haulage.delivered / total * 100, 0)} percent complete.
@@ -186,6 +203,25 @@ Common usage of this is to provide clear callsigns and idents for ships, for exa
 
    Ship ident is {ICAO(ship.ident)}.
 
+### JumpDetails()
+
+This function will provide jump information based on your ship loadout and current fuel level, dependent on the following types:
+
+  * `next` range of next jump at current fuel mass and current laden mass
+  * `max` maximum jump range at minimum fuel mass and current laden mass
+  * `total` total range of multiple jumps from current fuel mass and current laden mass
+  * `full` total range of multiple jumps from maximum fuel mass and current laden mass
+
+  The returned `JumpDetail` object contains properties `distance` and `jumps`.
+
+ Common usage is to provide distance and number of jumps for a specific query:
+
+    {set detail to JumpDetails("total")}
+    Total jump range at current fuel levels is {round(detail.distance, 1)} light years with {detail.jumps} jumps until empty.
+    {if detail.distance < destdistance:
+	    Warning: Fuel levels insufficient to reach destination. Fuel scooping is required.
+	}
+
 ### List()
 
 This function will return a humanised list of items from an array (e.g. this, that, and the other thing).
@@ -207,11 +243,21 @@ Log() takes a single argument of the string to log.
 
 This function will provide full information for a material given its name.
 
-MaterialDetails() takes a single argument of the material for which you want more information.
+MaterialDetails() takes either one or two arguments. 
+
+The first argument is the name of the material for which you want more information. 
 
 Common usage of this is to provide further information about a material, for example:
 
     Iron is a {MaterialDetails("Iron").rarity.name} material.
+
+The second argument, the name of a star system, is optional. If provided then the `bodyname` and `bodyshortname` properties in the resulting `Material` object will return details from body with the highest concentration of the material within the specified star system.
+
+Common usage of this is to provide recommendations for material gathering.
+
+    {set materialName to "Iron"}
+    {set details to MaterialDetails(materialName, system.name)}
+    The best place to find {materialName} in {system.name} is on {if details.bodyname != details.bodyshortname: body} {details.bodyshortname}.
 
 ### MissionDetails()
 
@@ -222,6 +268,28 @@ MissionDetails() takes a single argument of the mission ID for which you want mo
 Common usage of this is to provide detailed information about a previously accepted mission, for example:
 
     {set mission to MissionDetails(event.missionid)}
+
+### TrafficDetails()
+
+This function will provide information on traffic and hostilities in a star system.
+
+TrafficDetails() takes one mandatory argument and one optional argument.
+
+The first mandatory argument is the name of the star system. The second optional argument defines different data sets that are available:
+
+  * `traffic` the number of ships that have passed through the star system (this is the default if no second argument is provided)
+  * `deaths` the number of ships passing through the star system which have been destroyed
+  * `hostility` the percent of ships passing through the star system which have been destroyed
+
+  The returned `Traffic` object contains properties representing various timespans: `day`, `week` and `total`.
+
+Common usage is to provide information about traffic and hostilities within a star system, for example:
+
+    {set trafficDetails to TrafficDetails(system.name)}
+    {if trafficDetails.day > 0: At least {trafficDetails.day} ships have passed through {system.name} today. }
+
+    {set deathDetails to TrafficDetails(system.name, "deaths")}
+    {if deathDetails.week > 0: At least {deathDetails.week} ships have been destroyed in {system.name} this week. }
 
 ### OneOf()
 
@@ -279,39 +347,45 @@ Common usage of this is to provide a pre-recorded custom audio file rather than 
 
 This function will produce a destination/route for valid mission destinations, dependent on the following 'routetype':
 
-  * 'cancel' Cancel the currently stored route.
-  * 'expiring' Destination of your next expiring mission.
-  * 'farthest' Mission destination farthest from your current location.
-  * 'most' Nearest system with the most missions.
-  * 'nearest' Mission destination nearest to your current location.
-  * 'next' Next destination in the currently stored route.
-  * 'route' 'Traveling Salesman' (RNNA) route for all active missions.
-  * 'set' Set destination route to a single system.
-  * 'source' Mission destination to nearest 'cargo source'.
-  * 'update' Update to the next mission destination, once all missions in current system are completed.
+  * `cancel` Cancel the currently stored route.
+  * `encoded` Nearest encoded materials trader.
+  * `expiring` Destination of your next expiring mission.
+  * `facilitator` Nearest 'Legal Facilities' contact.
+  * `farthest` Mission destination farthest from your current location.
+  * `guardian` Nearest guardian technology broker.
+  * `human` Nearest human technology broker.
+  * `manufactured` Nearest manufactured materials trader.
+  * `most` Nearest system with the most missions.
+  * `nearest` Mission destination nearest to your current location.
+  * `next` Next destination in the currently stored route.
+  * `raw` Nearest raw materials trader.
+  * `route` 'Traveling Salesman' (RNNA) route for all active missions.
+  * `set` Set destination route to a single system.
+  * `source` Mission destination to nearest 'cargo source'.
+  * `update` Update to the next mission destination, once all missions in current system are completed.
 
 Upon success of the query, a 'Missions route' event is triggered, providing a following event data:
 
-  * 'routetype' Type of route query (see above).
-  * 'destination' Destination system.
-  * 'distance' Destination distance
-  * 'route' "_" Delimited missions systems list. Results dependent on route type.
-    * 'expiring' Single system meeting 'next expiring' search criteria
-    * 'farthest' Single system meeting 'farthest' search criteria
-    * 'most' Other systems with most number of missions.
-    * 'route' Missions route list
-    * 'set' Single specified system
-    * 'source' list of source systems
-  * 'count' Count of missions, systems, or expiry seconds, depending on route type.
-    * 'expiring' Expiry seconds.
-    * 'farthest' Missions in the system.
-    * 'most' Number of most missions.
-    * 'nearest' Missions in the system.
-    * 'route' Systems in the route.
-    * 'source' Number of source systems.
-    * 'update' Remaining systems in the route.
-  * 'routedistance' Remaining distance of the missions route, if applicable.
-  * 'missionids' Mission ID(s) associated with the destination system.
+  * `routetype` Type of route query (see above).
+  * `destination` Destination system.
+  * `distance` Destination distance
+  * `route` '_' Delimited missions systems list. Results dependent on route type.
+    * `expiring` Single system meeting 'next expiring' search criteria
+    * `farthest` Single system meeting 'farthest' search criteria
+    * `most` Other systems with most number of missions.
+    * `route` Missions route list
+    * `set` Single specified system
+    * `source` list of source systems
+  * `count` Count of missions, systems, or expiry seconds, depending on route type.
+    * `expiring` Expiry seconds.
+    * `farthest` Missions in the system.
+    * `most` Number of most missions.
+    * `nearest` Missions in the system.
+    * `route` Systems in the route.
+    * `source` Number of source systems.
+    * `update` Remaining systems in the route.
+  * `routedistance` Remaining distance of the missions route, if applicable.
+  * `missionids` Mission ID(s) associated with the destination system.
 
 Common usage of this is to provide destination/route details, dependent on the 'routetype', for example:
 

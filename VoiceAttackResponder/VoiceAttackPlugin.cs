@@ -1,10 +1,12 @@
 ﻿using Eddi;
 using EddiCargoMonitor;
+using EddiCrimeMonitor;
 using EddiEvents;
 using EddiDataProviderService;
 using EddiDataDefinitions;
 using EddiMaterialMonitor;
 using EddiMissionMonitor;
+using EddiNavigationService;
 using EddiShipMonitor;
 using EddiSpeechResponder;
 using EddiSpeechService;
@@ -161,6 +163,10 @@ namespace EddiVoiceAttackResponder
                 {
                     EDDI.Instance.enqueueEvent(@event);
                 }
+
+                // Set a variable indicating the version of VoiceAttack in use
+                System.Version v = vaProxy.VAVersion;
+                EDDI.Instance.vaVersion = v.ToString();
 
                 // Set a variable indicating whether EDDI is speaking
                 try
@@ -406,12 +412,15 @@ namespace EddiVoiceAttackResponder
                     case "setspeechresponderpersonality":
                         InvokeSetSpeechResponderPersonality(ref vaProxy);
                         break;
+                    case "jumpdetails":
+                        InvokeJumpDetails(ref vaProxy);
+                        break;
                     case "transmit":
                         InvokeTransmit(ref vaProxy);
                         break;
                     case "missionsroute":
                     case "route":
-                        InvokeMissionsRoute(ref vaProxy);
+                        InvokeRouteDetails(ref vaProxy);
                         break;
                 }
             }
@@ -954,12 +963,12 @@ namespace EddiVoiceAttackResponder
                 if (EDDI.Instance.CurrentStarSystem != null)
                 {
                     // Store locally
-                    StarSystem here = StarSystemSqLiteRepository.Instance.GetOrCreateStarSystem(EDDI.Instance.CurrentStarSystem.name);
+                    StarSystem here = StarSystemSqLiteRepository.Instance.GetOrCreateStarSystem(EDDI.Instance.CurrentStarSystem.systemname);
                     here.comment = comment == "" ? null : comment;
                     StarSystemSqLiteRepository.Instance.SaveStarSystem(here);
 
                     // Store in EDSM
-                    StarMapService.Instance?.sendStarMapComment(EDDI.Instance.CurrentStarSystem.name, comment);
+                    StarMapService.Instance?.sendStarMapComment(EDDI.Instance.CurrentStarSystem.systemname, comment);
                 }
             }
             catch (Exception e)
@@ -968,93 +977,149 @@ namespace EddiVoiceAttackResponder
             }
         }
 
-        public static void InvokeMissionsRoute(ref dynamic vaProxy)
+        public static void InvokeJumpDetails(ref dynamic vaProxy)
         {
             try
             {
+                string type = vaProxy.GetText("Type variable");
+                if (!string.IsNullOrEmpty(type))
+                {
+                    ShipMonitor.JumpDetail detail = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship monitor")).JumpDetails(type);
+                    vaProxy.SetDecimal("Ship jump detail distance", detail?.distance);
+                    vaProxy.SetInt("Ship jump detail jumps", detail?.jumps);
+                    vaProxy.SetText("Type variable", null);
+                }
+            }
+            catch (Exception e)
+            {
+                setStatus(ref vaProxy, "Failed to get jump details", e);
+            }
+        }
+
+        public static void InvokeRouteDetails(ref dynamic vaProxy)
+        {
+            try
+            {
+                CrimeMonitor crimeMonitor = (CrimeMonitor)EDDI.Instance.ObtainMonitor("Crime monitor");
+                MaterialMonitor materialMonitor = (MaterialMonitor)EDDI.Instance.ObtainMonitor("Material monitor");
+                int materialDistance = materialMonitor.maxStationDistanceFromStarLs ?? 10000;
                 string type = vaProxy.GetText("Type variable");
                 string system = vaProxy.GetText("System variable");
                 switch (type)
                 {
                     case "cancel":
                         {
-                            ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor")).CancelRoute();
+                            Navigation.Instance.CancelRoute();
+                        }
+                        break;
+                    case "encoded":
+                        {
+                            Navigation.Instance.GetServiceRoute("encoded", materialDistance);
                         }
                         break;
                     case "expiring":
                         {
-                            ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor")).GetExpiringRoute();
+                            Navigation.Instance.GetExpiringRoute();
+                        }
+                        break;
+                    case "facilitator":
+                        {
+                            int distance = crimeMonitor.maxStationDistanceFromStarLs ?? 10000;
+                            bool isChecked = crimeMonitor.prioritizeOrbitalStations;
+                            Navigation.Instance.GetServiceRoute("facilitator", distance, isChecked);
                         }
                         break;
                     case "farthest":
                         {
-                            ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor")).GetFarthestRoute();
+                            Navigation.Instance.GetFarthestRoute();
+                        }
+                        break;
+                    case "guardian":
+                        {
+                            Navigation.Instance.GetServiceRoute("guardian", materialDistance);
+                        }
+                        break;
+                    case "human":
+                        {
+                            Navigation.Instance.GetServiceRoute("human", materialDistance);
+                        }
+                        break;
+                    case "manufactured":
+                        {
+                            Navigation.Instance.GetServiceRoute("manufactured", materialDistance);
                         }
                         break;
                     case "most":
                         {
-                            if (system == null || system == string.Empty)
+                            if (string.IsNullOrEmpty(system))
                             {
-                                ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor")).GetMostRoute();
+                                Navigation.Instance.GetMostRoute();
                             }
                             else
                             {
-                                ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor")).GetMostRoute(system);
+                                Navigation.Instance.GetMostRoute(system);
                             }
                         }
                         break;
                     case "nearest":
                         {
-                            ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor")).GetNearestRoute();
+                            Navigation.Instance.GetNearestRoute();
                         }
                         break;
                     case "next":
                         {
-                            ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor")).SetNextRoute();
+                            Navigation.Instance.SetNextRoute();
+                        }
+                        break;
+                    case "raw":
+                        {
+                            Navigation.Instance.GetServiceRoute("raw", materialDistance);
                         }
                         break;
                     case "route":
                         {
-                            if (system == null || system == string.Empty)
+                            if (string.IsNullOrEmpty(system))
                             {
-                                ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor")).GetMissionsRoute();
+                                Navigation.Instance.GetMissionsRoute();
                             }
                             else
                             {
-                                ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor")).GetMissionsRoute(system);
+                                Navigation.Instance.GetMissionsRoute(system);
                             }
                         }
                         break;
                     case "set":
                         {
-                            ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor")).SetRoute(system);
+                            Navigation.Instance.SetRoute(system);
                         }
                         break;
                     case "source":
                         {
-                            if (system == null || system == string.Empty)
+                            if (string.IsNullOrEmpty(system))
                             {
-                                ((CargoMonitor)EDDI.Instance.ObtainMonitor("Cargo monitor")).GetSourceRoute();
+                                Navigation.Instance.GetSourceRoute();
                             }
                             else
                             {
-                                ((CargoMonitor)EDDI.Instance.ObtainMonitor("Cargo monitor")).GetSourceRoute(system);
+                                Navigation.Instance.GetSourceRoute(system);
                             }
                         }
                         break;
                     case "update":
                         {
-                            if (system == null || system == string.Empty)
+                            if (string.IsNullOrEmpty(system))
                             {
-                                ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor")).UpdateMissionsRoute();
+                                Navigation.Instance.UpdateRoute();
                             }
                             else
                             {
-                                ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor")).UpdateMissionsRoute(system);
+                                Navigation.Instance.UpdateRoute(system);
                             }
                         }
                         break;
                 }
+                vaProxy.SetText("Type variable", null);
+                vaProxy.SetText("System variable", null);
             }
             catch (Exception e)
             {

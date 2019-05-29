@@ -49,8 +49,8 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="MathNet.Numerics, Version=4.4.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\MathNet.Numerics.4.4.0\lib\net461\MathNet.Numerics.dll</HintPath>
+    <Reference Include="MathNet.Numerics, Version=4.7.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\MathNet.Numerics.4.7.0\lib\net461\MathNet.Numerics.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.11.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
@@ -71,6 +71,9 @@
     <Compile Include="BlueprintMaterials.cs" />
     <Compile Include="BodyType.cs" />
     <Compile Include="CargoInfo.cs" />
+    <Compile Include="Traffic.cs" />
+    <Compile Include="FactionRecord.cs" />
+    <Compile Include="FactionReport.cs" />
     <Compile Include="Happiness.cs" />
     <Compile Include="MarketInfo.cs" />
     <Compile Include="Modifications.cs" />
@@ -147,6 +150,7 @@
     <Compile Include="StationLargestPad.cs" />
     <Compile Include="StationService.cs" />
     <Compile Include="StoredModule.cs" />
+    <Compile Include="Target.cs" />
     <Compile Include="TerraformState.cs" />
     <Compile Include="CommodityAmount.cs" />
     <Compile Include="Properties\AtmosphereClass.Designer.cs">
@@ -327,7 +331,6 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Superpowers.resx</DependentUpon>
     </Compile>
-    <Compile Include="Status.cs" />
     <Compile Include="Friend.cs" />
     <Compile Include="EconomyShare.cs" />
     <Compile Include="RingComposition.cs" />

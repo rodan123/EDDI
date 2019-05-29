@@ -327,8 +327,8 @@ namespace EddiCargoMonitor
                         case "rescue":
                         case "salvage":
                             {
-                                haulage.sourcesystem = EDDI.Instance?.CurrentStarSystem?.name;
-                                haulage.sourcebody = EDDI.Instance?.CurrentStellarBody?.name;
+                                haulage.sourcesystem = EDDI.Instance?.CurrentStarSystem?.systemname;
+                                haulage.sourcebody = EDDI.Instance?.CurrentStellarBody?.bodyname;
                                 update = true;
                             }
                             break;
@@ -418,7 +418,7 @@ namespace EddiCargoMonitor
                     .Contains("collect"));
                 if (haulage != null)
                 {
-                    haulage.sourcesystem = EDDI.Instance?.CurrentStarSystem?.name;
+                    haulage.sourcesystem = EDDI.Instance?.CurrentStarSystem?.systemname;
                     haulage.sourcebody = EDDI.Instance?.CurrentStation?.name;
                     update = true;
                 }
@@ -449,7 +449,7 @@ namespace EddiCargoMonitor
                     .Contains("mining"));
                 if (haulage != null)
                 {
-                    haulage.sourcesystem = EDDI.Instance?.CurrentStarSystem?.name;
+                    haulage.sourcesystem = EDDI.Instance?.CurrentStarSystem?.systemname;
                     haulage.sourcebody = EDDI.Instance?.CurrentStation?.name;
                     update = true;
                 }
@@ -502,7 +502,7 @@ namespace EddiCargoMonitor
 
                             // Update commodity definition if instantiated other than 'Mission accepted'
                             cargo.commodityDef = @event.commodityDefinition;
-                            haulage.originsystem = EDDI.Instance?.CurrentStarSystem?.name;
+                            haulage.originsystem = EDDI.Instance?.CurrentStarSystem?.systemname;
                         }
                         else
                         {
@@ -510,7 +510,7 @@ namespace EddiCargoMonitor
                             cargo = new Cargo(@event.commodityDefinition.edname, 0); // Total will be updated by following 'Cargo' event
                             AddCargo(cargo);
 
-                            string originSystem = EDDI.Instance?.CurrentStarSystem?.name;
+                            string originSystem = EDDI.Instance?.CurrentStarSystem?.systemname;
                             string name = mission?.name ?? "MISSION_DeliveryWing";
                             haulage = new Haulage(@event.missionid ?? 0, name, originSystem, amountRemaining, null, true);
                             cargo.haulageData.Add(haulage);
@@ -535,11 +535,11 @@ namespace EddiCargoMonitor
                                 //Update commodity definition
                                 haulage.amount = @event.totaltodeliver;
                                 cargo.commodityDef = @event.commodityDefinition;
-                                haulage.originsystem = (@event.startmarketid == 0) ? EDDI.Instance?.CurrentStarSystem?.name : null;
+                                haulage.originsystem = (@event.startmarketid == 0) ? EDDI.Instance?.CurrentStarSystem?.systemname : null;
                             }
                             else
                             {
-                                string originSystem = (@event.startmarketid == 0) ? EDDI.Instance?.CurrentStarSystem?.name : null;
+                                string originSystem = (@event.startmarketid == 0) ? EDDI.Instance?.CurrentStarSystem?.systemname : null;
                                 string name = mission?.name ?? (@event.startmarketid == 0 ? "MISSION_CollectWing" : "MISSION_DeliveryWing");
                                 haulage = new Haulage(@event.missionid ?? 0, name, originSystem, amountRemaining, null);
                                 cargo.haulageData.Add(haulage);
@@ -555,7 +555,7 @@ namespace EddiCargoMonitor
                                 cargo = new Cargo(@event.commodityDefinition.edname, 0); // Total will be updated by following 'Cargo' event
                                 AddCargo(cargo);
                             }
-                            string originSystem = (@event.startmarketid == 0) ? EDDI.Instance?.CurrentStarSystem?.name : null;
+                            string originSystem = (@event.startmarketid == 0) ? EDDI.Instance?.CurrentStarSystem?.systemname : null;
                             string name = mission?.name ?? (@event.startmarketid == 0 ? "MISSION_CollectWing" : "MISSION_DeliveryWing");
                             haulage = new Haulage(@event.missionid ?? 0, name, originSystem, amountRemaining, null, true);
                             cargo.haulageData.Add(haulage);
@@ -736,7 +736,7 @@ namespace EddiCargoMonitor
                     case "smuggle":
                         {
                             bool naval = @event.name.ToLowerInvariant().Contains("rank");
-                            string originSystem = EDDI.Instance?.CurrentStarSystem?.name;
+                            string originSystem = EDDI.Instance?.CurrentStarSystem?.systemname;
                             haulage = new Haulage(@event.missionid ?? 0, @event.name, originSystem, @event.amount ?? 0, @event.expiry)
                             {
                                 startmarketid = (type.Contains("delivery") && !naval) ? EDDI.Instance?.CurrentStation?.marketId ?? 0 : 0,
@@ -745,7 +745,7 @@ namespace EddiCargoMonitor
 
                             if (type.Contains("delivery") || type == "smuggle")
                             {
-                                haulage.sourcesystem = EDDI.Instance?.CurrentStarSystem?.name;
+                                haulage.sourcesystem = EDDI.Instance?.CurrentStarSystem?.systemname;
                                 haulage.sourcebody = EDDI.Instance?.CurrentStation?.name;
                             }
                             else if (type == "rescue" || type == "salvage")
@@ -1087,62 +1087,6 @@ namespace EddiCargoMonitor
             }
             cargo.CalculateNeed();
             checkHaulage = false;
-        }
-
-        public string GetSourceRoute(string system = null)
-        {
-            int missionsCount = inventory.Sum(c => c.haulageData.Count());
-
-            // Missions Route Event variables
-            decimal sourceDistance = 0;
-            string sourceSystem = null;
-            string sourceSystems = null;
-            int systemsCount = 0;
-            List<long> missionids = new List<long>();       // List of mission IDs for the next system
-
-            if (missionsCount > 0)
-            {
-                var sourceList = new SortedList<long, string>();
-                StarSystem curr = EDDI.Instance?.CurrentStarSystem;
-                string currentSystem = curr?.name;
-                bool fromHere = system == currentSystem;
-
-                foreach (Cargo cargo in inventory.Where(c => c.haulageData.Any()).ToList())
-                {
-                    foreach (Haulage haulage in cargo.haulageData.Where(h => h.status == "Active" && h.sourcesystem != null).ToList())
-                    {
-                        if (fromHere && haulage.originsystem != currentSystem)
-                        {
-                            break;
-                        }
-
-                        StarSystem dest = StarSystemSqLiteRepository.Instance.GetOrCreateStarSystem(haulage.sourcesystem, true);
-                        long distance = (long)(CalculateDistance(curr, dest) * 100);
-                        if (!sourceList.TryGetValue(distance, out string val))
-                        {
-                            sourceList.Add(distance, haulage.sourcesystem);
-                        }
-                        missionids.Add(haulage.missionid);
-                    }
-                }
-
-                if (sourceList != null)
-                {
-                    sourceSystem = sourceList.Values.FirstOrDefault();
-                    sourceDistance = (decimal)sourceList.Keys.FirstOrDefault() / 100;
-                    sourceSystems = string.Join("_", sourceList.Values);
-                    systemsCount = sourceList.Count;
-                }
-            }
-            EDDI.Instance.enqueueEvent(new MissionsRouteEvent(DateTime.Now, "source", sourceSystem, sourceSystems, systemsCount, sourceDistance, 0, missionids));
-            return sourceSystem;
-        }
-
-        private decimal CalculateDistance(StarSystem curr, StarSystem dest)
-        {
-            return (decimal)Math.Round(Math.Sqrt(Math.Pow((double)(curr.x - dest.x), 2)
-                + Math.Pow((double)(curr.y - dest.y), 2)
-                + Math.Pow((double)(curr.z - dest.z), 2)), 2);
         }
 
         static void RaiseOnUIThread(EventHandler handler, object sender)

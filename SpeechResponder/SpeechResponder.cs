@@ -1,18 +1,18 @@
-﻿using System.Collections.Generic;
-using Cottle.Values;
-using EddiSpeechService;
-using Utilities;
-using Newtonsoft.Json;
-using EddiEvents;
+﻿using Cottle.Values;
 using Eddi;
-using System.Windows.Controls;
-using System;
-using System.Text.RegularExpressions;
-using System.IO;
 using EddiDataDefinitions;
+using EddiEvents;
 using EddiShipMonitor;
+using EddiSpeechService;
 using EddiStatusMonitor;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
+using System.Windows.Controls;
+using Utilities;
 
 namespace EddiSpeechResponder
 {
@@ -32,10 +32,6 @@ namespace EddiSpeechResponder
 
         protected static List<Event> eventQueue = new List<Event>();
         private static readonly object queueLock = new object();
-
-        private static bool ignoreBodyScan;
-
-        private bool enqueueStarScan;
 
         public string ResponderName()
         {
@@ -144,26 +140,11 @@ namespace EddiSpeechResponder
             Logging.Debug("Received event " + JsonConvert.SerializeObject(@event));
             StatusMonitor statusMonitor = (StatusMonitor)EDDI.Instance.ObtainMonitor("Status monitor");
 
-            if (@event is BeltScannedEvent)
+            if (@event is BodyScannedEvent bodyScannedEvent)
             {
-                // We ignore belt clusters
-                return;
-            }
-            else if (@event is BodyMappedEvent)
-            {
-                ignoreBodyScan = true;
-            }
-            else if (@event is BodyScannedEvent bodyScannedEvent)
-            {
-                if (bodyScannedEvent.scantype.Contains("NavBeacon") || bodyScannedEvent.scantype == "AutoScan")
+                if (bodyScannedEvent.scantype.Contains("NavBeacon"))
                 {
-                    // Suppress scan details from nav beacons and `AutoScan` events.
-                    return;
-                }
-                else if (ignoreBodyScan)
-                {
-                    // Suppress surface mapping probes from voicing redundant body scan events.
-                    ignoreBodyScan = false;
+                    // Suppress scan details from nav beacons
                     return;
                 }
             }
@@ -174,42 +155,17 @@ namespace EddiSpeechResponder
                     // Suppress scan details from nav beacons
                     return;
                 }
-                else if (enqueueStarScan)
+                else if (EDDI.Instance.CurrentStarSystem?.bodies?
+                    .FirstOrDefault(s => s.bodyname == starScannedEvent.bodyname)?
+                    .scanned < starScannedEvent.timestamp)
                 {
-                    AddToEventQueue(@event);
+                    // Suppress voicing new scans after the first scan occurrence
                     return;
                 }
-            }
-            else if (@event is JumpedEvent)
-            {
-                TakeTypeFromEventQueue<StarScannedEvent>();
-                enqueueStarScan = true;
             }
             else if (@event is CommunityGoalEvent)
             {
                 // Disable speech from the community goal event for the time being.
-                return;
-            }
-            else if (@event is SignalDetectedEvent)
-            {
-                if (!(statusMonitor?.currentStatus.gui_focus == "fss mode" || statusMonitor?.currentStatus.gui_focus == "saa mode"))
-                {
-                    return;
-                }
-            }
-
-            if (statusMonitor?.currentStatus.gui_focus == "fss mode" && statusMonitor?.lastStatus.gui_focus != "fss mode")
-            {
-                // Beginning with Elite Dangerous v. 3.3, the primary star scan is delivered via a Scan with 
-                // scantype `AutoScan` when you jump into the system. Secondary stars may be delivered in a burst 
-                // following an FSSDiscoveryScan. Since each source has a different trigger, we re-order events 
-                // and and report queued star scans when the pilot enters fss mode
-                Say(@event);
-                enqueueStarScan = false;
-                foreach (Event theEvent in TakeTypeFromEventQueue<StarScannedEvent>()?.OrderBy(s => ((StarScannedEvent)s)?.distance))
-                {
-                    Say(theEvent);
-                }
                 return;
             }
 
@@ -251,7 +207,11 @@ namespace EddiSpeechResponder
                 if (subtitles)
                 {
                     // Log a tidied version of the speech
-                    log(Regex.Replace(speech, "<.*?>", string.Empty));
+                    string tidiedSpeech = Regex.Replace(speech, "<.*?>", string.Empty).Trim();
+                    if (!string.IsNullOrEmpty(tidiedSpeech))
+                    {
+                        log(tidiedSpeech);
+                    }
                 }
                 if (sayOutLoud && !(subtitles && subtitlesOnly))
                 {
@@ -265,9 +225,11 @@ namespace EddiSpeechResponder
         {
             Dictionary<string, Cottle.Value> dict = new Dictionary<string, Cottle.Value>
             {
+                ["destinationdistance"] = EDDI.Instance.DestinationDistanceLy,
+                ["environment"] = EDDI.Instance.Environment,
+                ["horizons"] = EDDI.Instance.inHorizons,
                 ["va_active"] = EDDI.FromVA,
-                ["vehicle"] = EDDI.Instance.Vehicle,
-                ["environment"] = EDDI.Instance.Environment
+                ["vehicle"] = EDDI.Instance.Vehicle
             };
 
             if (EDDI.Instance.Cmdr != null)
@@ -303,6 +265,16 @@ namespace EddiSpeechResponder
             if (EDDI.Instance.NextStarSystem != null)
             {
                 dict["nextsystem"] = new ReflectionValue(EDDI.Instance.NextStarSystem);
+            }
+
+            if (EDDI.Instance.DestinationStarSystem != null)
+            {
+                dict["destinationsystem"] = new ReflectionValue(EDDI.Instance.DestinationStarSystem);
+            }
+
+            if (EDDI.Instance.DestinationStation != null)
+            {
+                dict["destinationstation"] = new ReflectionValue(EDDI.Instance.DestinationStation);
             }
 
             if (EDDI.Instance.CurrentStation != null)

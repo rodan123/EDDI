@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "EDDI"
-#define MyAppVersion "3.4.0"
+#define MyAppVersion "3.4.1-b2"
 #define MyAppPublisher "Elite Dangerous Community Developers (EDCD)"
 #define MyAppURL "https://github.com/EDCD/EDDI/"
 #define MyAppExeName "EDDI.exe"
@@ -53,9 +53,7 @@ Source: "*.resources.dll"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 Source: "eddi.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "eddi.*.json"; DestDir: "{app}"; Flags: ignoreversion
 
-Source: "ChangeLog.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "Help.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "Variables.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "*.md"; DestDir: "{app}"; Flags: ignoreversion
 
 Source: "EDDI.vap"; DestDir: "{app}"; Flags: ignoreversion
 

@@ -12,7 +12,8 @@ Details of the objects available are as follows:
 
 Information on game state is available at the top level i.e. these values can be accessed directly.
 
-    - `environment` the commander's current environment.  Can be one of "Normal space", "Supercruise" or "Witch space"
+    - `environment` the commander's current environment.  Can be one of "Docked", "Landed", "Normal space", "Supercruise" or "Witch space"
+    - `horizons` true when the game version is 'Horizons'
     - `vehicle` the vehicle that is under the commander's control.  Can be one of "Ship", "SRV" or "Fighter"
 
 ---
@@ -79,6 +80,7 @@ The event that triggered the speech responder.  Information held in here is even
 The inventory of cargo carried within the ship is available under the `inventory` object.
 
     - `inventory` specific details on the cargo being carried
+    - `cargoCarried` total tons of cargo carried
 
 ### Cargo
 
@@ -140,6 +142,8 @@ A material.
     - `category` the category of the material (Element, Data or Manufactured)
     - `rarity` the rarity of the material
     - `blueprints` the blueprints for which the material is used (this is an array of blueprint objects)
+    - `bodyname` the body name with the highest known concentration of the material within the specified system (only available when using the MaterialDetails() function)
+    - `bodyshortname` the shortened body name with the highest known concentration of the material within the specified system (only available when using the MaterialDetails() function)
 
 #### Blueprint
 
@@ -201,6 +205,62 @@ Details of an individual mission in the commander's mission log.
     - `expiryseconds` amount of seconds remaining before mission expiration
 
 ---
+
+## Crime & Punishment
+
+The criminal record  and derived properties of commander is available under the `criminalrecord` object.
+
+    - `criminalrecord` list of minor faction records, detailing bond & bounty claims, and fine and bounties incurred
+    - `claims` total credits for all unredeemed bond and bounty rewards
+    - `fines` total credits for all unpaid fines incurred
+    - `bounties` total credits for all unpaid bounties incurred
+    - `orbitalpriority` true when orbital stations are prioritized over planetary for station selection
+    - `shiptargets` list of ships targeted within the current system.
+
+### Record
+
+Details of individual faction records, within the `criminalrecord` object
+
+    - `faction` name of the minor faction
+    - `allegiance` superpower to which the minor faction is aligned
+    - `system` faction presence determined by minor faction name or highest influence
+    - `station` station nearest to main star, filtered by landing pad & ship size
+    - `claims` total credits for minor faction's uncollected bond and bounty rewards
+    - `fines` total credits for minor faction's unpaid fines incurred
+    - `bounties` total credits for minor faction's unpaid bounties incurred
+    - `bondsAwarded` list of individual faction reports for uncollected bonds awarded
+    - `bountiesAwarded` list of individual faction reports for uncollected bounties awarded
+    - `finesIncurred` list of individual faction reports for unpaid fines incurred
+    - `bountiesIncurred` list of individual faction reports for unpaid bounties incurred
+
+### Report
+
+Details of individual minor faction reports, within the `FactionRecord` object.
+
+    - `bounty` true if bounty awarded or incurred
+    - `shipId` ship ID in which the 'criminal' event occurred
+    - `crime` localized type of crime committed, 'None' when report is a claim
+    - `system` system in which the 'criminal' event occurred
+    - `station` nearby station (null if no station nearby)
+    - `body` nearby body (null if no body nearby)
+    - `victim` victim faction
+    - `amount` credits awarded or incurred
+
+### Target
+
+Details of ship target data, within the `shiptargets` object.
+
+    - `name` name of the pilot
+    - `rank` rank of the pilot
+    - `ship` model of the ship
+    - `faction` name of the minor faction
+    - `allegiance` superpower to which the minor faction is aligned
+    - `power` power ( Aisling Duval, Yuri Grom, Denton Patreus, etc) to which the pilot is pledged
+    - `legalstatus` the legal status (clean, enemy, wanted, warrant, etc) of the pilot
+    - `bounty` total amount of bounties assigned to the pilot
+
+---
+
 ## Ship
 
 Information about your current ship is available under the `ship` object.
@@ -216,7 +276,6 @@ Any values might be missing, depending on EDDI's configuration.
     - `hot` true if the ship is wanted
     - `rebuy` The rebuy value of the ship, in credits
     - `cargocapacity` the total tonnage cargo capacity
-    - `cargocarried` the current tonnage cargo carried
     - `name` the name of the ship
     - `ident` the identifier of the ship
     - `role` the role of the ship 
@@ -245,6 +304,11 @@ Stored ship information
     - `intransit` true if the ship is in transit
     - `transferprice` price to transfer ship to current location (0 if in transit)
     - `transfertime` time to transfer ship to current location (0 if in transit)
+
+Jump detail
+
+    - `distance` distance of jump range
+    - `jumps` number of jumps for given range
 
 ### Shipyard
 
@@ -359,6 +423,10 @@ Any values might be missing, depending on EDDI's configuration and the informati
     - `updatedat` the timestamp at which the system information was last updated, expressed as a Unix timestamp in seconds
     - `requirespermit` (If using SystemDetails()) Whether this system requires a permit (as a boolean)
     - `permitname` (If using SystemDetails()) The name of the permit required for visiting this system, if any
+    - `signalsources` a list of signals detected within the starsystem (for the current starsystem only)
+    - `isgreen` true if bodies in this starsystem contain all elements required for FSD synthesis
+    - `isgold` true if bodies in this starsystem contain all elements available from surface prospecting
+    - `estimatedvalue` the estimated exploration value of the starsystem (includes bonuses for fully scanning and mapping)
 
 #### Last starsystem
 
@@ -373,6 +441,14 @@ Values are the same as for the current starsystem.
 Information about your next targeted starsystem is available under the `nextsystem` object.
 
 Any values might be missing, depending on EDDI's configuration and the information avaialable about the system.
+
+Values are the same as for the current starsystem.
+
+#### Destination starsystem
+
+Information about your destination starsystem is available under the `destinationsystem` object.
+
+Any values might be missing, depending on EDDI's configuration and the information available about the system.
 
 Values are the same as for the current starsystem.
 
@@ -398,46 +474,72 @@ A star or planet.  Any values might be missing, depending on EDDI's configuratio
 
 All bodies have the following data:
 
-    - `type` the type of the body (Star or Planet)
+    - `bodytype` the type of the body (Star, Planet, or Moon)
     - `systemname` the name of the system in which this body resides
-    - `name` the name of the body
+    - `bodyname` the name of the body
     - `shortname` the shortened name of the body
     - `distance` the distance from the arrival point in the system, in light seconds
     - `tidallylocked` true if the body is tidally locked to its parent
     - `temperature` the surface temperature of the body, in Kelvin
+    - `density` the density of the body, in kg per cubic meter
 	- `rings` (when applicable) (an array of ring objects)
+    - `scanned` a DateTime value that is set when the body is scanned and unset otherwise.
+    - `mapped` a DateTime value that is set when the body is mapped and unset otherwise.
+    - `alreadydiscovered` whether another commander has already submitted a scan of the body to Universal Cartographics
+    - `alreadymapped` whether another commander has already submitted mapping data for the body to Universal Cartographics
+    - `estimatedvalue` the current estimated value of the body, taking into account scans and mapping.
+    - `periapsis` the argument of periapsis of the body, in degrees (as applicable)
+    - `tilt` the axial tilt of the body, in degrees  (as applicable)
+    - `eccentricity` the orbital eccentricity of the body  (as applicable)
+    - `inclination` the orbital inclination of the body, in degrees (as applicable)
+    - `orbitalperiod` the orbital period of the body, in days  (as applicable)
+    - `rotationalperiod` the rotational period of the body, in days  (as applicable)
+    - `semimajoraxis` the semi-major axis of the body's orbit, in light seconds (as applicable)
+    - `density` the average density of the body, in kilograms per cubic meter
+    - `massprobability` the cumulative probability describing the body's mass, relative to other bodies of the same planet type or stellar class.
+    - `radiusprobability` the cumulative probability describing the body's radius, relative to other bodies of the same planet type or stellar class.
+    - `tempprobability` the cumulative probability describing the body's temperature, relative to other bodies of the same planet type or stellar class.
+    - `orbitalperiodprobability` the cumulative probability describing the body's orbital period, relative to other bodies of the same planet type or stellar class.
+    - `semimajoraxisprobability` the cumulative probability describing the body's semi-major axis, relative to other bodies of the same planet type or stellar class.
+    - `eccentricityprobability` the cumulative probability describing the body's orbital eccentricity, relative to other bodies of the same planet type or stellar class.
+    - `inclinationprobability` the cumulative probability describing the body's orbital inclination, relative to other bodies of the same planet type or stellar class.
+    - `periapsisprobability` the cumulative probability describing the body's argument of periapsis, relative to other bodies of the same planet type or stellar class.
+    - `rotationalperiodprobability` the cumulative probability describing the body's rotational period, relative to other bodies of the same planet type or stellar class.
+    - `tiltprobability` the cumulative probability describing the body's orbital tilt, relative to other bodies of the same planet type or stellar class.
+    - `densityprobability` the cumulative probability describing the body's density, relative to other bodies of the same planet type or stellar class.
 
 In addition, stars have the following data:
 
     - `mainstar` true if this is the main star of the system
     - `stellarclass` the stellar class of the star (M, G, etc)
+    - `stellarsubclass` the stellar subclass of the star (0-9)
     - `solarmass` the solar mass of the star
     - `solarradius` the solar radius of the star, compared to Sol
     - `age` the age of the star in millions of years
+    - `absolutemagnitude` the absolute magnitude of the star (lower is brighter)
+    - `chromaticity` the colour of the star
+    - `luminosity` the calculated luminosity of the star
     - `estimatedhabzoneinner` The estimated inner radius of the habitable zone of the star, in light seconds, not considering other stars in the system
     - `estimatedhabzoneouter` The estimated outer radius of the habitable zone of the star, in light seconds, not considering other stars in the system
+    - `ageprobability` the cumulative probability describing the star's age, relative to other stars of the same stellar class.
+    - `absolutemagnitudeprobability` the cumulative probability describing the star's absolute magnitude, relative to other stars of the same stellar class.
 
-Planets have the following data:
+Planets and moons have the following data:
 
-    - `periapsis` the argument of periapsis of the planet, in degrees
     - `atmosphere` the atmosphere of the planet
     - `atmospherecompositions` a list of the elements found in the planet's atmosphere (array of AtmosphereComposition objects)
     - `solidcompositions` a list of the solid types found in the body (array of SolidComposition objects)
-    - `tilt` the axial tilt of the planet, in degrees
     - `earthmass` the earth masses of the planet
     - `gravity` the gravity of the planet, relative to Earth gravity
-    - `eccentricity` the orbital eccentricity of the planet
-    - `inclination` the orbital inclination of the planet, in degrees
-    - `orbitalperiod` the orbital period of the planet, in days
     - `radius` the radius of the planet, in km
-    - `rotationalperiod` the rotational period of the planet, in days
-    - `semimajoraxis` the semi-major axis of the planet's orbit, in light seconds
     - `pressure` the surface pressure on the planet, in Earth atmospheres
     - `terraformstate` the terraforming state of the planet (Not terraformable, Terraformable, Terraforming, Terraformed)
     - `planettype` the type of the planet (Metal-rich body, Earth-like world, etc.)
     - `volcanism` the volcanism of the planet (Volcanism object)
     - `landable` true if the planet can be landed upon
     - `materials` list of materials and their percentage availability on the planet (list of Material objects)
+    - `gravityprobability` the cumulative probability describing the body's gravity, relative to other bodies of the same planet type.
+    - `pressureprobability` the cumulative probability describing the body's atmospheric pressure, relative to other bodies of the same planet type.
 
 #### Atmosphere composition
 
@@ -499,11 +601,19 @@ An orbital or planetary station.
     - `updatedat` the timestamp at which the station information was last updated
     - `commoditiesupdatedat` the timestamp at which the station commodities information was last updated
 
+#### Destination station
+
+Information about your destination station is available under the `destinationstation` object.
+
+Any values might be missing, depending on EDDI's configuration and the information available about the station.
+
+Values are as described in the 'Station' object.
+
 #### Home station
 
 Information about your home station is available under the `homestation` object.
 
-Any values might be missing, depending on EDDI's configuration and the information available about the system.
+Any values might be missing, depending on EDDI's configuration and the information available about the station.
 
 Values are as described in the 'Station' object.
 
@@ -522,6 +632,7 @@ A faction object
 
 An object describing the presence and state of a faction within a system
 
+    - `systemName` the system name
     - `state` the faction's current dominant state
     - `ActiveStates` a list of FactionState objects
     - `PendingStates` a list of FactionState objects and trend values
@@ -587,6 +698,27 @@ Any values might be missing, depending on EDDI's configuration.
     - `fuel_percent` a decimal percent value calculated from your current total fuel capacity
     - `fuel_seconds` an integer value projecting the time remaining before you run out of fuel, in seconds
     - `cargo_carried` an integer value of the current cargo you are carrying
+    - `legalstatus` the ship's current legal status. Can be one of 
+      - "Clean", 
+      - "Illegal cargo", 
+      - "Speeding", 
+      - "Wanted", 
+      - "Hostile", 
+      - "Passenger wanted", or 
+      - "Warrant"
+    - `bodyname` the name of the current body (if landed or in an srv)
+    - `planetradius` the radius of the current body (if landed or in an srv)
+    - `altitude_from_average_radius` true if the altitude is computed relative to the average radius (which is used at higher altitudes) rather than surface directly below the srv
+
+---
+## Traffic
+
+An object returned from the `TrafficDetails` function. Contains traffic / deaths / hostility information (as specified by the function call) over various time periods:
+
+    - `day` over the past day
+    - `week` over the past week
+    - `total` over all time
+
 ---
 ## VoiceDetail
 
@@ -594,9 +726,9 @@ An object returned from the `VoiceDetails` function.
 
 Any values might be missing, depending on the information available about the voice.
 
-- `name` the name of the voice
-- `culturename` the local / native name of the voice culture (as recognized by a native speaker)
-- `cultureinvariantname` the invariant name of the voice culture (English)
-- `culturecode` the two letter language code and two letter region code of the voice culture
-- `gender` the gender of the voice
+    - `name` the name of the voice
+    - `culturename` the local / native name of the voice culture (as recognized by a native speaker)
+    - `cultureinvariantname` the invariant name of the voice culture (English)
+    - `culturecode` the two letter language code and two letter region code of the voice culture
+    - `gender` the gender of the voice
 ---

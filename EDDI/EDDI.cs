@@ -44,6 +44,7 @@ namespace Eddi
 
         public bool inCQC { get; private set; } = false;
         public bool inCrew { get; private set; } = false;
+        public bool inHorizons { get; private set; } = true;
 
         private bool _inBeta = false;
         public bool inBeta
@@ -98,6 +99,8 @@ namespace Eddi
         private ConcurrentBag<EDDIResponder> activeResponders = new ConcurrentBag<EDDIResponder>();
         private static readonly object responderLock = new object();
 
+        public string vaVersion { get; set; }
+
         // Information obtained from the companion app service
         public DateTime ApiTimeStamp { get; private set; }
 
@@ -105,6 +108,11 @@ namespace Eddi
         public StarSystem HomeStarSystem { get; private set; } = new StarSystem();
         public Station HomeStation { get; private set; }
         public StarSystem SquadronStarSystem { get; private set; } = new StarSystem();
+
+        // Destination variables
+        public StarSystem DestinationStarSystem { get; private set; }
+        public Station DestinationStation { get; private set; }
+        public decimal DestinationDistanceLy { get; set; }
 
         // Information obtained from the player journal
         public Commander Cmdr { get; private set; } // Also includes information from the configuration and companion app service
@@ -115,6 +123,9 @@ namespace Eddi
         public Station CurrentStation { get; private set; }
         public Body CurrentStellarBody { get; private set; }
         public DateTime JournalTimeStamp { get; set; } = DateTime.MinValue;
+
+        // Information from the last jump we initiated (for reference)
+        public FSDEngagedEvent LastFSDEngagedEvent { get; private set; }
 
         // Current vehicle of player
         public string Vehicle { get; set; } = Constants.VEHICLE_SHIP;
@@ -127,11 +138,6 @@ namespace Eddi
 
         // The event queue
         public ConcurrentQueue<Event> eventQueue { get; private set; } = new ConcurrentQueue<Event>();
-
-        /// <summary>
-        ///  Special case - trigger our first location event regardless of if it matches our current location
-        /// </summary>
-        private bool firstLocation = true;
 
         private EDDI()
         {
@@ -154,9 +160,11 @@ namespace Eddi
                 EliteConfiguration eliteConfiguration = EliteConfiguration.FromFile();
                 inBeta = eliteConfiguration.Beta;
                 Logging.Info(inBeta ? "On beta" : "On live");
+                inHorizons = eliteConfiguration.Horizons;
 
                 // Set up the EDDI configuration
                 EDDIConfiguration configuration = EDDIConfiguration.FromFile();
+                updateDestinationSystemStation(configuration);
                 updateHomeSystemStation(configuration);
                 updateSquadronSystem(configuration);
 
@@ -667,9 +675,9 @@ namespace Eddi
                     {
                         passEvent = eventFileHeader((FileHeaderEvent)@event);
                     }
-                    else if (@event is JumpedEvent)
+                    else if (@event is LocationEvent)
                     {
-                        passEvent = eventJumped((JumpedEvent)@event);
+                        passEvent = eventLocation((LocationEvent)@event);
                     }
                     else if (@event is DockedEvent)
                     {
@@ -679,9 +687,13 @@ namespace Eddi
                     {
                         passEvent = eventUndocked((UndockedEvent)@event);
                     }
-                    else if (@event is LocationEvent)
+                    else if (@event is TouchdownEvent)
                     {
-                        passEvent = eventLocation((LocationEvent)@event);
+                        passEvent = eventTouchdown((TouchdownEvent)@event);
+                    }
+                    else if (@event is LiftoffEvent)
+                    {
+                        passEvent = eventLiftoff((LiftoffEvent)@event);
                     }
                     else if (@event is FSDEngagedEvent)
                     {
@@ -690,6 +702,10 @@ namespace Eddi
                     else if (@event is FSDTargetEvent)
                     {
                         passEvent = eventFSDTarget((FSDTargetEvent)@event);
+                    }
+                    else if (@event is JumpedEvent)
+                    {
+                        passEvent = eventJumped((JumpedEvent)@event);
                     }
                     else if (@event is EnteredSupercruiseEvent)
                     {
@@ -755,10 +771,6 @@ namespace Eddi
                     {
                         passEvent = eventFighterDocked((FighterDockedEvent)@event);
                     }
-                    else if (@event is BeltScannedEvent)
-                    {
-                        passEvent = eventBeltScanned((BeltScannedEvent)@event);
-                    }
                     else if (@event is StarScannedEvent)
                     {
                         passEvent = eventStarScanned((StarScannedEvent)@event);
@@ -766,6 +778,10 @@ namespace Eddi
                     else if (@event is BodyScannedEvent)
                     {
                         passEvent = eventBodyScanned((BodyScannedEvent)@event);
+                    }
+                    else if (@event is BodyMappedEvent)
+                    {
+                        passEvent = eventBodyMapped((BodyMappedEvent)@event);
                     }
                     else if (@event is VehicleDestroyedEvent)
                     {
@@ -799,6 +815,14 @@ namespace Eddi
                     {
                         passEvent = eventShipyard((ShipyardEvent)@event);
                     }
+                    else if (@event is SettlementApproachedEvent)
+                    {
+                        passEvent = eventSettlementApproached((SettlementApproachedEvent)@event);
+                    }
+                    else if (@event is DiscoveryScanEvent)
+                    {
+                        passEvent = eventDiscoveryScan((DiscoveryScanEvent)@event);
+                    }
 
                     // Additional processing is over, send to the event responders if required
                     if (passEvent)
@@ -820,6 +844,30 @@ namespace Eddi
                     Instance.ObtainResponder("EDDN responder").Handle(@event);
                 }
             }
+        }
+
+        private bool eventDiscoveryScan(DiscoveryScanEvent @event)
+        {
+            CurrentStarSystem.discoverableBodies = @event.bodies;
+            return true;
+        }
+
+        private bool eventSettlementApproached(SettlementApproachedEvent @event)
+        {
+            bool passEvent = true;
+            Station station = CurrentStarSystem.stations.Find(s => s.name == @event.name);
+            if (station == null && @event.systemAddress == CurrentStarSystem.systemAddress)
+            {
+                // This settlement is unknown to us, might not be in our data source or we might not have connectivity.  Use a placeholder
+                station = new Station
+                {
+                    name = @event.name,
+                    marketId = @event.marketId,
+                    systemname = CurrentStarSystem.systemname
+                };
+                CurrentStarSystem.stations.Add(station);
+            }
+            return passEvent;
         }
 
         private bool eventFriends(FriendsEvent @event)
@@ -878,7 +926,7 @@ namespace Eddi
                     data.Add("event", JsonConvert.SerializeObject(@event));
                     data.Add("exception", ex.Message);
                     data.Add("stacktrace", ex.StackTrace);
-                    Logging.Error("Monitor failed to handle event " + @event.type, data);
+                    Logging.Error(monitor.MonitorName() + " failed to handle event " + @event.type, data);
                 }
             }
         }
@@ -898,7 +946,7 @@ namespace Eddi
                         }
                         catch (Exception ex)
                         {
-                            Logging.Error("Responder failed to handle event " + JsonConvert.SerializeObject(@event), ex);
+                            Logging.Error(responder.ResponderName() + " failed to handle event " + JsonConvert.SerializeObject(@event), ex);
                         }
                     });
                     responderTasks.Add(responderTask);
@@ -909,7 +957,7 @@ namespace Eddi
                     data.Add("event", JsonConvert.SerializeObject(@event));
                     data.Add("exception", ex.Message);
                     data.Add("stacktrace", ex.StackTrace);
-                    Logging.Error("Responder failed to handle event " + @event.type, data);
+                    Logging.Error(responder.ResponderName() + " failed to handle event " + @event.type, data);
                 }
             }
             await Task.WhenAll(responderTasks.ToArray());
@@ -930,7 +978,7 @@ namespace Eddi
                         }
                         catch (Exception ex)
                         {
-                            Logging.Error("Monitor failed to post-handle event " + JsonConvert.SerializeObject(@event), ex);
+                            Logging.Error(monitor.MonitorName() + " failed to post-handle event " + JsonConvert.SerializeObject(@event), ex);
                         }
                     });
                     monitorTasks.Add(monitorTask);
@@ -946,7 +994,7 @@ namespace Eddi
                     data.Add("event", JsonConvert.SerializeObject(@event));
                     data.Add("exception", ex.Message);
                     data.Add("stacktrace", ex.StackTrace);
-                    Logging.Error("Monitor failed to post-handle event " + @event.type, data);
+                    Logging.Error(monitor.MonitorName() + " failed to post-handle event " + @event.type, data);
                 }
                 await Task.WhenAll(monitorTasks.ToArray());
             }
@@ -954,9 +1002,9 @@ namespace Eddi
 
         private bool eventLocation(LocationEvent theEvent)
         {
-            Logging.Info("Location StarSystem: " + theEvent.system);
+            Logging.Info("Location StarSystem: " + theEvent.systemname);
 
-            updateCurrentSystem(theEvent.system);
+            updateCurrentSystem(theEvent.systemname);
             // Our data source may not include the system address
             CurrentStarSystem.systemAddress = theEvent.systemAddress;
             // Always update the current system with the current co-ordinates, just in case things have changed
@@ -998,90 +1046,75 @@ namespace Eddi
 
                 // Check if current system is inhabited by or HQ for squadron faction
                 Faction squadronFaction = theEvent.factions.FirstOrDefault(f => (bool)f.presences.
-                    FirstOrDefault(p => p.systemName == CurrentStarSystem.name)?.squadronhomesystem || f.squadronfaction);
+                    FirstOrDefault(p => p.systemName == CurrentStarSystem.systemname)?.squadronhomesystem || f.squadronfaction);
                 if (squadronFaction != null)
                 {
-                    updateSquadronData(squadronFaction, CurrentStarSystem.name);
+                    updateSquadronData(squadronFaction, CurrentStarSystem.systemname);
                 }
             }
 
-            if (theEvent.docked == true || theEvent.bodytype.ToLowerInvariant() == "station")
+            if (theEvent.docked || theEvent.bodytype.ToLowerInvariant() == "station")
             {
-                // In this case body === station and our body information is invalid
+                // In this case body = station and our body information is invalid
                 CurrentStellarBody = null;
 
-                // Force first location update even if it matches with 'firstLocation' bool
-                if (!firstLocation && (CurrentStation != null && CurrentStation.name == theEvent.station))
-                {
-                    // We are already at this station; nothing to do
-                    Logging.Debug("Already at station " + theEvent.station);
-                    return false;
-                }
-                firstLocation = false;
-
                 // Update the station
-                Logging.Debug("Now at station " + theEvent.station);
-                Station station = CurrentStarSystem.stations.Find(s => s.name == theEvent.station);
+                string stationName = theEvent.docked ? theEvent.station : theEvent.bodyname;
+
+                Logging.Debug("Now at station " + stationName);
+                Station station = CurrentStarSystem.stations.Find(s => s.name == stationName);
                 if (station == null)
                 {
                     // This station is unknown to us, might not be in our data source or we might not have connectivity.  Use a placeholder
                     station = new Station
                     {
-                        name = theEvent.station,
-                        systemname = theEvent.system
+                        name = stationName,
+                        systemname = theEvent.systemname
                     };
+                    CurrentStarSystem.stations.Add(station);
                 }
-
-                // Our data source may not include the market id or system address
-                station.marketId = theEvent.marketId;
-                station.systemAddress = theEvent.systemAddress;
-                station.Faction = theEvent.controllingstationfaction;
-
                 CurrentStation = station;
 
-                // Kick off the profile refresh if the companion API is available
-                if (CompanionAppService.Instance.CurrentState == CompanionAppService.State.Authorized)
+                if (theEvent.docked)
                 {
-                    // Refresh station data
-                    if (theEvent.fromLoad) { return true; } // Don't fire this event when loading pre-existing logs
-                    profileUpdateNeeded = true;
-                    profileStationRequired = CurrentStation.name;
-                    Thread updateThread = new Thread(() => conditionallyRefreshProfile())
+                    // We are docked and in the ship
+                    Environment = Constants.ENVIRONMENT_DOCKED;
+                    Vehicle = Constants.VEHICLE_SHIP;
+
+                    // Our data source may not include the market id or system address
+                    station.marketId = theEvent.marketId;
+                    station.systemAddress = theEvent.systemAddress;
+                    station.Faction = theEvent.controllingstationfaction;
+
+                    // Kick off the profile refresh if the companion API is available
+                    if (CompanionAppService.Instance.CurrentState == CompanionAppService.State.Authorized)
                     {
-                        IsBackground = true
-                    };
-                    updateThread.Start();
+                        // Refresh station data
+                        if (theEvent.fromLoad) { return true; } // Don't fire this event when loading pre-existing logs
+                        profileUpdateNeeded = true;
+                        profileStationRequired = CurrentStation.name;
+                        Thread updateThread = new Thread(() => conditionallyRefreshProfile())
+                        {
+                            IsBackground = true
+                        };
+                        updateThread.Start();
+                    }
+                }
+                else
+                {
+                    Environment = Constants.ENVIRONMENT_NORMAL_SPACE;
                 }
             }
-            else if (theEvent.body != null)
+            else if (theEvent.bodyname != null)
             {
+                Environment = Constants.ENVIRONMENT_NORMAL_SPACE;
+
                 // If we are not at a station then our station information is invalid 
                 CurrentStation = null;
 
-                // Force first location update even if it matches with 'firstLocation' bool 
-                if (!firstLocation && (CurrentStellarBody != null && CurrentStellarBody.name == theEvent.body))
-                {
-                    // We are already at this body; nothing to do 
-                    Logging.Debug("Already at body " + theEvent.body);
-                    return false;
-                }
-                firstLocation = false;
-
                 // Update the body 
-                Logging.Debug("Now at body " + theEvent.body);
-                Body body = CurrentStarSystem.bodies.Find(s => s.name == theEvent.body);
-                if (body == null)
-                {
-                    // This body is unknown to us, might not be in our data source or we might not have connectivity.  Use a placeholder 
-                    body = new Body
-                    {
-                        name = theEvent.body,
-                        systemname = theEvent.system,
-                        systemAddress = theEvent.systemAddress
-                    };
-                }
-
-                CurrentStellarBody = body;
+                Logging.Debug("Now at body " + theEvent.bodyname);
+                updateCurrentStellarBody(theEvent.bodyname, theEvent.systemname, theEvent.systemAddress);
             }
             else
             {
@@ -1102,14 +1135,15 @@ namespace Eddi
             allowOutfittingUpdate = true;
             allowShipyardUpdate = true;
 
-            if (CurrentStation != null && CurrentStation.name == theEvent.station)
+            if (Environment == Constants.ENVIRONMENT_DOCKED)
             {
                 // We are already at this station; nothing to do
                 Logging.Debug("Already at station " + theEvent.station);
                 return false;
             }
 
-            // We are in the ship
+            // We are docked and in the ship
+            Environment = Constants.ENVIRONMENT_DOCKED;
             Vehicle = Constants.VEHICLE_SHIP;
 
             // Update the station
@@ -1123,6 +1157,7 @@ namespace Eddi
                     name = theEvent.station,
                     systemname = theEvent.system
                 };
+                CurrentStarSystem.stations.Add(station);
             }
 
             // Not all stations in our database will have a system address or market id, so we set them here
@@ -1156,9 +1191,40 @@ namespace Eddi
 
         private bool eventUndocked(UndockedEvent theEvent)
         {
+            Environment = Constants.ENVIRONMENT_NORMAL_SPACE;
+            Vehicle = Constants.VEHICLE_SHIP;
+
             // Call refreshProfile() to ensure that our ship is up-to-date
             refreshProfile();
 
+            return true;
+        }
+
+        private bool eventTouchdown(TouchdownEvent theEvent)
+        {
+            Environment = Constants.ENVIRONMENT_LANDED;
+            if (theEvent.playercontrolled)
+            {
+                Vehicle = Constants.VEHICLE_SHIP;
+            }
+            else
+            {
+                Vehicle = Constants.VEHICLE_SRV;
+            }
+            return true;
+        }
+
+        private bool eventLiftoff(LiftoffEvent theEvent)
+        {
+            Environment = Constants.ENVIRONMENT_NORMAL_SPACE;
+            if (theEvent.playercontrolled)
+            {
+                Vehicle = Constants.VEHICLE_SHIP;
+            }
+            else
+            {
+                Vehicle = Constants.VEHICLE_SRV;
+            }
             return true;
         }
 
@@ -1285,15 +1351,15 @@ namespace Eddi
             {
                 return;
             }
-            if (CurrentStarSystem == null || CurrentStarSystem.name != name)
+            if (CurrentStarSystem == null || CurrentStarSystem.systemname != name)
             {
-                if (CurrentStarSystem != null && CurrentStarSystem.name != name)
+                if (CurrentStarSystem != null && CurrentStarSystem.systemname != name)
                 {
                     // We have changed system so update the old one as to when we left
                     StarSystemSqLiteRepository.Instance.LeaveStarSystem(CurrentStarSystem);
                 }
                 LastStarSystem = CurrentStarSystem;
-                if (NextStarSystem?.name == name)
+                if (NextStarSystem?.systemname == name)
                 {
                     CurrentStarSystem = NextStarSystem;
                     NextStarSystem = null;
@@ -1303,6 +1369,47 @@ namespace Eddi
                     CurrentStarSystem = StarSystemSqLiteRepository.Instance.GetOrCreateStarSystem(name);
                 }
                 setSystemDistanceFromHome(CurrentStarSystem);
+                setSystemDistanceFromDestination(CurrentStarSystem?.systemname);
+            }
+        }
+
+        private void updateCurrentStellarBody(string bodyName, string systemName, long? systemAddress = null)
+        {
+            // Make sure our system information is up to date
+            if (CurrentStarSystem == null || CurrentStarSystem.systemname != systemName)
+            {
+                updateCurrentSystem(systemName);
+            }
+            // Update the body 
+            if (CurrentStarSystem != null)
+            {
+                Body body = CurrentStarSystem.bodies?.Find(s => s.bodyname == bodyName);
+                if (body == null)
+                {
+                    // We may be near a ring. For rings, we want to select the parent body
+                    List<Body> ringedBodies = CurrentStarSystem.bodies?
+                        .Where(b => b?.rings?.Count > 0).ToList();
+                    foreach (Body ringedBody in ringedBodies)
+                    {
+                        Ring ring = ringedBody.rings.FirstOrDefault(r => r.name == bodyName);
+                        if (ring != null)
+                        {
+                            body = ringedBody;
+                            break;
+                        }
+                    }
+                }
+                if (body == null)
+                {
+                    // This body is unknown to us, might not be in EDDB or we might not have connectivity.  Use a placeholder 
+                    body = new Body
+                    {
+                        bodyname = bodyName,
+                        systemname = systemName,
+                        systemAddress = systemAddress,
+                    };
+                }
+                CurrentStellarBody = body;
             }
         }
 
@@ -1327,6 +1434,9 @@ namespace Eddi
 
             // Set the destination system as the current star system
             updateCurrentSystem(@event.system);
+
+            // Save a copy of this event for later reference
+            LastFSDEngagedEvent = @event;
 
             return true;
         }
@@ -1366,7 +1476,7 @@ namespace Eddi
         {
             bool passEvent;
             Logging.Info("Jumped to " + theEvent.system);
-            if (CurrentStarSystem == null || CurrentStarSystem.name != theEvent.system)
+            if (CurrentStarSystem == null || CurrentStarSystem.systemname != theEvent.system)
             {
                 // The 'StartJump' event must have been missed
                 updateCurrentSystem(theEvent.system);
@@ -1378,7 +1488,8 @@ namespace Eddi
             CurrentStarSystem.y = theEvent.y;
             CurrentStarSystem.z = theEvent.z;
             CurrentStarSystem.Faction = theEvent.controllingfaction;
-            CurrentStellarBody = CurrentStarSystem.bodies.FirstOrDefault(b => b.distance == 0);
+            CurrentStellarBody = CurrentStarSystem.bodies.FirstOrDefault(b => b.bodyname == theEvent.star) 
+                ?? CurrentStarSystem.bodies.FirstOrDefault(b => b.distance == 0);
 
             // Update system faction data if available
             if (theEvent.factions != null)
@@ -1397,10 +1508,10 @@ namespace Eddi
 
                 // Check if current system is inhabited by or HQ for squadron faction
                 Faction squadronFaction = theEvent.factions.FirstOrDefault(f => (bool)f.presences.
-                    FirstOrDefault(p => p.systemName == CurrentStarSystem.name)?.squadronhomesystem || f.squadronfaction);
+                    FirstOrDefault(p => p.systemName == CurrentStarSystem.systemname)?.squadronhomesystem || f.squadronfaction);
                 if (squadronFaction != null)
                 {
-                    updateSquadronData(squadronFaction, CurrentStarSystem.name);
+                    updateSquadronData(squadronFaction, CurrentStarSystem.systemname);
                 }
             }
 
@@ -1409,6 +1520,18 @@ namespace Eddi
             if (theEvent.population != null)
             {
                 CurrentStarSystem.population = theEvent.population;
+            }
+
+            // If we don't have any information about bodies in the system yet, create a basic star from current and saved event data
+            if (CurrentStellarBody == null && !string.IsNullOrEmpty(theEvent.star))
+            {
+                CurrentStellarBody = new Body()
+                {
+                    bodyname = theEvent.star,
+                    bodyType = BodyType.FromEDName("Star"),
+                    stellarclass = LastFSDEngagedEvent?.stellarclass,
+                };
+                CurrentStarSystem.bodies.Add(CurrentStellarBody);
             }
 
             // Update to most recent information
@@ -1426,6 +1549,9 @@ namespace Eddi
             // After jump has completed we are always in supercruise
             Environment = Constants.ENVIRONMENT_SUPERCRUISE;
 
+            // No longer in 'station instance'
+            CurrentStation = null;
+
             return passEvent;
         }
 
@@ -1433,6 +1559,9 @@ namespace Eddi
         {
             Environment = Constants.ENVIRONMENT_SUPERCRUISE;
             updateCurrentSystem(theEvent.system);
+
+            // No longer in 'station instance'
+            CurrentStation = null;
 
             // We are in the ship
             Vehicle = Constants.VEHICLE_SHIP;
@@ -1442,31 +1571,28 @@ namespace Eddi
 
         private bool eventEnteredNormalSpace(EnteredNormalSpaceEvent theEvent)
         {
-            // We won't update CurrentStation with this event, as doing so triggers false / premature updates from the Frontier API
-            CurrentStation = null;
-
             Environment = Constants.ENVIRONMENT_NORMAL_SPACE;
 
-            if (theEvent.bodytype.ToLowerInvariant() == "station")
+            if (theEvent.bodyType == BodyType.FromEDName("Station"))
             {
-                // In this case body == station 
-            }
-            else if (theEvent.body != null)
-            {
-                // Update the body 
-                Body body = CurrentStarSystem?.bodies?.Find(s => s.name == theEvent.body);
-                if (body == null)
+                // In this case body == station
+                Station station = CurrentStarSystem.stations.Find(s => s.name == theEvent.bodyname);
+                if (station == null)
                 {
-                    // This body is unknown to us, might not be in EDDB or we might not have connectivity.  Use a placeholder 
-                    body = new Body
+                    // This station is unknown to us, might not be in our data source or we might not have connectivity.  Use a placeholder
+                    station = new Station
                     {
-                        name = theEvent.body,
-                        systemname = theEvent.system
+                        name = theEvent.bodyname,
+                        systemname = theEvent.systemname
                     };
                 }
-                CurrentStellarBody = body;
+                CurrentStation = station;
             }
-            updateCurrentSystem(theEvent.system);
+            else if (theEvent.bodyname != null)
+            {
+                updateCurrentStellarBody(theEvent.bodyname, theEvent.systemname, theEvent.systemAddress);
+            }
+            updateCurrentSystem(theEvent.systemname);
             return true;
         }
 
@@ -1494,6 +1620,12 @@ namespace Eddi
             {
                 Cmdr.name = theEvent.commander;
             }
+
+            // Set game version
+            inHorizons = theEvent.horizons;
+            EliteConfiguration config = EliteConfiguration.FromFile();
+            config.Horizons = inHorizons;
+            config.ToFile();
 
             return true;
         }
@@ -1759,14 +1891,14 @@ namespace Eddi
             if (theEvent.approaching_surface)
             {
                 // Update the body 
-                Body body = CurrentStarSystem?.bodies?.Find(s => s.name == theEvent.body);
+                Body body = CurrentStarSystem?.bodies?.Find(s => s.bodyname == theEvent.bodyname);
                 if (body == null)
                 {
                     // This body is unknown to us, might not be in our data source or we might not have connectivity.  Use a placeholder 
                     body = new Body
                     {
-                        name = theEvent.body,
-                        systemname = theEvent.system
+                        bodyname = theEvent.bodyname,
+                        systemname = theEvent.systemname
                     };
                 }
                 // System address may not be included in our data source, so we add it here. 
@@ -1778,37 +1910,8 @@ namespace Eddi
                 // Clear the body we are leaving 
                 CurrentStellarBody = null;
             }
-            updateCurrentSystem(theEvent.system);
+            updateCurrentSystem(theEvent.systemname);
             return true;
-        }
-
-        private bool eventBeltScanned(BeltScannedEvent theEvent)
-        {
-            // We just scanned a star.  We can only proceed if we know our current star system
-            if (CurrentStarSystem != null)
-            {
-                Body belt = CurrentStarSystem.bodies?.FirstOrDefault(b => b.name == theEvent.name);
-                if (belt == null)
-                {
-                    Logging.Debug("Scanned belt " + theEvent.name + " is new - creating");
-                    // A new item - set it up
-                    belt = new Body
-                    {
-                        EDDBID = -1,
-                        Type = BodyType.FromEDName("Belt"),
-                        name = theEvent.name,
-                        systemname = CurrentStarSystem?.name,
-                        systemAddress = CurrentStarSystem?.systemAddress
-                    };
-                }
-
-                // Update with the information we have
-
-                belt.distance = (long?)theEvent.distancefromarrival;
-
-                CurrentStarSystem.bodies?.Add(belt);
-            }
-            return CurrentStarSystem != null;
         }
 
         private bool eventStarScanned(StarScannedEvent theEvent)
@@ -1816,38 +1919,23 @@ namespace Eddi
             // We just scanned a star.  We can only proceed if we know our current star system
             if (CurrentStarSystem != null)
             {
-                Body star = CurrentStarSystem.bodies?.FirstOrDefault(b => b.name == theEvent.name);
+                Body star = CurrentStarSystem.bodies?.FirstOrDefault(b => b.bodyname == theEvent.bodyname);
                 if (star == null)
                 {
-                    Logging.Debug("Scanned star " + theEvent.name + " is new - creating");
-                    // A new item - set it up
-                    star = new Body
-                    {
-                        EDDBID = -1,
-                        Type = BodyType.FromEDName("Star"),
-                        name = theEvent.name,
-                        systemname = CurrentStarSystem?.name,
-                        systemAddress = CurrentStarSystem?.systemAddress
-                    };
-                    CurrentStarSystem.bodies?.Add(star);
+                    Logging.Debug("Scanned star " + theEvent.bodyname + " is new - creating");
+                    CurrentStarSystem.bodies?.Add(theEvent.star);
                 }
-                // Our data source may not include system address, so we include it here.
-                star.systemAddress = CurrentStarSystem?.systemAddress;
+                else
+                {
+                    int index = CurrentStarSystem.bodies.IndexOf(star);
+                    if (index != -1)
+                    {
+                        CurrentStarSystem.bodies[index] = theEvent.star;
+                    }
+                }
+                CurrentStarSystem.bodies = CurrentStarSystem.bodies.OrderBy(s => s.bodyId).ToList();
 
-                // Update with the information we have
-                star.age = theEvent.age;
-                star.distance = (long?)theEvent.distancefromarrival;
-                star.luminosityclass = theEvent.luminosityclass;
-                star.temperature = (long?)theEvent.temperature;
-                star.stellarclass = theEvent.stellarclass;
-                star.solarmass = theEvent.solarmass;
-                star.solarradius = theEvent.solarradius;
-                star.rings = theEvent.rings;
-
-                star.setStellarExtras();
-
-                CurrentStarSystem.bodies?.Add(star);
-                Logging.Debug("Saving data for scanned star " + theEvent.name);
+                Logging.Debug("Saving data for scanned star " + theEvent.star.bodyname);
                 StarSystemSqLiteRepository.Instance.SaveStarSystem(CurrentStarSystem);
             }
             return CurrentStarSystem != null;
@@ -1858,56 +1946,62 @@ namespace Eddi
             // We just scanned a body.  We can only proceed if we know our current star system
             if (CurrentStarSystem != null)
             {
-                Body body = CurrentStarSystem.bodies.FirstOrDefault(b => b.name == theEvent.name);
+                Body body = CurrentStarSystem.bodies?.FirstOrDefault(b => b.bodyname == theEvent.bodyname);
                 if (body == null)
                 {
-                    Logging.Debug("Scanned body " + theEvent.name + " is new - creating");
-                    // A new body - set it up
-                    body = new Body
-                    {
-                        EDDBID = -1,
-                        Type = BodyType.FromEDName("Planet"),
-                        name = theEvent.name,
-                        systemname = CurrentStarSystem.name,
-                        systemAddress = CurrentStarSystem?.systemAddress
-                    };
-                    CurrentStarSystem.bodies.Add(body);
+                    Logging.Debug("Scanned body " + theEvent.bodyname + " is new - creating");
+                    CurrentStarSystem.bodies.Add(theEvent.body);
                 }
-                // Our data source may not include system address, so we include it here.
-                body.systemAddress = CurrentStarSystem?.systemAddress;
-
-                // Update with the information we have
-                body.distance = (long?)theEvent.distancefromarrival;
-                body.landable = theEvent.landable;
-                body.tidallylocked = theEvent.tidallylocked;
-                body.temperature = (long?)theEvent.temperature;
-                body.periapsis = theEvent.periapsis;
-                body.atmosphereclass = theEvent.atmosphereclass;
-                body.atmospherecompositions = theEvent.atmospherecomposition;
-                body.solidcompositions = theEvent.solidcomposition;
-                body.gravity = theEvent.gravity;
-                body.eccentricity = theEvent.eccentricity;
-                body.inclination = theEvent.orbitalinclination;
-                body.orbitalperiod = theEvent.orbitalperiod;
-                body.rotationalperiod = theEvent.rotationperiod;
-                body.semimajoraxis = theEvent.semimajoraxis;
-                body.pressure = theEvent.pressure;
-                body.terraformState = theEvent.terraformState;
-                body.planetClass = theEvent.planetClass;
-                body.volcanism = theEvent.volcanism;
-                body.materials = new List<MaterialPresence>();
-                foreach (MaterialPresence presence in theEvent.materials)
+                else
                 {
-                    body.materials.Add(new MaterialPresence(presence.definition, presence.percentage));
+                    if (body.scanned == null)
+                    {
+                        int index = CurrentStarSystem.bodies.IndexOf(body);
+                        if (index != -1)
+                        {
+                            // Update our body with the scan data.
+                            CurrentStarSystem.bodies[index] = theEvent.body;
+                        }
+                    }
+                    else
+                    {
+                        // We've already scanned this body. No need to repeat.
+                        return false;
+                    }
                 }
-                body.reserveLevel = ReserveLevel.FromEDName(theEvent.reserves);
-                body.rings = theEvent.rings;
+                CurrentStarSystem.bodies = CurrentStarSystem.bodies.OrderBy(b => b.bodyId).ToList();
 
-                Logging.Debug("Saving data for scanned body " + theEvent.name);
+                // Update the system reserve level, when appropriate
+                if (theEvent.body.reserveLevel != ReserveLevel.None)
+                {
+                    CurrentStarSystem.Reserve = theEvent.body.reserveLevel;
+                }
+
+                Logging.Debug("Saving data for scanned body " + theEvent.bodyname);
                 StarSystemSqLiteRepository.Instance.SaveStarSystem(CurrentStarSystem);
             }
 
             return CurrentStarSystem != null;
+        }
+
+        private bool eventBodyMapped(BodyMappedEvent theEvent)
+        {
+            if (theEvent.name.Contains(" Ring"))
+            {
+                updateCurrentStellarBody(theEvent.name, CurrentStarSystem?.systemname, CurrentStarSystem?.systemAddress);
+            }
+            else
+            {
+                Body body = CurrentStarSystem?.bodies?.FirstOrDefault(b => b?.bodyname == theEvent.name);
+                if (body != null)
+                {
+                    body.mapped = theEvent.timestamp;
+                    body.mappedEfficiently = theEvent.probesused <= theEvent.efficiencytarget;
+                    StarSystemSqLiteRepository.Instance.SaveStarSystem(CurrentStarSystem);
+                    updateCurrentStellarBody(theEvent.name, CurrentStarSystem?.systemname, CurrentStarSystem?.systemAddress);
+                }
+            }
+            return true;
         }
 
         /// <summary>Obtain information from the companion API and use it to refresh our own data</summary>
@@ -1951,7 +2045,7 @@ namespace Eddi
 
                             // We don't know if we are docked or not at this point.  Fill in the data if we can, and
                             // let later systems worry about removing it if it's decided that we aren't docked
-                            if (profile.LastStation != null && profile.LastStation.systemname == CurrentStarSystem.name && CurrentStarSystem.stations != null)
+                            if (profile.LastStation != null && profile.LastStation.systemname == CurrentStarSystem.systemname && CurrentStarSystem.stations != null)
                             {
                                 CurrentStation = CurrentStarSystem.stations.FirstOrDefault(s => s.name == profile.LastStation.name);
                                 if (CurrentStation != null)
@@ -1963,7 +2057,7 @@ namespace Eddi
                             }
                         }
 
-                        if (refreshStation && CurrentStation != null)
+                        if (refreshStation && CurrentStation != null && Environment == Constants.ENVIRONMENT_DOCKED)
                         {
                             // Refresh station data
                             profileUpdateNeeded = true;
@@ -2036,10 +2130,32 @@ namespace Eddi
             if (HomeStarSystem != null && HomeStarSystem.x != null && system.x != null)
             {
                 system.distancefromhome = (decimal)Math.Round(Math.Sqrt(Math.Pow((double)(system.x - HomeStarSystem.x), 2)
-                                                                      + Math.Pow((double)(system.y - HomeStarSystem.y), 2)
-                                                                      + Math.Pow((double)(system.z - HomeStarSystem.z), 2)), 2);
+                    + Math.Pow((double)(system.y - HomeStarSystem.y), 2)
+                    + Math.Pow((double)(system.z - HomeStarSystem.z), 2)), 2);
                 Logging.Debug("Distance from home is " + system.distancefromhome);
             }
+        }
+
+        public decimal getSystemDistanceFromDestination(string system)
+        {
+            decimal distance = 0;
+            if (system != null)
+            {
+                StarSystem starSystem = StarSystemSqLiteRepository.Instance.GetOrCreateStarSystem(system, true);
+
+                if (DestinationStarSystem != null && DestinationStarSystem.x != null && starSystem != null && starSystem.x != null)
+                {
+                    distance = (decimal)Math.Round(Math.Sqrt(Math.Pow((double)(starSystem.x - DestinationStarSystem.x), 2)
+                        + Math.Pow((double)(starSystem.y - DestinationStarSystem.y), 2)
+                        + Math.Pow((double)(starSystem.z - DestinationStarSystem.z), 2)), 2);
+                }
+            }
+            return distance;
+        }
+
+        public void setSystemDistanceFromDestination(string system)
+        {
+            DestinationDistanceLy = getSystemDistanceFromDestination(system);
         }
 
         /// <summary>Work out the title for the commander in the current system</summary>
@@ -2223,7 +2339,7 @@ namespace Eddi
                         }
 
                         // Make sure we know where we are
-                        if (CurrentStarSystem.name.Length < 0)
+                        if (CurrentStarSystem.systemname.Length < 0)
                         {
                             break;
                         }
@@ -2232,7 +2348,7 @@ namespace Eddi
                         ApiTimeStamp = DateTime.UtcNow;
                         long profileTime = (long)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                         Logging.Debug("Fetching station profile");
-                        Profile profile = CompanionAppService.Instance.Station(CurrentStarSystem.name);
+                        Profile profile = CompanionAppService.Instance.Station(CurrentStarSystem.systemname);
 
                         // See if it is up-to-date regarding our requirements
                         Logging.Debug("profileStationRequired is " + profileStationRequired + ", profile station is " + profile.LastStation.name);
@@ -2310,6 +2426,62 @@ namespace Eddi
             RESTART_NO_REBOOT = 64
         }
 
+        public void updateDestinationSystemStation(EDDIConfiguration configuration)
+        {
+            updateDestinationSystem(configuration.DestinationSystem);
+            updateDestinationStation(configuration.DestinationStation);
+        }
+
+        public void updateDestinationSystem(string destinationSystem)
+        {
+            EDDIConfiguration configuration = EDDIConfiguration.FromFile();
+            if (destinationSystem != null)
+            {
+                StarSystem system = StarSystemSqLiteRepository.Instance.GetOrFetchStarSystem(destinationSystem);
+
+                //Ignore null & empty systems
+                if (system != null)
+                {
+                    if (system.systemname != DestinationStarSystem?.systemname)
+                    {
+                        Logging.Debug("Destination star system is " + system.systemname);
+                        DestinationStarSystem = system;
+                    }
+                }
+                else { destinationSystem = null; }
+            }
+            else
+            {
+                DestinationStarSystem = null;
+            }
+            configuration.DestinationSystem = destinationSystem;
+            configuration.ToFile();
+        }
+
+        public void updateDestinationStation(string destinationStation)
+        {
+            EDDIConfiguration configuration = EDDIConfiguration.FromFile();
+            if (destinationStation != null && DestinationStarSystem?.stations != null)
+            {
+                string destinationStationName = destinationStation.Trim();
+                Station station = DestinationStarSystem.stations.FirstOrDefault(s => s.name == destinationStationName);
+                if (station != null)
+                {
+                    if (station.name != DestinationStation?.name)
+                    {
+                        Logging.Debug("Destination station is " + station.name);
+                        DestinationStation = station;
+                    }
+                }
+            }
+            else
+            {
+                DestinationStation = null;
+            }
+            configuration.DestinationStation = destinationStation;
+            configuration.ToFile();
+        }
+
         public void updateHomeSystemStation(EDDIConfiguration configuration)
         {
             updateHomeSystem(configuration);
@@ -2327,11 +2499,11 @@ namespace Eddi
                 //Ignore null & empty systems
                 if (system != null && system.bodies?.Count > 0)
                 {
-                    if (system.name != HomeStarSystem?.name)
+                    if (system.systemname != HomeStarSystem?.systemname)
                     {
                         HomeStarSystem = system;
-                        Logging.Debug("Home star system is " + HomeStarSystem.name);
-                        configuration.HomeSystem = system.name;
+                        Logging.Debug("Home star system is " + HomeStarSystem.systemname);
+                        configuration.HomeSystem = system.systemname;
                     }
                 }
             }
@@ -2345,7 +2517,6 @@ namespace Eddi
         public EDDIConfiguration updateHomeStation(EDDIConfiguration configuration)
         {
             Logging.Verbose = configuration.Debug;
-            configuration.validHomeStation = false;
             if (HomeStarSystem?.stations != null && configuration.HomeStation != null)
             {
                 string homeStationName = configuration.HomeStation.Trim();
@@ -2355,7 +2526,6 @@ namespace Eddi
                     {
                         HomeStation = station;
                         Logging.Debug("Home station is " + HomeStation.name);
-                        configuration.validHomeStation = true;
                         break;
                     }
                 }
@@ -2366,20 +2536,20 @@ namespace Eddi
         public EDDIConfiguration updateSquadronSystem(EDDIConfiguration configuration)
         {
             Logging.Verbose = configuration.Debug;
-            if (configuration.SquadronSystem != null && configuration.SquadronSystem.Trim().Length > 2)
+            if (configuration.SquadronSystem != null)
             {
                 StarSystem system = StarSystemSqLiteRepository.Instance.GetOrFetchStarSystem(configuration.SquadronSystem.Trim());
 
                 //Ignore null & empty systems
                 if (system != null && system?.bodies.Count > 0)
                 {
-                    if (system.name != SquadronStarSystem?.name)
+                    if (system.systemname != SquadronStarSystem?.systemname)
                     {
                         SquadronStarSystem = system;
                         if (SquadronStarSystem?.factions != null)
                         {
-                            Logging.Debug("Squadron star system is " + SquadronStarSystem.name);
-                            configuration.SquadronSystem = system.name;
+                            Logging.Debug("Squadron star system is " + SquadronStarSystem.systemname);
+                            configuration.SquadronSystem = system.systemname;
                         }
                     }
                 }
@@ -2414,7 +2584,7 @@ namespace Eddi
                 if ((bool)faction.presences.FirstOrDefault(p => p.systemName == systemName)?.squadronhomesystem)
                 {
                     // Update the squadron system data, if changed
-                    string system = CurrentStarSystem.name;
+                    string system = CurrentStarSystem.systemname;
                     if (configuration.SquadronSystem == null || configuration.SquadronSystem != system)
                     {
                         configuration.SquadronSystem = system;

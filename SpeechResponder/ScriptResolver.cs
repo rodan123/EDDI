@@ -6,9 +6,12 @@ using Cottle.Stores;
 using Cottle.Values;
 using Eddi;
 using EddiCargoMonitor;
+using EddiCrimeMonitor;
 using EddiDataDefinitions;
 using EddiDataProviderService;
+using EddiMaterialMonitor;
 using EddiMissionMonitor;
+using EddiNavigationService;
 using EddiShipMonitor;
 using EddiSpeechService;
 using GalnetMonitor;
@@ -167,6 +170,14 @@ namespace EddiSpeechResponder
                 string translation = val;
                 if (translation == val)
                 {
+                    translation = Translations.StellarClass(val);
+                }
+                if (translation == val)
+                {
+                    translation = Translations.PlanetClass(val);
+                }
+                if (translation == val)
+                {
                     translation = Translations.Body(val, useICAO);
                 }
                 if (translation == val)
@@ -200,10 +211,6 @@ namespace EddiSpeechResponder
                     {
                         translation = ship.SpokenModel();
                     }
-                }
-                if (translation == val)
-                {
-                    translation = Translations.StellarClass(val);
                 }
                 return translation;
             }, 1);
@@ -283,7 +290,7 @@ namespace EddiSpeechResponder
                     Sortie = Sortie + c + " ";
                 }
                 UpperSortie = Sortie.ToUpper();
-                return UpperSortie;
+                return UpperSortie.Trim();
 
             }, 1);
 
@@ -379,7 +386,7 @@ namespace EddiSpeechResponder
                 if (Entree == "")
                 { return ""; }
 
-                char[] vowels = { 'a', 'à', 'â', 'ä', 'e', 'ê', 'é', 'è', 'ë', 'i', 'î', 'ï', 'o', 'ô', 'ö', 'u', 'ù', 'û', 'ü', 'œ', 'y' };
+                char[] vowels = { 'a', 'à', 'â', 'ä', 'e', 'ê', 'é', 'è', 'ë', 'i', 'î', 'ï', 'o', 'ô', 'ö', 'u', 'ù', 'û', 'ü', 'œ' };
                 char firstCharacter = Entree.ToLower().ToCharArray().ElementAt(0);
                 Boolean result = vowels.Contains(firstCharacter);
 
@@ -541,6 +548,18 @@ namespace EddiSpeechResponder
                 return (result == null ? new ReflectionValue(new object()) : new ReflectionValue(result));
             }, 1);
 
+            store["JumpDetails"] = new NativeFunction((values) =>
+            {
+                ShipMonitor.JumpDetail result = new ShipMonitor.JumpDetail();
+                string value = values[0].AsString;
+                if (string.IsNullOrEmpty(value))
+                {
+                    return null;
+                }
+                result = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship monitor"))?.JumpDetails(value);
+                return (result == null ? new ReflectionValue(new object()) : new ReflectionValue(result));
+            }, 1);
+
             store["CombatRatingDetails"] = new NativeFunction((values) =>
             {
                 CombatRating result = CombatRating.FromName(values[0].AsString);
@@ -598,7 +617,7 @@ namespace EddiSpeechResponder
                 {
                     result = EDDI.Instance.CurrentStarSystem;
                 }
-                else if (values[0]?.AsString?.ToLowerInvariant() == EDDI.Instance.CurrentStarSystem?.name?.ToLowerInvariant())
+                else if (values[0]?.AsString?.ToLowerInvariant() == EDDI.Instance.CurrentStarSystem?.systemname?.ToLowerInvariant())
                 {
                     result = EDDI.Instance.CurrentStarSystem;
                 }
@@ -617,7 +636,7 @@ namespace EddiSpeechResponder
                 {
                     system = EDDI.Instance.CurrentStarSystem;
                 }
-                else if (values.Count == 1 || string.IsNullOrEmpty(values[1].AsString) || values[1]?.AsString?.ToLowerInvariant() == EDDI.Instance.CurrentStarSystem?.name?.ToLowerInvariant())
+                else if (values.Count == 1 || string.IsNullOrEmpty(values[1].AsString) || values[1]?.AsString?.ToLowerInvariant() == EDDI.Instance.CurrentStarSystem?.systemname?.ToLowerInvariant())
                 {
                     system = EDDI.Instance.CurrentStarSystem;
                 }
@@ -626,12 +645,7 @@ namespace EddiSpeechResponder
                     // Named system
                     system = StarSystemSqLiteRepository.Instance.GetOrCreateStarSystem(values[1].AsString, true);
                 }
-                Body result = system?.bodies?.Find(v => v.name?.ToLowerInvariant() == values[0].AsString?.ToLowerInvariant());
-                if (result != null && result.Type.invariantName == "Star" && result.chromaticity == null)
-                {
-                    // Need to set our internal extras for the star
-                    result.setStellarExtras();
-                }
+                Body result = system?.bodies?.Find(v => v.bodyname?.ToLowerInvariant() == values[0].AsString?.ToLowerInvariant());
                 return (result == null ? new ReflectionValue(new object()) : new ReflectionValue(result));
             }, 1, 2);
 
@@ -646,6 +660,9 @@ namespace EddiSpeechResponder
 
             store["RouteDetails"] = new NativeFunction((values) =>
             {
+                CrimeMonitor crimeMonitor = (CrimeMonitor)EDDI.Instance.ObtainMonitor("Crime monitor");
+                MaterialMonitor materialMonitor = (MaterialMonitor)EDDI.Instance.ObtainMonitor("Material monitor");
+                int materialMonitorDistance = materialMonitor.maxStationDistanceFromStarLs ?? Constants.maxStationDistanceDefault;
                 string result = null;
                 string value = values[0].AsString;
                 if (value == null || value == "")
@@ -656,67 +673,99 @@ namespace EddiSpeechResponder
                 {
                     case "cancel":
                         {
-                            ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor"))?.CancelRoute();
+                            Navigation.Instance.CancelRoute();
+                        }
+                        break;
+                    case "encoded":
+                        {
+                            result = Navigation.Instance.GetServiceRoute("encoded", materialMonitorDistance);
                         }
                         break;
                     case "expiring":
                         {
-                            result = ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor"))?.GetExpiringRoute();
+                            result = Navigation.Instance.GetExpiringRoute();
+                        }
+                        break;
+                    case "facilitator":
+                        {
+                            int distance = crimeMonitor.maxStationDistanceFromStarLs ?? 10000;
+                            bool isChecked = crimeMonitor.prioritizeOrbitalStations;
+                            result = Navigation.Instance.GetServiceRoute("facilitator", distance, isChecked);
                         }
                         break;
                     case "farthest":
                         {
-                            result = ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor"))?.GetFarthestRoute();
+                            result = Navigation.Instance.GetFarthestRoute();
+                        }
+                        break;
+                    case "guardian":
+                        {
+                            result = Navigation.Instance.GetServiceRoute("guardian", materialMonitorDistance);
+                        }
+                        break;
+                    case "human":
+                        {
+                            result = Navigation.Instance.GetServiceRoute("human", materialMonitorDistance);
+                        }
+                        break;
+                    case "manufactured":
+                        {
+                            result = Navigation.Instance.GetServiceRoute("manufactured", materialMonitorDistance);
                         }
                         break;
                     case "most":
                         {
                             if (values.Count == 2)
                             {
-                                result = ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor"))?.GetMostRoute(values[1].AsString);
+                                result = Navigation.Instance.GetMostRoute(values[1].AsString);
                             }
                             else
                             {
-                                result = ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor"))?.GetMostRoute();
+                                result = Navigation.Instance.GetMostRoute();
                             }
                         }
                         break;
                     case "nearest":
                         {
-                            result = ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor"))?.GetNearestRoute();
+                            result = Navigation.Instance.GetNearestRoute();
                         }
                         break;
                     case "next":
                         {
-                            result = ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor"))?.SetNextRoute();
+                            result = Navigation.Instance.SetNextRoute();
+                        }
+                        break;
+                    case "raw":
+                        {
+                            result = Navigation.Instance.GetServiceRoute("raw", materialMonitorDistance);
                         }
                         break;
                     case "route":
                         {
                             if (values.Count == 2)
                             {
-                                result = ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor"))?.GetMissionsRoute(values[1].AsString);
+                                result = Navigation.Instance.GetMissionsRoute(values[1].AsString);
                             }
                             else
                             {
-                                result = ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor"))?.GetMissionsRoute();
+                                result = Navigation.Instance.GetMissionsRoute();
                             }
                         }
                         break;
                     case "set":
                         {
-                            result = ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor"))?.SetRoute(values[1].AsString);
+                            result = Navigation.Instance.SetRoute(values[1].AsString);
                         }
                         break;
                     case "source":
                         {
                             if (values.Count == 2)
                             {
-                                result = ((CargoMonitor)EDDI.Instance.ObtainMonitor("Cargo monitor"))?.GetSourceRoute(values[1].AsString);
+                                result = Navigation.Instance.GetSourceRoute(values[1].AsString);
                             }
                             else
                             {
-                                result = ((CargoMonitor)EDDI.Instance.ObtainMonitor("Cargo monitor"))?.GetSourceRoute();
+                                result = Navigation.Instance.GetSourceRoute();
                             }
                         }
                         break;
@@ -724,16 +773,16 @@ namespace EddiSpeechResponder
                         {
                             if (values.Count == 2)
                             {
-                                result = ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor"))?.UpdateMissionsRoute(values[1].AsString);
+                                result = Navigation.Instance.UpdateRoute(values[1].AsString);
                             }
                             else
                             {
-                                result = ((MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor"))?.UpdateMissionsRoute();
+                                result = Navigation.Instance.UpdateRoute();
                             }
                         }
                         break;
                 }
-                return (result == null ? new ReflectionValue(new object()) : new ReflectionValue(result));
+                return result == null ? new ReflectionValue(new object()) : new ReflectionValue(result);
             }, 1, 2);
 
             store["StationDetails"] = new NativeFunction((values) =>
@@ -750,7 +799,7 @@ namespace EddiSpeechResponder
                 else
                 {
                     StarSystem system;
-                    if (values.Count == 1 || values[1]?.AsString?.ToLowerInvariant() == EDDI.Instance.CurrentStarSystem?.name?.ToLowerInvariant())
+                    if (values.Count == 1 || values[1]?.AsString?.ToLowerInvariant() == EDDI.Instance.CurrentStarSystem?.systemname?.ToLowerInvariant())
                     {
                         // Current system
                         system = EDDI.Instance.CurrentStarSystem;
@@ -841,18 +890,19 @@ namespace EddiSpeechResponder
 
             store["MaterialDetails"] = new NativeFunction((values) =>
             {
-                if (string.IsNullOrEmpty(values[0].AsString))
-                {
-                    return new ReflectionValue(new object());
-                }
-
                 Material result = Material.FromName(values[0].AsString);
-                if (result == null)
+                if (result.edname != null && values.Count == 2)
                 {
-                    result = Material.FromName(values[0].AsString);
+                    StarSystem starSystem = StarSystemSqLiteRepository.Instance.GetOrCreateStarSystem(values[1].AsString, true);
+                    if (starSystem != null)
+                    {
+                        Body body = Material.highestPercentBody(result.edname, starSystem.bodies);
+                        result.bodyname = body.bodyname;
+                        result.bodyshortname = body.shortname;
+                    }
                 }
                 return (result == null ? new ReflectionValue(new object()) : new ReflectionValue(result));
-            }, 1);
+            }, 1, 2);
 
             store["CommodityMarketDetails"] = new NativeFunction((values) =>
             {
@@ -889,6 +939,7 @@ namespace EddiSpeechResponder
 
             store["CargoDetails"] = new NativeFunction((values) =>
             {
+                CargoMonitor cargoMonitor = (CargoMonitor)EDDI.Instance.ObtainMonitor("Cargo monitor");
                 Cottle.Value value = values[0];
                 Cargo result = null;
                 string edname = string.Empty;
@@ -896,11 +947,11 @@ namespace EddiSpeechResponder
                 if (value.Type == Cottle.ValueContent.String)
                 {
                     edname = CommodityDefinition.FromNameOrEDName(value.AsString).edname;
-                    result = ((CargoMonitor)EDDI.Instance.ObtainMonitor("Cargo monitor"))?.GetCargoWithEDName(edname);
+                    result = cargoMonitor?.GetCargoWithEDName(edname);
                 }
                 else if (value.Type == Cottle.ValueContent.Number)
                 {
-                    result = ((CargoMonitor)EDDI.Instance.ObtainMonitor("Cargo monitor"))?.GetCargoWithMissionId((long)value.AsNumber);
+                    result = cargoMonitor?.GetCargoWithMissionId((long)value.AsNumber);
                 }
                 return (result == null ? new ReflectionValue(new object()) : new ReflectionValue(result));
             }, 1);
@@ -917,6 +968,35 @@ namespace EddiSpeechResponder
                 BlueprintMaterials result = BlueprintMaterials.FromName(values[0].AsString);
                 return (result == null ? new ReflectionValue(new object()) : new ReflectionValue(result));
             }, 1);
+
+            store["TrafficDetails"] = new NativeFunction((values) =>
+            {
+                Traffic result = null;
+                string systemName = values[0].AsString;
+                if (!string.IsNullOrEmpty(systemName))
+                {
+                    if (values.Count == 2)
+                    {
+                        if (values[1].AsString == "traffic")
+                        {
+                            result = DataProviderService.GetSystemTraffic(systemName);
+                        }
+                        if (values[1].AsString == "deaths")
+                        {
+                            result = DataProviderService.GetSystemDeaths(systemName);
+                        }
+                        else if (values[1].AsString == "hostility")
+                        {
+                            result = DataProviderService.GetSystemHostility(systemName);
+                        }
+                    }
+                    if (result == null)
+                    {
+                        result = DataProviderService.GetSystemTraffic(systemName);
+                    }
+                }
+                return (result == null ? new ReflectionValue(new object()) : new ReflectionValue(result));
+            }, 1, 2);
 
             store["GalnetNewsArticle"] = new NativeFunction((values) =>
             {
