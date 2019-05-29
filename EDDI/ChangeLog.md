@@ -2,16 +2,148 @@
 
 Full details of the variables available for each noted event, and VoiceAttack integrations, are available in the individual [event pages](https://github.com/EDCD/EDDI/wiki/Events).
 
+### 3.4.1-b1
+  * Core
+    * All 'Location' events are now processed (repeats of this event are no longer suppressed).
+    * Added `Docked` and `Landed` Environment states. Note that the `Environment` variable follows the ship and `Vehicle` variable follows the commander.
+    * Added `destinationsystem` (similar to `system`), `destinationstation` (similar to `station`), and `destinationdistance` variables 
+    * Revised `body` object definition returned by the `BodyDetails()` function and revised `Body scanned` and `Star scanned` event values for better interchangeability of object properties with `Body scanned` and `Star scanned` events.
+      * WAS: `name`*, IS: `bodyname` 
+      * WAS: `type`*, IS: `bodytype`
+        * Expanded `bodytype` values to separate `Planet` and `Moon` body types
+      * WAS: `atmospherecomposition`, IS: `atmospherecompositions` (planets and moons only)
+      * WAS: `axialtilt`*, IS: `tilt`
+      * WAS: `bodyclass`*, IS: `planettype` (planets and moons only)
+      * WAS: `distancefromarrival`*, IS: `distance`
+      * WAS `orbitalinclination`*, IS `inclination`
+      * WAS `rotationperiod`*, IS: `rotationalperiod`
+      * WAS: `solidcomposition`, IS: `solidcompositions` (planets and moons only)
+      * Added `stellarsubclass` (stars only)
+      * Added `density`
+      * Added `scanned`
+      * Added `mapped`
+      * Added `alreadydiscovered` (true if another commander has already submitted a scan of that body to Universal Cartographics)
+      * Added `alreadymapped` (true if another commander has already submitted mapping details of that body to Universal Cartographics)
+      * Added `estimatedvalue` (this was previously only available from the event variables)
+      * Added `massprobability`
+      * Added `radiusprobability`
+      * Added `tempprobability`
+      * Added `orbitalperiodprobability`
+      * Added `semimajoraxisprobability`
+      * Added `eccentricityprobability`
+      * Added `inclinationprobability`
+      * Added `periapsisprobability`
+      * Added `rotationalperiodprobability`
+      * Added `tiltprobability`
+      * Added `densityprobability`
+      * Added `ageprobability` (stars only)
+      * Added `absolutemagnitudeprobability` (stars only)
+      * Added `gravityprobability` (planets and moons only)
+      * Added `pressureprobability` planets and moons only)
+    * Revised `system` object definition
+      * Added `isgreen`, true if bodies in this starsystem contain all elements required for FSD synthesis
+      * Added `isgold`, true if bodies in this starsystem contain all elements available from surface prospecting
+      * Added `estimatedvalue`, the estimated exploration value of the starsystem (includes bonuses for fully scanning and mapping)
+    * Updated estimated scanning and mapping value calculations.
+  * Crime Monitor
+    * New monitor tracks all bond & bounty awards and fines & bounties incurred.
+	* Monitor attempts to determine the minor faction's 'home system' via its name, but defaults to system presence with highest influence.
+	* Minor faction's 'home system' may be manually entered and is archived for future use.
+    * 'Add Record' button allows manual addition of claims, fines & bounties.
+    * 'Find Legal Facilities' button allows standalone users to locate the nearest 'Legal Facilities' contact. 
+    * New `FactionRecord` and `FactionReport` properties, available via Cottle scripting. See the `Variables` window for details.
+    * Tracks all ships you have targeted within the current system. Data available in `shiptargets` as a list of `Target` properties.
+  * Galnet monitor
+    * Fixed a bug causing the Galnet monitor to occasionally reset the read status of articles.
+  * Material Monitor
+    * Added 'Find' buttons for the nearest `encoded`, `manufactured` & `raw`  Materials Traders and `guardian` & `human` Technology Brokers.
+  * Mission Monitor
+    * Added 'Find Route', 'Next Route', 'Update Route', and 'Clear Route' buttons to give standalone users access to missions routing functionality.
+  * Navigation Service
+    * Consolidated all `RouteDetails()` functionality.
+	* Added `facilitator` route type to `RouteDetails()`, which finds and sets the `Destination` properties to the nearest 'Legal Facilities' contact.
+	* Added `encoded`, `manufactured` & `raw` to `RouteDetails()`, which finds and sets the `Destination` properties to the nearest Materials Trader.
+	* Added `guardian` & `human` to `RouteDetails()`, which finds and sets the `Destination` properties to the nearest Technology Broker.
+    * Destination system, distance & station data populated & maintained by `RouteDetails()`. Distance re-calculated after each jump.
+    * The `missionsRouteList` & `missionsRouteDistance` properties simplified to `RouteList` & `RouteDistance`, respectively.
+  * Ship Monitor
+    * 3.4 Update `Loadout`journal event additions `unladenmass` and `maxjumprange` included in the `Ship` object.
+    * FSD `optimalmass` retrieved from engineering data and used to calculate `maxfuelperjump` property.
+  * Speech responder
+    * The `Humanise()` function now supports negative numbers.
+    * The `MaterialDetails()` function has been revised to optionally recommend the body with highest concentration of a material, given a material name and star system name.
+    * The `P()` function now converts roman numerals in planet classes (e.g. Class II gas giant) into numbers (e.g. Class 2 gas giant) to ensure proper pronunciation.
+    * The `P()` function has been revised to correct mispronunciations of body names ending in "a" or "g"
+    * The `Spacialise()` function no longer adds an extra space at the end of the string.
+    * Added `JumpDetails()` Cottle function call to provide useful jump infomation based on ship loadout and fuel level. See `Help` & `Variables` windows for details.
+    * Added `TrafficDetails()` Cottle function call to provide information on traffic, deaths, and hostilities in a star system. See `Help` & `Variables` windows for details.
+    * Added `unladenmass` and `maxjumprange` properties to the `Loadout` event handler.
+    * Added `distancefromstar` property to the `Location` event.
+    * Added vehicle ID for SLF/SRV related events.
+    * Added `Crime check system` script to report wanted status and 'legal facilities', upon entering the system.
+    * Added `Crime check station` script to report 'legal facilities', upon entering normal space, next to station.
+    * Added `Bodies mapped` script to allow reporting which bodies in the system have already been mapped.
+    * Added `Bodies to map` script to allow reporting recommendations of bodies to map (configurable in the script).
+    * Added `Body report summary` script to allow reporting of summary body data, taking into account statistically unusual bodies.
+    * Revised `Entered normal space`, `Glide`, `Location`, and `Near surface` event variables for better interchangeability with the `BodyDetails` function.
+      * WAS: `body`*, IS: `bodyname` 
+      * WAS: `system`*, IS: `systemname`
+    * Revised `Approached settlement` event to include the `bodyname` of the settlement. 
+    * `Star scanned` script revised. Preference added for reporting stellar class. Corrected edit scars. Refactored to reduce redundancies. 
+    * `Body volcanism script` revised. Corrected edit scars and added a little more variety to the script.
+    * Revised `Exploration data sold` event and revised script.
+      * Added variable `total`, describing the total credits received (after any wages paid to crew and including for example the 200% bonus if rank 5 with Li Yong Rui)
+      * Removed variable `firsts` (it is no longer supported by post 3.3 batch selling of exploration data).
+    * Revised `Discovery scan` script to report the number of bodies remaining to be scanned while your ship's role is either `exploration` or `multipurpose`.
+    * Revised `Star report` script to incorporate new variables documented above.
+    * Revised `System scan complete` script to recommend bodies for mapping (using the new `Bodies to map` script) and to identify `green` and `gold` system discoveries while your ship's role is either `exploration` or `multipurpose`
+    * Revised `Body atmosphere report` for better handling of Earth-like worlds.
+    * Revised `Body mapped` script. By default, the full `Body report` script is now given after this event completes rather than after `Body scanned`. Optionally recommends other bodies in the system for mapping.
+    * Revised `Body materials report` script to optionally report material percent concentrations.
+    * Revised `Body report` script to correct some errors identified by users (terraformable bodies will now be reported as such).
+    * Revised `Body scanned` script to include option to use `Body report summary` script.
+    * Revised `Body volcanism report` to touch it up.
+    * Revised `Signal detected` script to allow users to better customize signal detection (particularly for rare signal types).
+    * Variables from the following scripts have been revised to add new variables and improve consistency between events.
+      * `Glide` event (body => bodyname, system => systemname)
+      * `Location` event (body => bodyname, system => systemname)
+      * `Near surface` event (body => bodyname, system => systemname)
+    * Revised `Jumped` script to provide a (reasonably) accurate jump range, based on total ship mass.
+    * Revised `Route details` script to handle new `encoded`, guardian`, `human`, `manufactured` and `raw` route queries.
+    * Revised `Ship targeted` script to utilize new `shiptargets` object to preclude reporting on previously scanned ships.
+    * `Signal detected` events are no longer suppressed outside of fss mode.
+  * Status monitor
+    - Added `legalstatus`, the ship's current legal status. Can be one of 
+      - "Clean", 
+      - "Illegal cargo", 
+      - "Speeding", 
+      - "Wanted", 
+      - "Hostile", 
+      - "Passenger wanted", or 
+      - "Warrant"
+    - Added `bodyname`, the name of the current body (if landed or in an srv)
+    - Added `planetradius`, the radius of the current body (if landed or in an srv)
+    - Added `altitude_from_average_radius`, true if the altitude is computed relative to the average radius (which is used at higher altitudes) rather than surface directly below the srv
+  * Voice Attack
+    * Added `Destination system`, `Destination system distance`, and `Destination station` properties.
+    * Added `{TXT:Status legal status}`
+    * Added `{TXT:Status body name}`
+    * Added `{DEC:Status planet radius}`
+    * Added `{BOOL:Status altitude from average radius}`
+    * Added `jumpdetails` plugin invocation to provide useful jump infomation based on ship loadout and fuel level.
+
+    \* For noted properties, old property names are preserved for legacy script compatibility
+
 ### 3.4
   * Core
     * Added localised names for the Advanced Docking Computer and Supercruise Assist modules.
-  * GalNet monitor
+  * Galnet monitor
     * Restored multi-lingual access.
     * No longer loses its place if a web request times out or fails.
   * Speech responder
-    * Add event `Discovery scan`, triggered when you "honk" the discovery scanner
-    * Add new function `GetFaction()` to obtain details about a faction.
-    * Revised faction object to allow reporting faction data spanning multiple star systems
+    * Added event `System scan complete`, triggered when all bodies in the star system have been discovered.
+    * Added new function `GetFaction()` to obtain details about a faction.
+    * Revised faction object to allow reporting faction data spanning multiple star systems.
   * Voice Attack
     * Fixed a bug that would incorrectly disable invoked speech while `disablespeechresponder` was set.
 

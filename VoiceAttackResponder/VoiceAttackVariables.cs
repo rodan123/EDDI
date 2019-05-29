@@ -23,12 +23,15 @@ namespace EddiVoiceAttackResponder
         private static StarSystem HomeStarSystem { get; set; } = new StarSystem();
         private static StarSystem LastStarSystem { get; set; } = new StarSystem();
         private static StarSystem NextStarSystem { get; set; } = new StarSystem();
+        private static StarSystem DestinationStarSystem { get; set; } = new StarSystem();
         private static StarSystem SquadronStarSystem { get; set; } = new StarSystem();
         private static Body CurrentStellarBody { get; set; } = new Body();
         private static Station CurrentStation { get; set; } = new Station();
         private static Station HomeStation { get; set; } = new Station();
+        private static Station DestinationStation { get; set; } = new Station();
         private static Commander Commander { get; set; } = new Commander();
         private static List<Ship> vaShipyard { get; set; } = new List<Ship>();
+        private static decimal DestinationDistanceLy { get; set; }
 
         public static void setEventValues(dynamic vaProxy, Event theEvent, List<string> setKeys)
         {
@@ -277,6 +280,44 @@ namespace EddiVoiceAttackResponder
 
             try
             {
+                if (EDDI.Instance.DestinationStarSystem != DestinationStarSystem)
+                {
+                    setStarSystemValues(EDDI.Instance.DestinationStarSystem, "Destination system", ref vaProxy);
+                    DestinationStarSystem = EDDI.Instance.DestinationStarSystem;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logging.Error("Failed to set destination system", ex);
+            }
+
+            try
+            {
+                if (EDDI.Instance.DestinationDistanceLy != DestinationDistanceLy)
+                {
+                    vaProxy.SetDecimal("Destination system distance", EDDI.Instance.DestinationDistanceLy);
+                    DestinationDistanceLy = EDDI.Instance.DestinationDistanceLy;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logging.Error("Failed to set destination distance", ex);
+            }
+
+            try
+            {
+                if (EDDI.Instance.DestinationStation != DestinationStation)
+                {
+                    setStationValues(EDDI.Instance.DestinationStation, "Destination station", ref vaProxy);
+                    DestinationStation = EDDI.Instance.DestinationStation;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logging.Error("Failed to set destination station", ex);
+            }
+            try
+            {
                 if (EDDI.Instance.SquadronStarSystem != SquadronStarSystem)
                 {
                     setStarSystemValues(EDDI.Instance.SquadronStarSystem, "Squadron system", ref vaProxy);
@@ -300,8 +341,8 @@ namespace EddiVoiceAttackResponder
                     {
                         if (EDDI.Instance.HomeStarSystem != null)
                         {
-                            vaProxy.SetText("Home system", EDDI.Instance.HomeStarSystem.name);
-                            vaProxy.SetText("Home system (spoken)", Translations.StarSystem(EDDI.Instance.HomeStarSystem.name));
+                            vaProxy.SetText("Home system", EDDI.Instance.HomeStarSystem.systemname);
+                            vaProxy.SetText("Home system (spoken)", Translations.StarSystem(EDDI.Instance.HomeStarSystem.systemname));
                         }
                         if (EDDI.Instance.HomeStation != null)
                         {
@@ -719,15 +760,11 @@ namespace EddiVoiceAttackResponder
 
         private static void setStarSystemValues(StarSystem system, string prefix, ref dynamic vaProxy)
         {
-            if (system == null)
-            {
-                return;
-            }
             Logging.Debug("Setting system information (" + prefix + ")");
             try
             {
-                vaProxy.SetText(prefix + " name", system?.name);
-                vaProxy.SetText(prefix + " name (spoken)", Translations.StarSystem(system?.name));
+                vaProxy.SetText(prefix + " name", system?.systemname);
+                vaProxy.SetText(prefix + " name (spoken)", Translations.StarSystem(system?.systemname));
                 vaProxy.SetDecimal(prefix + " population", system?.population);
                 vaProxy.SetText(prefix + " population (spoken)", Translations.Humanize(system?.population));
                 vaProxy.SetText(prefix + " allegiance", (system?.Faction?.Allegiance ?? Superpower.None).localizedName);
@@ -735,7 +772,7 @@ namespace EddiVoiceAttackResponder
                 vaProxy.SetText(prefix + " faction", system?.Faction?.name);
                 vaProxy.SetText(prefix + " primary economy", system?.primaryeconomy);
                 vaProxy.SetText(prefix + " state", (system?.Faction?.presences
-                    .FirstOrDefault(p => p.systemName == system.name)?.FactionState ?? FactionState.None).localizedName);
+                    .FirstOrDefault(p => p.systemName == system.systemname)?.FactionState ?? FactionState.None).localizedName);
                 vaProxy.SetText(prefix + " security", system?.security);
                 vaProxy.SetText(prefix + " power", system?.power);
                 vaProxy.SetText(prefix + " power (spoken)", Translations.Power(EDDI.Instance.CurrentStarSystem?.power));
@@ -783,7 +820,7 @@ namespace EddiVoiceAttackResponder
         private static void setBodyValues(Body body, string prefix, dynamic vaProxy)
         {
             Logging.Debug("Setting body information (" + prefix + ")");
-            vaProxy.SetText(prefix + " stellar class", body?.stellarclass);
+            if (body?.bodyType?.invariantName == "Star") { vaProxy.SetText(prefix + " stellar class", body?.stellarclass); }
             if (body?.age == null)
             {
                 vaProxy.SetDecimal(prefix + " age", null);
@@ -799,8 +836,8 @@ namespace EddiVoiceAttackResponder
         {
             Logging.Debug("Setting current stellar body information");
             vaProxy.SetDecimal(prefix + " EDDB id", body?.EDDBID);
-            vaProxy.SetText(prefix + " type", (body?.Type ?? BodyType.None).localizedName);
-            vaProxy.SetText(prefix + " name", body?.name);
+            vaProxy.SetText(prefix + " type", (body?.bodyType ?? BodyType.None).localizedName);
+            vaProxy.SetText(prefix + " name", body?.bodyname);
             vaProxy.SetText(prefix + " short name", body?.shortname);
             vaProxy.SetText(prefix + " system name", body?.systemname);
             if (body?.age == null)
@@ -812,38 +849,45 @@ namespace EddiVoiceAttackResponder
                 vaProxy.SetDecimal(prefix + " age", (decimal)(long)body.age);
             }
             vaProxy.SetDecimal(prefix + " distance", body?.distance);
-            vaProxy.SetBoolean(prefix + " landable", body?.landable);
-            vaProxy.SetBoolean(prefix + " tidally locked", body?.tidallylocked);
             vaProxy.SetDecimal(prefix + " temperature", body?.temperature);
-            // Star specific items 
-            vaProxy.SetBoolean(prefix + " main star", body?.mainstar);
-            vaProxy.SetText(prefix + " stellar class", body?.stellarclass);
-            vaProxy.SetText(prefix + " luminosity class", body?.luminosityclass);
-            vaProxy.SetDecimal(prefix + " solar mass", body?.solarmass);
-            vaProxy.SetDecimal(prefix + " solar radius", body?.solarradius);
-            vaProxy.SetText(prefix + " chromaticity", body?.chromaticity);
-            vaProxy.SetDecimal(prefix + " radius probability", body?.radiusprobability);
-            vaProxy.SetDecimal(prefix + " mass probability", body?.massprobability);
-            vaProxy.SetDecimal(prefix + " temp probability", body?.tempprobability);
-            vaProxy.SetDecimal(prefix + " age probability", body?.ageprobability);
-            vaProxy.SetDecimal(prefix + " estimated inner hab zone", body?.estimatedhabzoneinner);
-            vaProxy.SetDecimal(prefix + " estimated outer hab zone", body?.estimatedhabzoneouter);
-            // Body specific items 
-            vaProxy.SetDecimal(prefix + " periapsis", body?.periapsis);
-            vaProxy.SetText(prefix + " atmosphere", (body?.atmosphereclass ?? AtmosphereClass.None).localizedName);
-            vaProxy.SetDecimal(prefix + " tilt", body?.tilt);
-            vaProxy.SetDecimal(prefix + " earth mass", body?.earthmass);
-            vaProxy.SetDecimal(prefix + " gravity", body?.gravity);
+            // Orbital characteristics
             vaProxy.SetDecimal(prefix + " eccentricity", body?.eccentricity);
             vaProxy.SetDecimal(prefix + " inclination", body?.inclination);
             vaProxy.SetDecimal(prefix + " orbital period", body?.orbitalperiod);
             vaProxy.SetDecimal(prefix + " radius", body?.radius);
             vaProxy.SetDecimal(prefix + " rotational period", body?.rotationalperiod);
             vaProxy.SetDecimal(prefix + " semi major axis", body?.semimajoraxis);
-            vaProxy.SetDecimal(prefix + " pressure", body?.pressure);
-            vaProxy.SetText(prefix + " terraform state", (body?.terraformState ?? TerraformState.NotTerraformable).localizedName);
-            vaProxy.SetText(prefix + " planet type", (body?.planetClass ?? PlanetClass.None).localizedName);
-            vaProxy.SetText(prefix + " reserves", (body?.reserveLevel ?? ReserveLevel.None).localizedName);
+            // Star specific items 
+            if (body?.bodyType?.invariantName == "Star")
+            {
+                vaProxy.SetBoolean(prefix + " main star", body?.mainstar);
+                vaProxy.SetText(prefix + " stellar class", body?.stellarclass);
+                vaProxy.SetText(prefix + " luminosity class", body?.luminosityclass);
+                vaProxy.SetDecimal(prefix + " solar mass", body?.solarmass);
+                vaProxy.SetDecimal(prefix + " solar radius", body?.solarradius);
+                vaProxy.SetText(prefix + " chromaticity", body?.chromaticity);
+                vaProxy.SetDecimal(prefix + " radius probability", body?.radiusprobability);
+                vaProxy.SetDecimal(prefix + " mass probability", body?.massprobability);
+                vaProxy.SetDecimal(prefix + " temp probability", body?.tempprobability);
+                vaProxy.SetDecimal(prefix + " age probability", body?.ageprobability);
+                vaProxy.SetDecimal(prefix + " estimated inner hab zone", body?.estimatedhabzoneinner);
+                vaProxy.SetDecimal(prefix + " estimated outer hab zone", body?.estimatedhabzoneouter);
+            }
+            // Body specific items 
+            if (body?.bodyType?.invariantName == "Planet")
+            {
+                vaProxy.SetDecimal(prefix + " periapsis", body?.periapsis);
+                vaProxy.SetText(prefix + " atmosphere", (body?.atmosphereclass ?? AtmosphereClass.None).localizedName);
+                vaProxy.SetDecimal(prefix + " tilt", body?.tilt);
+                vaProxy.SetDecimal(prefix + " earth mass", body?.earthmass);
+                vaProxy.SetDecimal(prefix + " gravity", body?.gravity);
+                vaProxy.SetDecimal(prefix + " pressure", body?.pressure);
+                vaProxy.SetText(prefix + " terraform state", (body?.terraformState ?? TerraformState.NotTerraformable).localizedName);
+                vaProxy.SetText(prefix + " planet type", (body?.planetClass ?? PlanetClass.None).localizedName);
+                vaProxy.SetText(prefix + " reserves", (body?.reserveLevel ?? ReserveLevel.None).localizedName);
+                vaProxy.SetBoolean(prefix + " landable", body?.landable);
+                vaProxy.SetBoolean(prefix + " tidally locked", body?.tidallylocked);
+            }
 
             Logging.Debug("Set body information (" + prefix + ")");
         }
@@ -919,6 +963,10 @@ namespace EddiVoiceAttackResponder
                 vaProxy.SetDecimal(prefix + " fuel percent", status?.fuel_percent);
                 vaProxy.SetInt(prefix + " fuel rate", status?.fuel_seconds);
                 vaProxy.SetInt(prefix + " cargo carried", status?.cargo_carried);
+                vaProxy.SetText(prefix + " legal status", status?.legalstatus);
+                vaProxy.SetText(prefix + " body name", status?.bodyname);
+                vaProxy.SetDecimal(prefix + " planet radius", status?.planetradius);
+                vaProxy.SetBoolean(prefix + " altitude from average radius", status?.altitude_from_average_radius);
             }
             catch (Exception e)
             {

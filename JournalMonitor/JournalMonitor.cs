@@ -3,6 +3,7 @@ using EddiDataDefinitions;
 using EddiDataProviderService;
 using EddiEvents;
 using EddiCargoMonitor;
+using EddiCrimeMonitor;
 using EddiMissionMonitor;
 using EddiShipMonitor;
 using Newtonsoft.Json;
@@ -37,6 +38,19 @@ namespace EddiJournalMonitor
             List<Event> events = ParseJournalEntry(line, isLogLoadEvent);
             foreach (Event @event in events)
             {
+                // The DiscoveryScanEvent and SystemScanComplete events may be written before all applicable scans have been queued.
+                // We will wait a short period of time after these events take place so that all scans generated in tandem 
+                // with these events are enqueued before these events are enqueued.
+                if ((@event is DiscoveryScanEvent || @event is SystemScanComplete) && !@event.fromLoad)
+                {
+                    Task.Run(async () =>
+                    {
+                        await Task.Delay(1500);
+                        callback(@event);
+                    });
+                    continue;
+                }
+
                 callback(@event);
             }
         }
@@ -178,8 +192,9 @@ namespace EddiJournalMonitor
                                     string system = JsonParsing.getString(data, "StarSystem");
                                     long systemAddress = JsonParsing.getLong(data, "SystemAddress");
                                     string body = JsonParsing.getString(data, "Body");
+                                    long? bodyId = JsonParsing.getOptionalLong(data, "BodyID");
                                     BodyType bodyType = BodyType.FromEDName(JsonParsing.getString(data, "BodyType") ?? "None");
-                                    events.Add(new EnteredNormalSpaceEvent(timestamp, system, systemAddress, body, bodyType) { raw = line, fromLoad = fromLogLoad });
+                                    events.Add(new EnteredNormalSpaceEvent(timestamp, system, systemAddress, body, bodyId, bodyType) { raw = line, fromLoad = fromLogLoad });
                                 }
                                 handled = true;
                                 break;
@@ -213,11 +228,10 @@ namespace EddiJournalMonitor
 
                                     // Calculate remaining distance to route destination (if it exists)
                                     decimal destDistance = 0;
-                                    MissionMonitor missionMonitor = (MissionMonitor)EDDI.Instance.ObtainMonitor("Mission monitor");
-                                    string destination = missionMonitor?.GetNextSystem();
+                                    string destination = EDDI.Instance.DestinationStarSystem?.systemname;
                                     if (!string.IsNullOrEmpty(destination))
                                     {
-                                        destDistance = missionMonitor.CalculateDistance(systemName, destination);
+                                        destDistance = EDDI.Instance.getSystemDistanceFromDestination(systemName);
                                     }
 
                                     events.Add(new JumpedEvent(timestamp, systemName, systemAddress, x, y, z, starName, distance, fuelUsed, fuelRemaining, boostUsed, controllingfaction, factions, economy, economy2, security, population, destination, destDistance) { raw = line, fromLoad = fromLogLoad });
@@ -240,8 +254,10 @@ namespace EddiJournalMonitor
                                     decimal y = Math.Round(JsonParsing.getDecimal("Y", starPos[1]) * 32) / (decimal)32.0;
                                     decimal z = Math.Round(JsonParsing.getDecimal("Z", starPos[2]) * 32) / (decimal)32.0;
                                     long systemAddress = JsonParsing.getLong(data, "SystemAddress");
+                                    decimal? distFromStarLs = JsonParsing.getOptionalDecimal(data, "DistFromStarLS");
 
                                     string body = JsonParsing.getString(data, "Body");
+                                    long? bodyId = JsonParsing.getOptionalLong(data, "BodyID");
                                     BodyType bodyType = BodyType.FromEDName(JsonParsing.getString(data, "BodyType"));
                                     bool docked = JsonParsing.getBool(data, "Docked");
                                     Faction systemfaction = getFaction(data, "System", systemName);
@@ -268,7 +284,7 @@ namespace EddiJournalMonitor
                                         factions = getFactions(factionsVal, systemName);
                                     }
 
-                                    events.Add(new LocationEvent(timestamp, systemName, x, y, z, systemAddress, body, bodyType, docked, station, stationtype, marketId, systemfaction, stationfaction, economy, economy2, security, population, longitude, latitude, factions) { raw = line, fromLoad = fromLogLoad });
+                                    events.Add(new LocationEvent(timestamp, systemName, x, y, z, systemAddress, distFromStarLs, body, bodyId, bodyType, docked, station, stationtype, marketId, systemfaction, stationfaction, economy, economy2, security, population, longitude, latitude, factions) { raw = line, fromLoad = fromLogLoad });
                                 }
                                 handled = true;
                                 break;
@@ -431,7 +447,6 @@ namespace EddiJournalMonitor
                                     long? missionid = JsonParsing.getOptionalLong(data, "MissionID");
                                     bool stolen = JsonParsing.getBool(data, "Stolen");
                                     events.Add(new CommodityCollectedEvent(timestamp, commodity, missionid, stolen) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
                                 }
                                 handled = true;
                                 break;
@@ -462,6 +477,10 @@ namespace EddiJournalMonitor
                                     long? hullValue = JsonParsing.getOptionalLong(data, "HullValue");
                                     long? modulesValue = JsonParsing.getOptionalLong(data, "ModulesValue");
                                     decimal hullHealth = sensibleHealth(JsonParsing.getDecimal(data, "HullHealth") * 100);
+                                    decimal unladenMass = JsonParsing.getOptionalDecimal(data, "UnladenMass") ?? 0;
+                                    decimal maxJumpRange = JsonParsing.getOptionalDecimal(data, "MaxJumpRange") ?? 0;
+                                    decimal optimalMass = 0;
+
                                     long rebuy = JsonParsing.getLong(data, "Rebuy");
 
                                     // If ship is 'hot', then modules are also 'hot'
@@ -632,10 +651,30 @@ namespace EddiJournalMonitor
                                                     compartment.module = module;
                                                     compartments.Add(compartment);
                                                 }
+
+                                                // Get the optimal mass for the Frame Shift Drive
+                                                if (slot == "FrameShiftDrive")
+                                                {
+                                                    string fsd = module.@class + module.grade;
+                                                    Constants.baseOptimalMass.TryGetValue(fsd, out optimalMass);
+                                                    if (modified)
+                                                    {
+                                                        engineeringData.TryGetValue("Modifiers", out val);
+                                                        List<object> modifiersData = (List<object>)val;
+                                                        foreach (Dictionary<string, object> modifier in modifiersData)
+                                                        {
+                                                            string label = JsonParsing.getString(modifier, "Label");
+                                                            if (label == "FSDOptimalMass")
+                                                            {
+                                                                optimalMass = JsonParsing.getDecimal(modifier, "Value");
+                                                            }
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
-                                    events.Add(new ShipLoadoutEvent(timestamp, ship, shipId, shipName, shipIdent, hullValue, modulesValue, hullHealth, rebuy, hot, compartments, hardpoints, paintjob) { raw = line, fromLoad = fromLogLoad });
+                                    events.Add(new ShipLoadoutEvent(timestamp, ship, shipId, shipName, shipIdent, hullValue, modulesValue, hullHealth, unladenMass, maxJumpRange, optimalMass, rebuy, hot, compartments, hardpoints, paintjob) { raw = line, fromLoad = fromLogLoad });
                                 }
                                 handled = true;
                                 break;
@@ -652,7 +691,8 @@ namespace EddiJournalMonitor
                                     string system = JsonParsing.getString(data, "StarSystem");
                                     long systemAddress = JsonParsing.getLong(data, "SystemAddress");
                                     string body = JsonParsing.getString(data, "Body");
-                                    events.Add(new NearSurfaceEvent(timestamp, true, system, systemAddress, body) { raw = line, fromLoad = fromLogLoad });
+                                    long? bodyId = JsonParsing.getOptionalLong(data, "BodyID");
+                                    events.Add(new NearSurfaceEvent(timestamp, true, system, systemAddress, body, bodyId) { raw = line, fromLoad = fromLogLoad });
                                 }
                                 handled = true;
                                 break;
@@ -661,54 +701,84 @@ namespace EddiJournalMonitor
                                     string system = JsonParsing.getString(data, "StarSystem");
                                     long systemAddress = JsonParsing.getLong(data, "SystemAddress");
                                     string body = JsonParsing.getString(data, "Body");
-                                    events.Add(new NearSurfaceEvent(timestamp, false, system, systemAddress, body) { raw = line, fromLoad = fromLogLoad });
+                                    long? bodyId = JsonParsing.getOptionalLong(data, "BodyID");
+                                    events.Add(new NearSurfaceEvent(timestamp, false, system, systemAddress, body, bodyId) { raw = line, fromLoad = fromLogLoad });
                                 }
                                 handled = true;
                                 break;
                             case "ApproachSettlement":
                                 {
-                                    string name = JsonParsing.getString(data, "Name");
-                                    long marketId = JsonParsing.getLong(data, "MarketID");
+                                    string settlementname = JsonParsing.getString(data, "Name");
+                                    long? marketId = JsonParsing.getOptionalLong(data, "MarketID"); // Tourist beacons are reported as settlements without MarketID
+                                    long systemAddress = JsonParsing.getLong(data, "SystemAddress");
+                                    string bodyName = JsonParsing.getString(data, "BodyName");
+                                    long? bodyId = JsonParsing.getOptionalLong(data, "BodyID");
                                     // Replace with localised name if available
                                     if (data.TryGetValue("Name_Localised", out object val))
                                     {
-                                        name = (string)val;
+                                        settlementname = (string)val;
                                     }
                                     decimal? latitude = JsonParsing.getOptionalDecimal(data, "Latitude");
                                     decimal? longitude = JsonParsing.getOptionalDecimal(data, "Longitude");
 
-                                    events.Add(new SettlementApproachedEvent(timestamp, name, marketId, latitude, longitude) { raw = line, fromLoad = fromLogLoad });
+                                    events.Add(new SettlementApproachedEvent(timestamp, settlementname, marketId, systemAddress, bodyName, bodyId, latitude, longitude) { raw = line, fromLoad = fromLogLoad });
                                 }
                                 handled = true;
                                 break;
                             case "Scan":
                                 {
                                     string name = JsonParsing.getString(data, "BodyName");
-                                    string systemName = EDDI.Instance?.CurrentStarSystem?.name;
                                     string scantype = JsonParsing.getString(data, "ScanType");
-                                    decimal distancefromarrival = JsonParsing.getDecimal(data, "DistanceFromArrivalLS");
+
+                                    string systemName = EDDI.Instance?.CurrentStarSystem?.systemname;
+                                    long? systemAddress = EDDI.Instance?.CurrentStarSystem?.systemAddress;
 
                                     // Belt
                                     if (name.Contains("Belt Cluster"))
                                     {
-                                        events.Add(new BeltScannedEvent(timestamp, scantype, name, distancefromarrival) { raw = line, fromLoad = fromLogLoad });
+                                        // We don't do anything with belt cluster scans at this time.
+                                        handled = true;
+                                        break;
+                                    }
+
+                                    if (name.Contains(" Ring"))
+                                    {
+                                        // We don't do anything with ring scans at this time.
                                         handled = true;
                                         break;
                                     }
 
                                     // Common items
+                                    decimal distanceLs = JsonParsing.getDecimal(data, "DistanceFromArrivalLS");
                                     // Need to convert radius from meters (per journal) to kilometers
                                     decimal radiusKm = JsonParsing.getDecimal(data, "Radius") / 1000;
                                     // Need to convert orbital period from seconds (per journal) to days
                                     decimal? orbitalPeriodDays = ConstantConverters.seconds2days(JsonParsing.getOptionalDecimal(data, "OrbitalPeriod"));
                                     // Need to convert rotation period from seconds (per journal) to days
-                                    decimal rotationPeriodDays = (decimal)ConstantConverters.seconds2days(JsonParsing.getDecimal(data, "RotationPeriod"));
+                                    decimal? rotationPeriodDays = ConstantConverters.seconds2days(JsonParsing.getOptionalDecimal(data, "RotationPeriod"));
                                     // Need to convert meters to light seconds
                                     decimal? semimajoraxisLs = ConstantConverters.meters2ls(JsonParsing.getOptionalDecimal(data, "SemiMajorAxis"));
                                     decimal? eccentricity = JsonParsing.getOptionalDecimal(data, "Eccentricity");
                                     decimal? orbitalinclinationDegrees = JsonParsing.getOptionalDecimal(data, "OrbitalInclination");
                                     decimal? periapsisDegrees = JsonParsing.getOptionalDecimal(data, "Periapsis");
                                     decimal? axialTiltDegrees = JsonParsing.getOptionalDecimal(data, "AxialTilt");
+                                    long? bodyId = JsonParsing.getOptionalLong(data, "BodyID");
+                                    decimal? temperatureKelvin = JsonParsing.getOptionalDecimal(data, "SurfaceTemperature");
+
+                                    // Parent body types and IDs
+                                    data.TryGetValue("Parents", out object parentsVal);
+                                    List<IDictionary<string, object>> parents = new List<IDictionary<string, object>>();
+                                    if (parentsVal != null)
+                                    {
+                                        foreach (IDictionary<string, object> parent in (List<object>)parentsVal)
+                                        {
+                                            parents.Add(parent);
+                                        }
+                                    }
+
+                                    // Scan status
+                                    bool alreadydiscovered = JsonParsing.getOptionalBool(data, "WasDiscovered") ?? true;
+                                    bool alreadymapped = JsonParsing.getOptionalBool(data, "WasMapped") ?? false;
 
                                     // Rings
                                     data.TryGetValue("Rings", out object val);
@@ -731,19 +801,23 @@ namespace EddiJournalMonitor
                                     if (data.ContainsKey("StarType"))
                                     {
                                         // Star
-                                        string starType = JsonParsing.getString(data, "StarType");
+                                        string stellarclass = JsonParsing.getString(data, "StarType");
+                                        int? stellarsubclass = JsonParsing.getOptionalInt(data, "Subclass");
                                         decimal stellarMass = JsonParsing.getDecimal(data, "StellarMass");
                                         decimal absoluteMagnitude = JsonParsing.getDecimal(data, "AbsoluteMagnitude");
                                         string luminosityClass = JsonParsing.getString(data, "Luminosity");
                                         data.TryGetValue("Age_MY", out val);
                                         long ageMegaYears = (long)val;
-                                        decimal temperatureKelvin = JsonParsing.getDecimal(data, "SurfaceTemperature");
-                                        bool mainstar = distancefromarrival == 0 ? true : false;
 
-                                        events.Add(new StarScannedEvent(timestamp, scantype, name, starType, stellarMass, radiusKm, absoluteMagnitude, luminosityClass, ageMegaYears, temperatureKelvin, distancefromarrival, orbitalPeriodDays, rotationPeriodDays, semimajoraxisLs, eccentricity, orbitalinclinationDegrees, periapsisDegrees, rings, mainstar) { raw = line, fromLoad = fromLogLoad });
+                                        Body star = new Body(name, bodyId, parents, distanceLs, stellarclass, stellarsubclass, stellarMass, radiusKm, absoluteMagnitude, ageMegaYears, temperatureKelvin, luminosityClass, semimajoraxisLs, eccentricity, orbitalinclinationDegrees, periapsisDegrees, orbitalPeriodDays, rotationPeriodDays, axialTiltDegrees, rings, alreadydiscovered, alreadymapped, systemName, systemAddress)
+                                        {
+                                            scanned = (DateTime?)timestamp
+                                        };
+
+                                        events.Add(new StarScannedEvent(timestamp, scantype, star) { raw = line, fromLoad = fromLogLoad });
                                         handled = true;
                                     }
-                                    else
+                                    else if (data.ContainsKey("PlanetClass"))
                                     {
                                         // Body
                                         bool? tidallyLocked = JsonParsing.getOptionalBool(data, "TidalLock") ?? false;
@@ -754,13 +828,11 @@ namespace EddiJournalMonitor
                                         // MKW: Gravity in the Journal is in m/s; must convert it to G
                                         decimal gravity = ConstantConverters.ms2g(JsonParsing.getDecimal(data, "SurfaceGravity"));
 
-                                        decimal? temperatureKelvin = JsonParsing.getOptionalDecimal(data, "SurfaceTemperature");
-
                                         decimal? pressureAtm = ConstantConverters.pascals2atm(JsonParsing.getOptionalDecimal(data, "SurfacePressure"));
 
                                         bool? landable = JsonParsing.getOptionalBool(data, "Landable") ?? false;
 
-                                        string reserves = JsonParsing.getString(data, "ReserveLevel");
+                                        ReserveLevel reserveLevel = ReserveLevel.FromEDName(JsonParsing.getString(data, "ReserveLevel"));
 
                                         // The "Atmosphere" is most accurately described through the "AtmosphereType" and "AtmosphereComposition" 
                                         // properties, so we use them in preference to "Atmosphere"
@@ -846,7 +918,12 @@ namespace EddiJournalMonitor
                                         TerraformState terraformState = TerraformState.FromEDName(JsonParsing.getString(data, "TerraformState")) ?? TerraformState.NotTerraformable;
                                         Volcanism volcanism = Volcanism.FromName(JsonParsing.getString(data, "Volcanism"));
 
-                                        events.Add(new BodyScannedEvent(timestamp, scantype, name, systemName, planetClass, earthMass, radiusKm, gravity, temperatureKelvin, pressureAtm, tidallyLocked, landable, atmosphereClass, atmosphereCompositions, solidCompositions, volcanism, distancefromarrival, (decimal)orbitalPeriodDays, rotationPeriodDays, semimajoraxisLs, eccentricity, orbitalinclinationDegrees, periapsisDegrees, rings, reserves, materials, terraformState, axialTiltDegrees) { raw = line, fromLoad = fromLogLoad });
+                                        Body body = new Body(name, bodyId, parents, distanceLs, tidallyLocked, terraformState, planetClass, atmosphereClass, atmosphereCompositions, volcanism, earthMass, radiusKm, gravity, temperatureKelvin, pressureAtm, landable, materials, solidCompositions, semimajoraxisLs, eccentricity, orbitalinclinationDegrees, periapsisDegrees, orbitalPeriodDays, rotationPeriodDays, axialTiltDegrees, rings, reserveLevel, alreadydiscovered, alreadymapped, systemName, systemAddress)
+                                        {
+                                            scanned = (DateTime?)timestamp
+                                        };
+
+                                        events.Add(new BodyScannedEvent(timestamp, scantype, body) { raw = line, fromLoad = fromLogLoad });
                                         handled = true;
                                     }
                                 }
@@ -1048,7 +1125,7 @@ namespace EddiJournalMonitor
                                         {
                                             if (!storedModule.intransit)
                                             {
-                                                StarSystem systemData = systemsData.FirstOrDefault(s => s.name == storedModule.system);
+                                                StarSystem systemData = systemsData.FirstOrDefault(s => s.systemname == storedModule.system);
                                                 Station stationData = systemData?.stations?.FirstOrDefault(s => s.marketId == storedModule.marketid);
                                                 storedModule.station = stationData?.name;
                                             }
@@ -1136,7 +1213,7 @@ namespace EddiJournalMonitor
                                         {
                                             // Include the station and system at which the transfer will arrive
                                             string arrivalStation = EDDI.Instance.CurrentStation?.name ?? string.Empty;
-                                            string arrivalSystem = EDDI.Instance.CurrentStarSystem?.name ?? string.Empty;
+                                            string arrivalSystem = EDDI.Instance.CurrentStarSystem?.systemname ?? string.Empty;
                                             await Task.Delay((int)time * 1000);
                                             EDDI.Instance.enqueueEvent(new ShipArrivedEvent(DateTime.UtcNow, ship, shipId, arrivalSystem, distance, price, time, arrivalStation, fromMarketId, toMarketId));
                                         }
@@ -1173,7 +1250,7 @@ namespace EddiJournalMonitor
                                         {
                                             // Include the station and system at which the transfer will arrive
                                             string arrivalStation = EDDI.Instance.CurrentStation?.name ?? string.Empty;
-                                            string arrivalSystem = EDDI.Instance.CurrentStarSystem?.name ?? string.Empty;
+                                            string arrivalSystem = EDDI.Instance.CurrentStarSystem?.systemname ?? string.Empty;
                                             await Task.Delay((int)transferTime * 1000);
                                             EDDI.Instance.enqueueEvent(new ModuleArrivedEvent(DateTime.UtcNow, ship, shipId, storageSlot, serverId, module, transferCost, transferTime, arrivalSystem, arrivalStation));
                                         }
@@ -1384,6 +1461,13 @@ namespace EddiJournalMonitor
                                 }
                                 handled = true;
                                 break;
+                            case "Music":
+                                {
+                                    string musicTrack = JsonParsing.getString(data, "MusicTrack");
+                                    events.Add(new MusicEvent(timestamp, musicTrack) { raw = line, fromLoad = fromLogLoad });
+                                }
+                                handled = true;
+                                break;
                             case "LaunchSRV":
                                 {
                                     string loadout = JsonParsing.getString(data, "Loadout");
@@ -1393,47 +1477,50 @@ namespace EddiJournalMonitor
                                 }
                                 handled = true;
                                 break;
-                            case "Music":
-                                {
-                                    string musicTrack = JsonParsing.getString(data, "MusicTrack");
-                                    events.Add(new MusicEvent(timestamp, musicTrack) { raw = line, fromLoad = fromLogLoad });
-                                }
-                                handled = true;
-                                break;
                             case "DockSRV":
-                                events.Add(new SRVDockedEvent(timestamp) { raw = line, fromLoad = fromLogLoad });
-                                handled = true;
-                                break;
-                            case "LaunchFighter":
                                 {
-                                    string loadout = JsonParsing.getString(data, "Loadout");
-                                    bool playerControlled = JsonParsing.getBool(data, "PlayerControlled");
-                                    events.Add(new FighterLaunchedEvent(timestamp, loadout, playerControlled) { raw = line, fromLoad = fromLogLoad });
+                                    int srvId = JsonParsing.getInt(data, "ID");
+                                    events.Add(new SRVDockedEvent(timestamp, srvId) { raw = line, fromLoad = fromLogLoad });
                                 }
-                                handled = true;
-                                break;
-                            case "DockFighter":
-                                events.Add(new FighterDockedEvent(timestamp) { raw = line, fromLoad = fromLogLoad });
                                 handled = true;
                                 break;
                             case "SRVDestroyed":
                                 {
                                     string vehicle = "srv";
-                                    events.Add(new VehicleDestroyedEvent(timestamp, vehicle) { raw = line, fromLoad = fromLogLoad });
+                                    int srvId = JsonParsing.getInt(data, "ID");
+                                    events.Add(new VehicleDestroyedEvent(timestamp, vehicle, srvId) { raw = line, fromLoad = fromLogLoad });
                                     handled = true;
                                 }
+                                break;
+                            case "LaunchFighter":
+                                {
+                                    string loadout = JsonParsing.getString(data, "Loadout");
+                                    int fighterId = JsonParsing.getInt(data, "ID");
+                                    bool playerControlled = JsonParsing.getBool(data, "PlayerControlled");
+                                    events.Add(new FighterLaunchedEvent(timestamp, loadout, fighterId, playerControlled) { raw = line, fromLoad = fromLogLoad });
+                                }
+                                handled = true;
+                                break;
+                            case "DockFighter":
+                                {
+                                    int fighterId = JsonParsing.getInt(data, "ID");
+                                    events.Add(new FighterDockedEvent(timestamp, fighterId) { raw = line, fromLoad = fromLogLoad });
+                                }
+                                handled = true;
                                 break;
                             case "FighterDestroyed":
                                 {
                                     string vehicle = "fighter";
-                                    events.Add(new VehicleDestroyedEvent(timestamp, vehicle) { raw = line, fromLoad = fromLogLoad });
+                                    int fighterId = JsonParsing.getInt(data, "ID");
+                                    events.Add(new VehicleDestroyedEvent(timestamp, vehicle, fighterId) { raw = line, fromLoad = fromLogLoad });
                                     handled = true;
                                 }
                                 break;
                             case "FighterRebuilt":
                                 {
                                     string loadout = JsonParsing.getString(data, "Loadout");
-                                    events.Add(new FighterRebuiltEvent(timestamp, loadout) { raw = line, fromLoad = fromLogLoad });
+                                    int fighterId = JsonParsing.getInt(data, "ID");
+                                    events.Add(new FighterRebuiltEvent(timestamp, loadout, fighterId) { raw = line, fromLoad = fromLogLoad });
                                     handled = true;
                                 }
                                 break;
@@ -1857,8 +1944,8 @@ namespace EddiJournalMonitor
                                         }
                                     }
                                     events.Add(new DiedEvent(timestamp, names, ships, ratings) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
                                 }
+                                handled = true;
                                 break;
                             case "Resurrect":
                                 {
@@ -1877,9 +1964,9 @@ namespace EddiJournalMonitor
                                     long systemAddress = JsonParsing.getLong(data, "SystemAddress");
                                     data.TryGetValue("NumBodies", out object val);
                                     int numbodies = (int)(long)val;
-                                    events.Add(new NavBeaconScanEvent(timestamp, systemAddress, numbodies) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
+                                    events.Add(new NavBeaconScanEvent(timestamp, systemAddress, numbodies) { raw = line, fromLoad = fromLogLoad }); 
                                 }
+                                handled = true;
                                 break;
                             case "FSSDiscoveryScan":
                                 {
@@ -1887,11 +1974,13 @@ namespace EddiJournalMonitor
                                     int bodyCount = JsonParsing.getInt(data, "BodyCount"); // number of stellar bodies in system
                                     int nonBodyCount = JsonParsing.getInt(data, "NonBodyCount"); // Number of non-body signals found
                                     events.Add(new DiscoveryScanEvent(timestamp, progress, bodyCount, nonBodyCount) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
                                 }
+                                handled = true;
                                 break;
                             case "FSSSignalDiscovered":
                                 {
+                                    long? systemAddress = JsonParsing.getLong(data, "SystemAddress");
+
                                     SignalSource source = GetSignalSource(data);
                                     string spawningFaction = getFactionName(data, "SpawningFaction") ?? Superpower.None.localizedName; // the minor faction, if relevant
                                     decimal? secondsRemaining = JsonParsing.getOptionalDecimal(data, "TimeRemaining"); // remaining lifetime in seconds, if relevant
@@ -1904,27 +1993,28 @@ namespace EddiJournalMonitor
                                     int? threatLevel = JsonParsing.getOptionalInt(data, "ThreatLevel") ?? 0;
                                     bool? isStation = JsonParsing.getOptionalBool(data, "IsStation") ?? false;
 
-                                    events.Add(new SignalDetectedEvent(timestamp, source, spawningState, spawningFaction, secondsRemaining, threatLevel, isStation) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
+                                    events.Add(new SignalDetectedEvent(timestamp, systemAddress, source, spawningState, spawningFaction, secondsRemaining, threatLevel, isStation) { raw = line, fromLoad = fromLogLoad });
                                 }
+                                handled = true;
                                 break;
                             case "BuyExplorationData":
                                 {
                                     string system = JsonParsing.getString(data, "System");
                                     long price = JsonParsing.getLong(data, "Cost");
                                     events.Add(new ExplorationDataPurchasedEvent(timestamp, system, price) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "SAAScanComplete":
                                 {
-                                    string body = JsonParsing.getString(data, "BodyName");
+                                    string bodyName = JsonParsing.getString(data, "BodyName");
+                                    long? bodyId = JsonParsing.getOptionalLong(data, "BodyID");
                                     int probesUsed = JsonParsing.getInt(data, "ProbesUsed");
                                     int efficiencyTarget = JsonParsing.getInt(data, "EfficiencyTarget");
-                                    events.Add(new BodyMappedEvent(timestamp, body, probesUsed, efficiencyTarget) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
+                                    events.Add(new BodyMappedEvent(timestamp, bodyName, bodyId, probesUsed, efficiencyTarget) { raw = line, fromLoad = fromLogLoad });
                                 }
+                                handled = true;
+                                break;
                             case "SellExplorationData":
                                 {
                                     data.TryGetValue("Systems", out object val);
@@ -1935,10 +2025,35 @@ namespace EddiJournalMonitor
                                     decimal reward = (long)val;
                                     data.TryGetValue("Bonus", out val);
                                     decimal bonus = (long)val;
-                                    events.Add(new ExplorationDataSoldEvent(timestamp, systems, firsts, reward, bonus) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
+                                    data.TryGetValue("TotalEarnings", out val);
+                                    decimal total = (long)val;
+                                    events.Add(new ExplorationDataSoldEvent(timestamp, systems, reward, bonus, total) { raw = line, fromLoad = fromLogLoad });
                                 }
+                                handled = true;
+                                break;
+                            case "MultiSellExplorationData":
+                                {
+                                    List<string> systems = new List<string>();
+                                    data.TryGetValue("Discovered", out object val);
+                                    List<object> discovered = (List<object>)val;
+                                    foreach (Dictionary<string, object> discoveredSystem in discovered)
+                                    {
+                                        string system = JsonParsing.getString(discoveredSystem, "SystemName");
+                                        if (!string.IsNullOrEmpty(system))
+                                        {
+                                            systems.Add(system);
+                                        }
+                                    }
+                                    data.TryGetValue("BaseValue", out val);
+                                    decimal reward = (long)val;
+                                    data.TryGetValue("Bonus", out val);
+                                    decimal bonus = (long)val;
+                                    data.TryGetValue("TotalEarnings", out val);
+                                    decimal total = (long)val;
+                                    events.Add(new ExplorationDataSoldEvent(timestamp, systems, reward, bonus, total) { raw = line, fromLoad = fromLogLoad });
+                                }
+                                handled = true;
+                                break;
                             case "USSDrop":
                                 {
                                     SignalSource source = GetSignalSource(data);
@@ -1969,9 +2084,9 @@ namespace EddiJournalMonitor
                                     int amount = JsonParsing.getInt(data, "Count");
                                     int price = JsonParsing.getInt(data, "BuyPrice");
                                     events.Add(new CommodityPurchasedEvent(timestamp, marketId, commodity, amount, price) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "MarketSell":
                                 {
                                     long marketId = JsonParsing.getLong(data, "MarketID");
@@ -1993,9 +2108,9 @@ namespace EddiJournalMonitor
                                     bool blackmarket = JsonParsing.getOptionalBool(data, "BlackMarket") ?? false;
 
                                     events.Add(new CommoditySoldEvent(timestamp, marketId, commodity, amount, sellPrice, profit, illegal, stolen, blackmarket) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "EngineerContribution":
                                 {
                                     string name = JsonParsing.getString(data, "Engineer");
@@ -2029,9 +2144,9 @@ namespace EddiJournalMonitor
                                             { } // We don't currently handle credit changes from these types.
                                             break;
                                     }
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "EngineerCraft":
                                 {
                                     string engineer = JsonParsing.getString(data, "Engineer");
@@ -2083,9 +2198,9 @@ namespace EddiJournalMonitor
                                         }
                                     }
                                     events.Add(new ModificationCraftedEvent(timestamp, engineer, engineerId, blueprintpEdName, blueprintId, level, quality, experimentalEffect, materials, commodities, compartment) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "EngineerProgress":
                                 {
                                     data.TryGetValue("Engineers", out object val);
@@ -2116,12 +2231,13 @@ namespace EddiJournalMonitor
                                         }
                                         Engineer.AddOrUpdate(engineer);
                                     }
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "LoadGame":
                                 {
                                     string commander = JsonParsing.getString(data, "Commander");
+                                    bool horizons = JsonParsing.getBool(data, "Horizons");
 
                                     data.TryGetValue("ShipID", out object val);
                                     int? shipId = (int?)(long?)val;
@@ -2148,110 +2264,134 @@ namespace EddiJournalMonitor
                                     decimal? fuel = JsonParsing.getOptionalDecimal(data, "FuelLevel");
                                     decimal? fuelCapacity = JsonParsing.getOptionalDecimal(data, "FuelCapacity");
 
-                                    events.Add(new CommanderContinuedEvent(timestamp, commander, (int)shipId, ship, shipName, shipIdent, mode, group, credits, loan, fuel, fuelCapacity) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
+                                    events.Add(new CommanderContinuedEvent(timestamp, commander, horizons, (int)shipId, ship, shipName, shipIdent, mode, group, credits, loan, fuel, fuelCapacity) { raw = line, fromLoad = fromLogLoad });
                                 }
+                                handled = true;
+                                break;
                             case "CrewHire":
                                 {
                                     string name = JsonParsing.getString(data, "Name");
+                                    long crewid = JsonParsing.getLong(data, "CrewID");
                                     string faction = getFactionName(data, "Faction");
                                     long price = JsonParsing.getLong(data, "Cost");
                                     CombatRating rating = CombatRating.FromRank(JsonParsing.getInt(data, "CombatRank"));
-                                    events.Add(new CrewHiredEvent(timestamp, name, faction, price, rating) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
+                                    events.Add(new CrewHiredEvent(timestamp, name, crewid, faction, price, rating) { raw = line, fromLoad = fromLogLoad });
                                 }
+                                handled = true;
+                                break;
                             case "CrewFire":
                                 {
                                     string name = JsonParsing.getString(data, "Name");
-                                    events.Add(new CrewFiredEvent(timestamp, name) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
+                                    long crewid = JsonParsing.getLong(data, "CrewID");
+                                    events.Add(new CrewFiredEvent(timestamp, name, crewid) { raw = line, fromLoad = fromLogLoad });
                                 }
+                                handled = true;
+                                break;
                             case "CrewAssign":
                                 {
                                     string name = JsonParsing.getString(data, "Name");
+                                    long crewid = JsonParsing.getLong(data, "CrewID");
                                     string role = getRole(data, "Role");
-                                    events.Add(new CrewAssignedEvent(timestamp, name, role) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
+                                    events.Add(new CrewAssignedEvent(timestamp, name, crewid, role) { raw = line, fromLoad = fromLogLoad });
                                 }
+                                handled = true;
+                                break;
+                            case "NpcCrewPaidWage":
+                                {
+                                    string name = JsonParsing.getString(data, "NpcCrewName");
+                                    long crewid = JsonParsing.getLong(data, "NpcCrewId");
+                                    long amount = JsonParsing.getLong(data, "Amount");
+                                    events.Add(new CrewPaidWageEvent(timestamp, name, crewid, amount) { raw = line, fromLoad = fromLogLoad });
+                                }
+                                handled = true;
+                                break;
+                            case "NpcCrewRank":
+                                {
+                                    string name = JsonParsing.getString(data, "NpcCrewName");
+                                    long crewid = JsonParsing.getLong(data, "NpcCrewId");
+                                    data.TryGetValue("RankCombat", out object val);
+                                    CombatRating rating = CombatRating.FromRank(Convert.ToInt32(val));
+                                    events.Add(new CrewPromotionEvent(timestamp, name, crewid, rating) { raw = line, fromLoad = fromLogLoad });
+                                }
+                                handled = true;
+                                break;
                             case "JoinACrew":
                                 {
                                     string captain = JsonParsing.getString(data, "Captain");
                                     captain = captain.Replace("$cmdr_decorate:#name=", "Commander ").Replace(";", "").Replace("&", "Commander ");
 
                                     events.Add(new CrewJoinedEvent(timestamp, captain) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "QuitACrew":
                                 {
                                     string captain = JsonParsing.getString(data, "Captain");
                                     captain = captain.Replace("$cmdr_decorate:#name=", "Commander ").Replace(";", "").Replace("&", "Commander ");
 
                                     events.Add(new CrewLeftEvent(timestamp, captain) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "ChangeCrewRole":
                                 {
                                     string role = getRole(data, "Role");
                                     events.Add(new CrewRoleChangedEvent(timestamp, role) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "CrewMemberJoins":
                                 {
                                     string member = JsonParsing.getString(data, "Crew");
                                     member = member.Replace("$cmdr_decorate:#name=", "Commander ").Replace(";", "").Replace("&", "Commander ");
 
                                     events.Add(new CrewMemberJoinedEvent(timestamp, member) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "CrewMemberQuits":
                                 {
                                     string member = JsonParsing.getString(data, "Crew");
                                     member = member.Replace("$cmdr_decorate:#name=", "Commander ").Replace(";", "").Replace("&", "Commander ");
 
                                     events.Add(new CrewMemberLeftEvent(timestamp, member) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "CrewLaunchFighter":
                                 {
                                     string name = JsonParsing.getString(data, "Crew");
-                                    events.Add(new CrewMemberLaunchedEvent(timestamp, name) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
+                                    int fighterId = JsonParsing.getInt(data, "ID");
+                                    events.Add(new CrewMemberLaunchedEvent(timestamp, name, fighterId) { raw = line, fromLoad = fromLogLoad });
+
                                 }
+                                handled = true;
+                                break;
                             case "CrewMemberRoleChange":
                                 {
                                     string name = JsonParsing.getString(data, "Crew");
                                     string role = getRole(data, "Role");
                                     events.Add(new CrewMemberRoleChangedEvent(timestamp, name, role) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "KickCrewMember":
                                 {
                                     string member = JsonParsing.getString(data, "Crew");
                                     member = member.Replace("$cmdr_decorate:#name=", "Commander ").Replace(";", "").Replace("&", "Commander ");
 
                                     events.Add(new CrewMemberRemovedEvent(timestamp, member) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "BuyAmmo":
                                 {
                                     data.TryGetValue("Cost", out object val);
                                     long price = (long)val;
                                     events.Add(new ShipRestockedEvent(timestamp, price) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "BuyDrones":
                                 {
                                     data.TryGetValue("Count", out object val);
@@ -2259,9 +2399,9 @@ namespace EddiJournalMonitor
                                     data.TryGetValue("BuyPrice", out val);
                                     int price = (int)(long)val;
                                     events.Add(new LimpetPurchasedEvent(timestamp, amount, price) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "SellDrones":
                                 {
                                     data.TryGetValue("Count", out object val);
@@ -2269,31 +2409,31 @@ namespace EddiJournalMonitor
                                     data.TryGetValue("SellPrice", out val);
                                     int price = (int)(long)val;
                                     events.Add(new LimpetSoldEvent(timestamp, amount, price) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "LaunchDrone":
                                 {
                                     string kind = JsonParsing.getString(data, "Type");
                                     events.Add(new LimpetLaunchedEvent(timestamp, kind) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "ClearSavedGame":
                                 {
                                     string name = JsonParsing.getString(data, "Name");
                                     events.Add(new ClearedSaveEvent(timestamp, name) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "NewCommander":
                                 {
                                     string name = JsonParsing.getString(data, "Name");
                                     string package = JsonParsing.getString(data, "Package");
                                     events.Add(new CommanderStartedEvent(timestamp, name, package) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "Progress":
                                 {
                                     data.TryGetValue("Combat", out object val);
@@ -2310,9 +2450,9 @@ namespace EddiJournalMonitor
                                     decimal federation = (long)val;
 
                                     events.Add(new CommanderProgressEvent(timestamp, combat, trade, exploration, cqc, empire, federation) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "Rank":
                                 {
                                     data.TryGetValue("Combat", out object val);
@@ -2329,9 +2469,9 @@ namespace EddiJournalMonitor
                                     FederationRating federation = FederationRating.FromRank((int)((long)val));
 
                                     events.Add(new CommanderRatingsEvent(timestamp, combat, trade, exploration, cqc, empire, federation) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "Screenshot":
                                 {
                                     string filename = JsonParsing.getString(data, "Filename");
@@ -2345,9 +2485,9 @@ namespace EddiJournalMonitor
                                     decimal? longitude = JsonParsing.getOptionalDecimal(data, "Longitude");
 
                                     events.Add(new ScreenshotEvent(timestamp, filename, width, height, system, body, longitude, latitude) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "BuyTradeData":
                                 {
                                     string system = JsonParsing.getString(data, "System");
@@ -2355,36 +2495,37 @@ namespace EddiJournalMonitor
                                     long price = (long)val;
 
                                     events.Add(new TradeDataPurchasedEvent(timestamp, system, price) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "PayBounties":
                                 {
                                     data.TryGetValue("Amount", out object val);
                                     long amount = (long)val;
                                     decimal? brokerpercentage = JsonParsing.getOptionalDecimal(data, "BrokerPercentage");
+                                    bool allBounties = JsonParsing.getOptionalBool(data, "AllFines") ?? false;
                                     string faction = getFactionName(data, "Faction");
                                     data.TryGetValue("ShipID", out val);
                                     int shipId = (int)(long)val;
 
-                                    events.Add(new BountyPaidEvent(timestamp, amount, brokerpercentage, faction, shipId) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
+                                    events.Add(new BountyPaidEvent(timestamp, amount, brokerpercentage, allBounties, faction, shipId) { raw = line, fromLoad = fromLogLoad });
                                 }
+                                handled = true;
+                                break;
                             case "PayFines":
                                 {
                                     data.TryGetValue("Amount", out object val);
                                     long amount = (long)val;
                                     decimal? brokerpercentage = JsonParsing.getOptionalDecimal(data, "BrokerPercentage");
-                                    bool allFines = JsonParsing.getBool(data, "AllFines");
+                                    bool allFines = JsonParsing.getOptionalBool(data, "AllFines") ?? false;
                                     string faction = getFactionName(data, "Faction");
                                     data.TryGetValue("ShipID", out val);
                                     int shipId = (int)(long)val;
 
                                     events.Add(new FinePaidEvent(timestamp, amount, brokerpercentage, allFines, faction, shipId) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "RefuelPartial":
                                 {
                                     decimal amount = JsonParsing.getDecimal(data, "Amount");
@@ -2392,9 +2533,9 @@ namespace EddiJournalMonitor
                                     long price = (long)val;
 
                                     events.Add(new ShipRefuelledEvent(timestamp, "Market", price, amount, null, false) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "RefuelAll":
                                 {
                                     decimal amount = JsonParsing.getDecimal(data, "Amount");
@@ -2402,9 +2543,9 @@ namespace EddiJournalMonitor
                                     long price = (long)val;
 
                                     events.Add(new ShipRefuelledEvent(timestamp, "Market", price, amount, null, true) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "FuelScoop":
                                 {
                                     decimal amount = JsonParsing.getDecimal(data, "Scooped");
@@ -2414,25 +2555,25 @@ namespace EddiJournalMonitor
                                         : Math.Round(total) == EDDI.Instance.CurrentShip.fueltanktotalcapacity;
 
                                     events.Add(new ShipRefuelledEvent(timestamp, "Scoop", null, amount, total, full) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "Friends":
                                 {
                                     string status = JsonParsing.getString(data, "Status");
                                     string name = JsonParsing.getString(data, "Name");
                                     name = name.Replace("$cmdr_decorate:#name=", "Commander ").Replace(";", "").Replace("&", "Commander ");
                                     events.Add(new FriendsEvent(timestamp, name, status) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "JetConeBoost":
                                 {
                                     decimal boost = JsonParsing.getDecimal(data, "BoostValue");
                                     events.Add(new JetConeBoostEvent(timestamp, boost) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "JetConeDamage":
                                 {
                                     string modulename = JsonParsing.getString(data, "Module");
@@ -2452,9 +2593,9 @@ namespace EddiJournalMonitor
                                     }
 
                                     events.Add(new JetConeDamageEvent(timestamp, modulename, module) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "RedeemVoucher":
                                 {
 
@@ -2508,9 +2649,9 @@ namespace EddiJournalMonitor
                                     {
                                         Logging.Warn("Unhandled voucher type " + type, line);
                                     }
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "CommunityGoal":
                                 {
 
@@ -2565,9 +2706,9 @@ namespace EddiJournalMonitor
                                     }
 
                                     events.Add(new CommunityGoalEvent(timestamp, cgid, name, system, station, expiry, iscomplete, total, contribution, contributors, percentileband, topranksize, toprank, tier, tierreward) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "CommunityGoalJoin":
                                 {
                                     long cgid = JsonParsing.getLong(data, "CGID");
@@ -2575,17 +2716,17 @@ namespace EddiJournalMonitor
                                     string system = JsonParsing.getString(data, "System");
 
                                     events.Add(new MissionAcceptedEvent(timestamp, cgid, "MISSION_CommunityGoal", name, null, system, null, null, null, null, null, null, null, null, null, true, null, null, null, null, false) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "CommunityGoalDiscard":
                                 {
                                     long cgid = JsonParsing.getLong(data, "CGID");
 
 	                                events.Add(new MissionAbandonedEvent(timestamp, cgid, "MISSION_CommunityGoal", 0));
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "CommunityGoalReward":
                                 {
                                     long cgid = JsonParsing.getLong(data, "CGID");
@@ -2595,9 +2736,9 @@ namespace EddiJournalMonitor
                                     long reward = (val == null ? 0 : (long)val);
 
                                     events.Add(new MissionCompletedEvent(timestamp, cgid, "MISSION_CommunityGoal", name, null, null, true, reward, null, null, null, 0) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "CargoDepot":
                                 {
                                     data.TryGetValue("MissionID", out object val);
@@ -2616,9 +2757,9 @@ namespace EddiJournalMonitor
                                     int totaltodeliver = JsonParsing.getInt(data, "TotalItemsToDeliver");
 
                                     events.Add(new CargoDepotEvent(timestamp, missionid, updatetype, commodity, amount, startmarketid, endmarketid, collected, delivered, totaltodeliver) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "Missions":
                                 {
                                     List<Mission> missions = new List<Mission>();
@@ -2656,8 +2797,8 @@ namespace EddiJournalMonitor
                                         }
                                     }
                                     events.Add(new MissionsEvent(timestamp, missions) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
                                 }
+                                handled = true;
                                 break;
                             case "Passengers":
                                 {
@@ -2686,8 +2827,8 @@ namespace EddiJournalMonitor
                                         }
                                     }
                                     events.Add(new PassengersEvent(timestamp, passengers) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
                                 }
+                                handled = true;
                                 break;
                             case "MissionAccepted":
                                 {
@@ -2736,9 +2877,9 @@ namespace EddiJournalMonitor
                                     string reputation = JsonParsing.getString(data, "Reputation");
 
                                     events.Add(new MissionAcceptedEvent(timestamp, missionid, name, localisedname, faction, destinationsystem, destinationstation, commodity, amount, passengerswanted, passengertype, passengervips, target, targettype, targetfaction, false, expiry, influence, reputation, reward, wing) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "MissionCompleted":
                                 {
                                     data.TryGetValue("MissionID", out object val);
@@ -2795,9 +2936,9 @@ namespace EddiJournalMonitor
                                     }
 
                                     events.Add(new MissionCompletedEvent(timestamp, missionid, name, faction, commodity, amount, false, reward, permitsAwarded, commodityrewards, materialsrewards, donation) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "MissionAbandoned":
                                 {
                                     data.TryGetValue("MissionID", out object val);
@@ -2806,9 +2947,9 @@ namespace EddiJournalMonitor
 	                                data.TryGetValue("Fine", out val);
 	                                long fine = val == null ? 0 : (long)val;
 	                                events.Add(new MissionAbandonedEvent(timestamp, missionid, name, fine) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "MissionRedirected":
                                 {
                                     data.TryGetValue("MissionID", out object val);
@@ -2819,18 +2960,21 @@ namespace EddiJournalMonitor
                                     string newdestinationsystem = JsonParsing.getString(data, "NewDestinationSystem");
                                     string olddestinationsystem = JsonParsing.getString(data, "OldDestinationSystem");
                                     events.Add(new MissionRedirectedEvent(timestamp, missionid, name, newdestinationstation, olddestinationstation, newdestinationsystem, olddestinationsystem) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "MissionFailed":
                                 {
                                     data.TryGetValue("MissionID", out object val);
                                     long missionid = (long)val;
                                     string name = JsonParsing.getString(data, "Name");
-                                    events.Add(new MissionFailedEvent(timestamp, missionid, name) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
+                                    data.TryGetValue("Fine", out val);
+                                    long fine = val == null ? 0 : (long)val;
+                                    events.Add(new MissionFailedEvent(timestamp, missionid, name, fine) { raw = line, fromLoad = fromLogLoad });
+
                                 }
+                                handled = true;
+                                break;
                             case "SearchAndRescue":
                                 {
                                     long marketId = JsonParsing.getLong(data, "MarketID");
@@ -2845,9 +2989,9 @@ namespace EddiJournalMonitor
                                     data.TryGetValue("Reward", out val);
                                     long reward = (val == null ? 0 : (long)val);
                                     events.Add(new SearchAndRescueEvent(timestamp, commodity, amount, reward, marketId) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "AfmuRepairs":
                                 {
                                     string item = JsonParsing.getString(data, "Module");
@@ -2883,9 +3027,9 @@ namespace EddiJournalMonitor
                                     decimal health = JsonParsing.getDecimal(data, "Health");
 
                                     events.Add(new ShipAfmuRepairedEvent(timestamp, item, repairedfully, health) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "Repair":
                                 {
                                     string item = JsonParsing.getString(data, "Item");
@@ -2926,9 +3070,9 @@ namespace EddiJournalMonitor
                                     data.TryGetValue("Cost", out object val);
                                     long price = (long)val;
                                     events.Add(new ShipRepairedEvent(timestamp, item, price) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "RepairDrone":
                                 {
                                     decimal? hull = JsonParsing.getOptionalDecimal(data, "HullRepaired");
@@ -2936,17 +3080,17 @@ namespace EddiJournalMonitor
                                     decimal? corrosion = JsonParsing.getOptionalDecimal(data, "CorrosionRepaired");
 
                                     events.Add(new ShipRepairDroneEvent(timestamp, hull, cockpit, corrosion) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "RepairAll":
                                 {
                                     data.TryGetValue("Cost", out object val);
                                     long price = (long)val;
                                     events.Add(new ShipRepairedEvent(timestamp, null, price) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "RebootRepair":
                                 {
                                     data.TryGetValue("Modules", out object val);
@@ -2958,9 +3102,9 @@ namespace EddiJournalMonitor
                                         modules.Add(module);
                                     }
                                     events.Add(new ShipRebootedEvent(timestamp, modules) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "Synthesis":
                                 {
                                     string synthesis = JsonParsing.getString(data, "Name");
@@ -2989,9 +3133,9 @@ namespace EddiJournalMonitor
                                     }
 
                                     events.Add(new SynthesisedEvent(timestamp, synthesis, materials) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "Materials":
                                 {
                                     List<MaterialAmount> materials = new List<MaterialAmount>();
@@ -3074,26 +3218,27 @@ namespace EddiJournalMonitor
                                     string power = JsonParsing.getString(data, "Power");
 
                                     events.Add(new PowerJoinedEvent(timestamp, power) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "PowerplayLeave":
                                 {
                                     string power = JsonParsing.getString(data, "Power");
 
                                     events.Add(new PowerLeftEvent(timestamp, power) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
+
                                 }
+                                handled = true;
+                                break;
                             case "PowerplayDefect":
                                 {
                                     string frompower = JsonParsing.getString(data, "FromPower");
                                     string topower = JsonParsing.getString(data, "ToPower");
 
                                     events.Add(new PowerDefectedEvent(timestamp, frompower, topower) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "PowerplayVote":
                                 {
                                     string power = JsonParsing.getString(data, "Power");
@@ -3102,9 +3247,9 @@ namespace EddiJournalMonitor
                                     int amount = (int)(long)val;
 
                                     events.Add(new PowerPreparationVoteCast(timestamp, power, system, amount) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "PowerplaySalary":
                                 {
                                     string power = JsonParsing.getString(data, "Power");
@@ -3112,9 +3257,9 @@ namespace EddiJournalMonitor
                                     int amount = (int)(long)val;
 
                                     events.Add(new PowerSalaryClaimedEvent(timestamp, power, amount) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "PowerplayCollect":
                                 {
                                     string power = JsonParsing.getString(data, "Power");
@@ -3124,9 +3269,9 @@ namespace EddiJournalMonitor
                                     int amount = (int)(long)val;
 
                                     events.Add(new PowerCommodityObtainedEvent(timestamp, power, commodity, amount) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "PowerplayDeliver":
                                 {
                                     string power = JsonParsing.getString(data, "Power");
@@ -3136,9 +3281,9 @@ namespace EddiJournalMonitor
                                     int amount = (int)(long)val;
 
                                     events.Add(new PowerCommodityDeliveredEvent(timestamp, power, commodity, amount) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "PowerplayFastTrack":
                                 {
                                     string power = JsonParsing.getString(data, "Power");
@@ -3146,9 +3291,9 @@ namespace EddiJournalMonitor
                                     int amount = (int)(long)val;
 
                                     events.Add(new PowerCommodityFastTrackedEvent(timestamp, power, amount) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "PowerplayVoucher":
                                 {
                                     string power = JsonParsing.getString(data, "Power");
@@ -3156,18 +3301,18 @@ namespace EddiJournalMonitor
                                     List<string> systems = ((List<object>)val).Cast<string>().ToList();
 
                                     events.Add(new PowerVoucherReceivedEvent(timestamp, power, systems) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "SquadronStartup":
                                 {
                                     string name = JsonParsing.getString(data, "SquadronName");
                                     int rank = JsonParsing.getInt(data, "CurrentRank");
 
                                     events.Add(new SquadronStartupEvent(timestamp, name, rank) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "AppliedToSquadron":
                             case "DisbandedSquadron":
                             case "InvitedToSquadron":
@@ -3183,9 +3328,9 @@ namespace EddiJournalMonitor
                                         .ToLowerInvariant();
 
                                     events.Add(new SquadronStatusEvent(timestamp, name, status) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "SquadronDemotion":
                             case "SquadronPromotion":
                                 {
@@ -3194,15 +3339,15 @@ namespace EddiJournalMonitor
                                     int newrank = JsonParsing.getInt(data, "NewRank");
 
                                     events.Add(new SquadronRankEvent(timestamp, name, oldrank, newrank) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "SystemsShutdown":
                                 {
                                     events.Add(new ShipShutdownEvent(timestamp) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "Fileheader":
                                 {
                                     string filename = journalFileName;
@@ -3210,38 +3355,38 @@ namespace EddiJournalMonitor
                                     string build = JsonParsing.getString(data, "build").Replace(" ", "");
 
                                     events.Add(new FileHeaderEvent(timestamp, filename, version, build) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "Shutdown":
                                 {
                                     events.Add(new ShutdownEvent(timestamp) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "FSDTarget":
                                 {
                                     string systemName = JsonParsing.getString(data, "Name");
                                     long systemAddress = JsonParsing.getLong(data, "SystemAddress");
                                     events.Add(new FSDTargetEvent(timestamp, systemName, systemAddress) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
                                 }
+                                handled = true;
+                                break;
                             case "FSSAllBodiesFound":
                                 {
                                     string systemName = JsonParsing.getString(data, "SystemName");
                                     long systemAddress = JsonParsing.getLong(data, "SystemAddress");
                                     int count = JsonParsing.getInt(data, "Count");
                                     events.Add(new SystemScanComplete(timestamp, systemName, systemAddress, count) { raw = line, fromLoad = fromLogLoad });
-                                    handled = true;
-                                    break;
-                                }
 
+                                }
+                                handled = true;
+                                break;
                             case "Commander":
+                            case "DiscoveryScan":
                             case "Reputation":
                             case "Statistics":
                             case "CodexEntry":
-                            case "NpcCrewPaidWage":
                             case "ReservoirReplenished":
                             case "ProspectedAsteroid":
                             case "CrimeVictim":
@@ -3288,13 +3433,15 @@ namespace EddiJournalMonitor
             SignalSource source;
             if (JsonParsing.getString(data, "USSType") != null)
             {
-                source = SignalSource.FromEDName(JsonParsing.getString(data, "USSType"));
-                source.fallbackLocalizedName = JsonParsing.getString(data, "USSType_Localised");
+                string signalSource = JsonParsing.getString(data, "USSType");
+                source = SignalSource.FromEDName(signalSource) ?? new SignalSource();
+                source.fallbackLocalizedName = JsonParsing.getString(data, "USSType_Localised") ?? signalSource;
             }
             else
             {
-                source = SignalSource.FromEDName(JsonParsing.getString(data, "SignalName"));
-                source.fallbackLocalizedName = JsonParsing.getString(data, "SignalName_Localised");
+                string signalSource = JsonParsing.getString(data, "SignalName");
+                source = SignalSource.FromEDName(signalSource) ?? new SignalSource();
+                source.fallbackLocalizedName = JsonParsing.getString(data, "SignalName_Localised") ?? signalSource;
             }
 
             return source;
@@ -3656,6 +3803,25 @@ namespace EddiJournalMonitor
 
         public void PostHandle(Event @event)
         {
+            if (@event is SignalDetectedEvent)
+            {
+                eventSignalDetected((SignalDetectedEvent)@event);
+            }
+        }
+
+        private bool eventSignalDetected(SignalDetectedEvent @event)
+        {
+            if (EDDI.Instance.CurrentStarSystem != null && !@event.fromLoad)
+            {
+                if (EDDI.Instance.CurrentStarSystem.systemAddress == @event.systemAddress)
+                {
+                    if (!EDDI.Instance.CurrentStarSystem.signalsources.Exists(s => s == @event.source))
+                    {
+                        EDDI.Instance.CurrentStarSystem.signalsources.Add(@event.source);
+                    }
+                }
+            }
+            return true;
         }
 
         public void HandleProfile(JObject profile)
@@ -3750,7 +3916,6 @@ namespace EddiJournalMonitor
             "Scanned",
             "SendText",
             "ShieldState",
-            "ShipTargeted",
             "Shutdown",
             "SystemsShutdown",
             "UnderAttack",

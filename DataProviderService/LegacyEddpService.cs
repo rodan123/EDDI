@@ -24,7 +24,7 @@ namespace EddiDataProviderService
 
         public static StarSystem SetLegacyData(StarSystem system, bool setPowerplayData = true, bool setBodyData = true, bool setStationData = true)
         {
-            JObject response = GetData(system.name);
+            JObject response = GetData(system.systemname);
             if (response != null)
             {
                 SetStarSystemLegacyData(system, response, setPowerplayData);
@@ -55,7 +55,7 @@ namespace EddiDataProviderService
             system.EDDBID = (long?)json["id"];
             if (setPowerplayData)
             {
-                system.power = (string)json["power"] == "None" ? null : (string)json["power"];
+                system.Power = Power.FromName((string)json["power"]) ?? Power.None;
                 system.powerstate = (string)json["power_state"] == "None" ? null : (string)json["power_state"];
             }
         }
@@ -68,7 +68,7 @@ namespace EddiDataProviderService
                 foreach (Body body in system.bodies.ToList())
                 {
                     JObject Body = response["bodies"].Children<JObject>()
-                        .FirstOrDefault(o => o["name"] != null && o["name"].ToString() == body.name);
+                        .FirstOrDefault(o => o["name"] != null && o["name"].ToString() == body.bodyname);
 
                     if (Body != null)
                     {
@@ -140,10 +140,11 @@ namespace EddiDataProviderService
             List<Ship> shipyard = new List<Ship>();
             foreach (string sellingShip in sellingShips)
             {
+                // If EDName is not set, don't add the ship to the shipyard.
                 Ship ship = ShipDefinitions.FromModel(sellingShip);
-                if (ship != null) { shipyard.Add(ship); }
+                if (ship?.EDName != null) { shipyard.Add(ship); }
             }
-            return shipyard;
+            return shipyard.Distinct().ToList();
         }
 
         private static List<Module> ModulesFromEDDP(JObject Station)
@@ -178,7 +179,7 @@ namespace EddiDataProviderService
                         {
                             name = (string)Station["name"],
                             EDDBID = (long)Station["id"],
-                            systemname = system.name,
+                            systemname = system.systemname,
                             hasdocking = false,
                             Model = StationModel.FromName((string)Station["type"]) ?? StationModel.None,
                             Economies = new List<Economy> { Economy.FromName((string)Station["primary_economy"]), Economy.None },
@@ -193,7 +194,7 @@ namespace EddiDataProviderService
                         };
                         settlement.Faction.presences.Add(new FactionPresence()
                         {
-                            systemName = system.name,
+                            systemName = system.systemname,
                             FactionState = FactionState.FromName((string)Station["state"]) ?? FactionState.None
                         });
 

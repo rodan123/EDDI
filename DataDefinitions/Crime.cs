@@ -15,6 +15,10 @@ namespace EddiDataDefinitions
             resourceManager.IgnoreCase = false;
             missingEDNameHandler = (edname) => new Crime(edname);
 
+            None = new Crime("none");
+            Claim = new Crime("claim");
+            Fine = new Crime("fine");
+            Bounty = new Crime("bounty");
             var Assault = new Crime("assault");
             var Murder = new Crime("murder");
             var Piracy = new Crime("piracy");
@@ -35,7 +39,14 @@ namespace EddiDataDefinitions
             var CollidedWithDamage = new Crime("collidedAtSpeedInNoFireZone_hulldamage");
             var RecklessWeaponsDischarge = new Crime("recklessWeaponsDischarge");
             var PassengerWanted = new Crime("passengerWanted");
+            var MissionFine = new Crime("missionFine");
         }
+
+        // Faction report definition
+        public static readonly Crime None;
+        public static readonly Crime Claim;
+        public static readonly Crime Fine;
+        public static readonly Crime Bounty;
 
         // dummy used to ensure that the static constructor has run
         public Crime() : this("")

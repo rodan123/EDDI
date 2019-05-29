@@ -1,6 +1,5 @@
 ﻿using Eddi;
 using EddiEvents;
-using EddiShipMonitor;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -282,12 +281,14 @@ namespace EddiStatusMonitor
                     {
                         if (fuelData is IDictionary<string, object> fuelInfo)
                         {
-                            decimal? mainFuel = JsonParsing.getOptionalDecimal(fuelInfo, "FuelMain");
-                            decimal? reserveFuel = JsonParsing.getOptionalDecimal(fuelInfo, "FuelReservoir");
-                            status.fuel = mainFuel + reserveFuel;
+                            status.fuelInTanks = JsonParsing.getOptionalDecimal(fuelInfo, "FuelMain");
+                            status.fuelInReservoir = JsonParsing.getOptionalDecimal(fuelInfo, "FuelReservoir");
                         }
                     }
                     status.cargo_carried = (int?)JsonParsing.getOptionalDecimal(data, "Cargo");
+                    status.legalStatus = LegalStatus.FromEDName(JsonParsing.getString(data, "LegalState")) ?? LegalStatus.Clean;
+                    status.bodyname = JsonParsing.getString(data, "BodyName");
+                    status.planetradius = JsonParsing.getOptionalDecimal(data, "PlanetRadius");
 
                     // Calculated data
                     SetFuelExtras(status);
@@ -322,6 +323,14 @@ namespace EddiStatusMonitor
                     if (thisStatus.supercruise)
                     {
                         EDDI.Instance.Environment = Constants.ENVIRONMENT_SUPERCRUISE;
+                    }
+                    else if (thisStatus.docked)
+                    {
+                        EDDI.Instance.Environment = Constants.ENVIRONMENT_DOCKED;
+                    }
+                    else if (thisStatus.landed)
+                    {
+                        EDDI.Instance.Environment = Constants.ENVIRONMENT_LANDED;
                     }
                     else
                     {
@@ -397,7 +406,7 @@ namespace EddiStatusMonitor
                 if (gliding && thisStatus.fsd_status == "cooldown")
                 {
                     gliding = false;
-                    EDDI.Instance.enqueueEvent(new GlideEvent(currentStatus.timestamp, gliding, EDDI.Instance.CurrentStellarBody.systemname, EDDI.Instance.CurrentStellarBody.systemAddress, EDDI.Instance.CurrentStellarBody.name, EDDI.Instance.CurrentStellarBody.Type));
+                    EDDI.Instance.enqueueEvent(new GlideEvent(currentStatus.timestamp, gliding, EDDI.Instance.CurrentStellarBody.systemname, EDDI.Instance.CurrentStellarBody.systemAddress, EDDI.Instance.CurrentStellarBody.bodyname, EDDI.Instance.CurrentStellarBody.bodyType));
                 }
 
                 // Reset our fuel log if we change vehicles or refuel
@@ -455,7 +464,7 @@ namespace EddiStatusMonitor
             {
                 gliding = true;
                 EnteredNormalSpaceEvent theEvent = (EnteredNormalSpaceEvent)@event;
-                EDDI.Instance.enqueueEvent(new GlideEvent(DateTime.UtcNow, gliding, theEvent.system, theEvent.systemAddress, theEvent.body, theEvent.bodyType) { raw = @event.raw, fromLoad = @event.fromLoad });
+                EDDI.Instance.enqueueEvent(new GlideEvent(DateTime.UtcNow, gliding, theEvent.systemname, theEvent.systemAddress, theEvent.bodyname, theEvent.bodyType) { raw = @event.raw, fromLoad = @event.fromLoad });
             }
         }
 
@@ -511,11 +520,15 @@ namespace EddiStatusMonitor
                 fuelLog?.RemoveAll(log => (DateTime.UtcNow - log.Key).TotalMinutes > trackingMinutes);
             }
             fuelLog.Add(new KeyValuePair<DateTime, decimal?>(timestamp, fuel));
+            if (fuelLog.Count > 1)
+            {
+                decimal? fuelConsumed = fuelLog.FirstOrDefault().Value - fuelLog.LastOrDefault().Value;
+                TimeSpan timespan = fuelLog.LastOrDefault().Key - fuelLog.FirstOrDefault().Key;
 
-            decimal? fuelConsumed = fuelLog.First().Value - fuelLog.Last().Value;
-            TimeSpan timespan = fuelLog.Last().Key - fuelLog.First().Key;
-
-            return timespan.Seconds == 0 ? null : fuelConsumed / timespan.Seconds; // Return tons of fuel consumed per second
+                return timespan.Seconds == 0 ? null : fuelConsumed / timespan.Seconds; // Return tons of fuel consumed per second
+            }
+            // Insufficient data, return 0.
+            return 0;
         }
 
         private void FuelPercentAndTime(decimal? fuelRemaining, decimal? fuelPerSecond, out decimal? fuel_percent, out int? fuel_seconds)
@@ -530,7 +543,7 @@ namespace EddiStatusMonitor
 
             if (currentStatus.vehicle == Constants.VEHICLE_SHIP)
             {
-                Ship ship = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship monitor"))?.GetCurrentShip();
+                Ship ship = EDDI.Instance.CurrentShip;
                 if (ship?.fueltanktotalcapacity != null && fuelRemaining != null)
                 {
                     // Fuel recorded in Status.json includes the fuel carried in the Active Fuel Reservoir

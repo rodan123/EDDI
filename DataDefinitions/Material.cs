@@ -192,6 +192,10 @@ namespace EddiDataDefinitions
             var UnknownEnergySource = new Material("unknownenergysource", Manufactured, VeryRare);
             var UnknownOrganicCircuitry = new Material("unknownorganiccircuitry", Manufactured, VeryRare);
             var Tg_PropulsionElement = new Material("tg_propulsionelement", Manufactured, VeryRare);
+
+            surfaceElements = AllOfThem
+            .Where(m => m.category == Element)
+            .Where(m => m.greatpctbody != null).ToList();
         }
 
         public MaterialCategory category { get; }
@@ -202,6 +206,12 @@ namespace EddiDataDefinitions
 
         public decimal? goodpctbody { get; }
         public decimal? greatpctbody { get; }
+
+        // The body with the greatest percent concentration (for the MaterialDetails() function).
+        public string bodyname { get; set; }
+        public string bodyshortname { get; set; }
+
+        public static List<Material> surfaceElements { get; } // Elements which are available at a planetary surface and not just in space
 
         // Blueprints for the material; 
         public List<Blueprint> blueprints { get; set; }
@@ -230,6 +240,27 @@ namespace EddiDataDefinitions
                 Logging.Info("Unknown material symbol " + from);
             }
             return result;
+        }
+
+        public static Body highestPercentBody(string materialEdName, List<Body> bodies)
+        {
+            Body bestBody = null;
+            decimal percentage = 0;
+            foreach (Body body in bodies.ToList().OrderBy(b => b.distance))
+            {
+                foreach (MaterialPresence materialPresence in body.materials)
+                {
+                    if (materialPresence?.definition?.edname == materialEdName)
+                    {
+                        if (materialPresence.percentage > percentage)
+                        {
+                            percentage = materialPresence.percentage;
+                            bestBody = body;
+                        }
+                    }
+                }
+            }
+            return bestBody;
         }
     }
 }
