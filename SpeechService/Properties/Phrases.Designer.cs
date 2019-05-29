@@ -133,11 +133,7 @@ namespace EddiSpeechService.Properties {
         }
         
         /// <summary>
-<<<<<<< HEAD
-        ///   Looks up a localized string similar to almost.
-=======
-        ///   Looks up a localized string similar to on the way to.
->>>>>>> origin/develop
+        ///   Looks up a localized string similar to about.
         /// </summary>
         public static string onthewayto {
             get {
