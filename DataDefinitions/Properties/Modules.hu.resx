@@ -353,10 +353,6 @@
     <value>Modul erősítő csomag</value>
     <comment>Module ModuleReinforcementPackage</comment>
   </data>
-  <data name="Multicannon" xml:space="preserve">
-    <value>Gépágyú</value>
-    <comment>Module Multicannon</comment>
-  </data>
   <data name="Multi_Cannon" xml:space="preserve">
     <value>Gépágyú</value>
     <comment>Module Multi_Cannon</comment>
@@ -569,14 +565,24 @@
     <value>Kőzet romboló rakéta</value>
     <comment>Module Displacement Missile</comment>
   </data>
-  
+  <data name="AbrasionBlaster" xml:space="preserve">
+    <value>Külszíni fejtőágyú</value>
+    <comment>Module Abrasion Blaster</comment>
+  </data>
   <data name="CompositionScanner" xml:space="preserve">
     <value>Kompoziciós szkenner</value>
     <comment>Module Composition Scanner</comment>
   </data>
-  
+  <data name="SupercruiseAssist" xml:space="preserve">
+    <value>Szupercirkáló segéd</value>
+    <comment>Module SupercruiseAssist</comment>
+  </data>
   <data name="AdvancedDockingComputer" xml:space="preserve">
     <value>Fejlesztett dokkoló kompjuter</value>
     <comment>Module AdvancedDockingComputer</comment>
+  </data>
+  <data name="AdvancedMultiCannon" xml:space="preserve">
+    <value>Fejlesztett gépágyú</value>
+    <comment>Module Advanced Multi-Cannon (from the `Bridging the Gap` initiative)</comment>
   </data>
 </root>

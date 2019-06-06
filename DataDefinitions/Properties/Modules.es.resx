@@ -353,10 +353,6 @@
     <value>Paquete de refuerzo de módulo</value>
     <comment>Module ModuleReinforcementPackage</comment>
   </data>
-  <data name="Multicannon" xml:space="preserve">
-    <value>Multicañón</value>
-    <comment>Module Multicannon</comment>
-  </data>
   <data name="Multi_Cannon" xml:space="preserve">
     <value>Multicañón</value>
     <comment>Module Multi_Cannon</comment>
@@ -584,5 +580,9 @@
   <data name="AdvancedDockingComputer" xml:space="preserve">
     <value>Computadora de aterrizaje avanzada</value>
     <comment>Module AdvancedDockingComputer</comment>
+  </data>
+  <data name="AdvancedMultiCannon" xml:space="preserve">
+    <value>Multi-cañón avanzado</value>
+    <comment>Module Advanced Multi-Cannon (from the `Bridging the Gap` initiative)</comment>
   </data>
 </root>
