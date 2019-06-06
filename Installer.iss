@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "EDDI"
-#define MyAppVersion "3.4.1-b2"
+#define MyAppVersion "3.4.1-rc1"
 #define MyAppPublisher "Elite Dangerous Community Developers (EDCD)"
 #define MyAppURL "https://github.com/EDCD/EDDI/"
 #define MyAppExeName "EDDI.exe"
@@ -67,7 +67,7 @@ Source: "System.Data.SQLite.dll.config"; DestDir: "{app}"; Flags: ignoreversion
 [InstallDelete]
 Type: files; Name: "{app}\Eddi.exe"
 Type: files; Name: "{app}\EDDI.ico"
-Type: files; Name: "{app}\EddiNetLogMonitor.dll"
+Type: files; Name: "{app}\Eddi*.dll"
 Type: files; Name: "{app}\Newtonsoft.Json.xml"
 Type: files; Name: "{app}\CommonMark.xml"
 Type: files; Name: "{app}\Exceptionless.Wpf.xml"

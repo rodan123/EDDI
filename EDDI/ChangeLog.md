@@ -2,6 +2,24 @@
 
 Full details of the variables available for each noted event, and VoiceAttack integrations, are available in the individual [event pages](https://github.com/EDCD/EDDI/wiki/Events).
 
+### 3.4.1-rc1
+  * EDSM responder
+    * Improved EDSM synchronization for system visits and comments
+  * Speech responder
+    * Fixed an issue where star chromaticity wasn't being translated correctly.
+    * Fixed an issue where certain scan scripts such as 'Star scanned' would sometimes give an error message.
+    * Revised the `Star report` script to resolve a couple of minor bugs. 
+    * Revised the `Body report summary script` script to resolve a couple of minor bugs.
+    * Revised the `System scan complete` script to reduce verbosity and increase variety.
+
+### 3.4.1-b2
+  * Core
+    * Reconfigured the installer to improve backwards compatibility between EDDI versions
+    * Fixed a bug with deep-space system look-ups of EDSM data (where EDSM returns no results)
+  * Speech responder
+    * Revised the `Mission faction state` script to gracefully handle faction states like "None".
+    * Fixed a bug with the `MaterialDetails()` function when only one parameter was supplied.
+
 ### 3.4.1-b1
   * Core
     * All 'Location' events are now processed (repeats of this event are no longer suppressed).
