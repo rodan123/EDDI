@@ -196,6 +196,11 @@ namespace EddiDataDefinitions
                 // get the canonical role object for the given EDName
                 Role = Role.FromEDName(Role.edname);
             }
+            if (EDName is null && !(model is null)) // legacy shipmonitor JSON may not include EDName or EDID
+            {
+                Ship template = ShipDefinitions.FromModel(model);
+                EDName = EDName ?? template?.EDName;
+            }
             additionalJsonData = null;
         }
 
@@ -311,7 +316,6 @@ namespace EddiDataDefinitions
         [JsonIgnore]
         public long EDID { get; set; }
         // The name in Elite: Dangerous' database
-        [JsonIgnore]
         public string EDName { get; set; }
 
         public Ship()
@@ -428,11 +432,12 @@ namespace EddiDataDefinitions
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")] // this usage is perfectly correct
         public string EDShipyardUri()
         {
+            // Once Coriolis supports POSTing, we can switch to POSTing to https://edsy.org/import
+
             if (raw != null)
             {
                 // Generate an EDShipyard import URI to retain as much information as possible
-                
-                string uri = "http://www.edshipyard.com/";
+                string uri = "https://edsy.org/";
 
                 // Take the ship's JSON, gzip it, then turn it in to base64 and attach it to the base uri
                 string unescapedraw = raw.Replace(@"\""", @"""");

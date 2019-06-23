@@ -2011,7 +2011,17 @@ namespace EddiJournalMonitor
                                     long? bodyId = JsonParsing.getOptionalLong(data, "BodyID");
                                     int probesUsed = JsonParsing.getInt(data, "ProbesUsed");
                                     int efficiencyTarget = JsonParsing.getInt(data, "EfficiencyTarget");
-                                    events.Add(new BodyMappedEvent(timestamp, bodyName, bodyId, probesUsed, efficiencyTarget) { raw = line, fromLoad = fromLogLoad });
+
+                                    // Prepare updated body for inclusion in our star system
+                                    StarSystem system = EDDI.Instance?.CurrentStarSystem;
+                                    Body body = system?.BodyWithID(bodyId);
+                                    if (!(body is null))
+                                    {
+                                        body.mapped = timestamp;
+                                        body.mappedEfficiently = probesUsed <= efficiencyTarget;
+                                    }
+
+                                    events.Add(new BodyMappedEvent(timestamp, bodyName, body, probesUsed, efficiencyTarget) { raw = line, fromLoad = fromLogLoad });
                                 }
                                 handled = true;
                                 break;
@@ -3384,13 +3394,21 @@ namespace EddiJournalMonitor
                                 break;
                             case "Commander":
                             case "DiscoveryScan":
+                            case "EngineerLegacyConvert":
                             case "Reputation":
                             case "Statistics":
+                            case "CodexDiscovery":
                             case "CodexEntry":
                             case "ReservoirReplenished":
+                            case "Powerplay":
                             case "ProspectedAsteroid":
+                            case "AsteroidCracked":
                             case "CrimeVictim":
                             case "Scanned":
+                            case "WingAdd":
+                            case "WingInvite":
+                            case "WingJoin":
+                            case "WingLeave":
                                 // we silently ignore these, but forward them to the responders
                                 break;
                             default:

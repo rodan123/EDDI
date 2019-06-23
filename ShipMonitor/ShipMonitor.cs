@@ -447,7 +447,7 @@ namespace EddiShipMonitor
             {
                 // The ship is unknown - create it
                 Logging.Debug("Unknown ship ID " + @event.shipid);
-                ship = ShipDefinitions.FromEDModel(@event.ship);
+                ship = @event.shipDefinition;
                 ship.LocalId = (int)@event.shipid;
                 ship.Role = Role.MultiPurpose;
             }
@@ -1364,9 +1364,9 @@ namespace EddiShipMonitor
                         {
                             hardpoint = new Hardpoint() { name = slot };
                             hardpoint.size = getHardpointSize(slot);
+                            ship.hardpoints.Add(hardpoint);
                         }
                         hardpoint.module = module;
-                        ship.hardpoints.Add(hardpoint);
                         sortHardpoints(ship);
                     }
                     else if (slot.Contains("Slot") || slot.Contains("Military"))
@@ -1377,9 +1377,9 @@ namespace EddiShipMonitor
                         {
                             compartment = new Compartment() { name = slot };
                             compartment.size = getCompartmentSize(slot, ship.militarysize);
+                            ship.compartments.Add(compartment);
                         }
                         compartment.module = module;
-                        ship.compartments.Add(compartment);
                         sortCompartments(ship);
                     }
                 }
@@ -1438,7 +1438,7 @@ namespace EddiShipMonitor
                 Dictionary<string, object> data = new Dictionary<string, object>()
                 {
                     { "Exception", ex },
-                    { "Ship", ship }
+                    { "Ship compartments", ship.compartments}
                 };
                 Logging.Error("Failed to sort ship compartments", data);
             }

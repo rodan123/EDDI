@@ -2,6 +2,16 @@
 
 Full details of the variables available for each noted event, and VoiceAttack integrations, are available in the individual [event pages](https://github.com/EDCD/EDDI/wiki/Events).
 
+### Development
+  * Cargo monitor
+    * Fixed a bug that could disable the cargo monitor with translated versions of EDDI.
+  * Speech responder
+    * Fixed an issue with character encoding in the French personality file.
+    * Revised the `System report` script to gracefully handle the system power being "None".
+    * The `Body mapped` event now makes available all of the same body data as `Body scanned`.
+  * Ship monitor
+    * Reinstated export to [EDShipyard](https://www.edsy.org) as it's developer has returned. 
+
 ### 3.4.1-rc1
   * EDSM responder
     * Improved EDSM synchronization for system visits and comments
