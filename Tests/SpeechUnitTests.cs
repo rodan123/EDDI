@@ -3,6 +3,7 @@ using EddiSpeechService;
 using System.Linq;
 using System.Collections.Generic;
 using EddiVoiceAttackResponder;
+using System.Collections.Concurrent;
 
 namespace UnitTests
 {
@@ -295,7 +296,7 @@ namespace UnitTests
         [TestMethod]
         public void TestSpeechHumanize1()
         {
-            Assert.AreEqual("on the way to 12 and a half thousand", Translations.Humanize(12345));
+            Assert.AreEqual("well over minus 12 thousand", Translations.Humanize(-12345));
         }
 
         [TestMethod]
@@ -331,7 +332,7 @@ namespace UnitTests
         [TestMethod]
         public void TestSpeechHumanize7()
         {
-            Assert.AreEqual("51 million", Translations.Humanize(51000000));
+            Assert.AreEqual("minus 51 million", Translations.Humanize(-51000000));
         }
 
         [TestMethod]
@@ -355,67 +356,87 @@ namespace UnitTests
         [TestMethod]
         public void TestSpeechHumanize11()
         {
-            Assert.AreEqual("on the way to minus 12 and a half thousand", Translations.Humanize(-12345));
+            Assert.AreEqual("minus 0.16", Translations.Humanize(-0.15555555M));
         }
 
         [TestMethod]
         public void TestSpeechHumanize12()
         {
-            Assert.AreEqual("minus 0.16", Translations.Humanize(-0.15555555M));
+            Assert.AreEqual("minus 0.016", Translations.Humanize(-0.015555555M));
         }
 
         [TestMethod]
         public void TestSpeechHumanize13()
         {
-            Assert.AreEqual("minus 0.016", Translations.Humanize(-0.015555555M));
+            Assert.AreEqual("minus 0.0016", Translations.Humanize(-0.0015555555M));
         }
 
         [TestMethod]
         public void TestSpeechHumanize14()
         {
-            Assert.AreEqual("minus 0.0016", Translations.Humanize(-0.0015555555M));
+            Assert.AreEqual("over minus 12", Translations.Humanize(-12.1M));
         }
 
         [TestMethod]
         public void TestSpeechHumanize15()
         {
-            Assert.AreEqual("minus 51 million", Translations.Humanize(-51000000));
+            Assert.AreEqual("just over minus 12", Translations.Humanize(-12.01M));
         }
 
         [TestMethod]
         public void TestSpeechHumanize16()
         {
-            Assert.AreEqual("just over minus 51 million", Translations.Humanize(-51000001));
+            Assert.AreEqual("just over 436 trillion", Translations.Humanize(4.36156E14M));
         }
 
         [TestMethod]
         public void TestSpeechHumanize17()
         {
-            Assert.AreEqual("minus 10 thousand", Translations.Humanize(-10000));
+            Assert.AreEqual("well over 945 billion", Translations.Humanize(9.4571E11M));
         }
 
         [TestMethod]
         public void TestSpeechHumanize18()
         {
-            Assert.AreEqual("minus 100 thousand", Translations.Humanize(-100000));
+            Assert.AreEqual("over 912 quadrillion", Translations.Humanize(9.1235E17M));
         }
 
-        [TestMethod]
         public void TestSpeechHumanize19()
         {
-            Assert.AreEqual("over minus 12", Translations.Humanize(-12.1M));
-        }
-
-        [TestMethod]
-        public void TestSpeechHumanize20()
-        {
-            Assert.AreEqual("just over minus 12", Translations.Humanize(-12.01M));
+            Assert.AreEqual("nearly 646 thousand", Translations.Humanize(6.459E5M));
         }
 
         [TestMethod]
         public void TestTranslationVesper()
         {
             Assert.AreEqual(Translations.StarSystem("VESPER-M4"), "Vesper M 4");
+        }
+
+        [TestMethod]
+        public void TestSpeechQueue_DequeueSpeechOfType()
+        {
+            PrivateObject privateObject = new PrivateObject(SpeechQueue.Instance);
+            privateObject.Invoke("DequeueAllSpeech", System.Array.Empty<object>());
+            privateObject.Invoke("Enqueue", new object[] { new EddiSpeech("Test speech 1", null, 3, null, false, null) });
+            privateObject.Invoke("Enqueue", new object[] { new EddiSpeech("Test speech 2", null, 4, null, false, "Hull damaged") });
+            privateObject.Invoke("Enqueue", new object[] { new EddiSpeech("Test speech 3", null, 3, null, false, "Body scanned") });
+
+            List<ConcurrentQueue<EddiSpeech>> priorityQueues = (List<ConcurrentQueue<EddiSpeech>>)privateObject.GetFieldOrProperty("priorityQueues");
+            Assert.AreEqual(3, priorityQueues.SelectMany(q => q).Count());
+            try
+            {
+                // Only the speech of type "Hull damaged" should be removed, null types and other types should remain in place.
+                privateObject.Invoke("DequeueSpeechOfType", new object[] { "Hull damaged" });
+                Assert.AreEqual(2, priorityQueues.SelectMany(q => q).Count());
+                // Verify that the order of remaining speech of the same priority is unchanged.
+                Assert.AreEqual("Test speech 1", priorityQueues[3].First().message);
+                Assert.AreEqual("Test speech 3", priorityQueues[3].Last().message);
+            }
+            catch (System.Exception)
+            {
+                Assert.Fail();
+            }
+            privateObject.Invoke("DequeueAllSpeech", System.Array.Empty<object>());
         }
     }
 }

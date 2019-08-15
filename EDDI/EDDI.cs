@@ -155,26 +155,47 @@ namespace Eddi
 
                 // Ensure that our primary data structures have something in them.  This allows them to be updated from any source
                 Cmdr = new Commander();
-
                 // Set up the Elite configuration
                 EliteConfiguration eliteConfiguration = EliteConfiguration.FromFile();
                 inBeta = eliteConfiguration.Beta;
                 Logging.Info(inBeta ? "On beta" : "On live");
                 inHorizons = eliteConfiguration.Horizons;
 
-                // Set up the EDDI configuration
+                // Retrieve commander preferences
                 EDDIConfiguration configuration = EDDIConfiguration.FromFile();
-                updateDestinationSystemStation(configuration);
-                updateHomeSystemStation(configuration);
-                updateSquadronSystem(configuration);
 
+                List<Task> essentialAsyncTasks = new List<Task>();
                 if (running)
                 {
-                    // Set up monitors and responders
-                    monitors = findMonitors();
-                    responders = findResponders();
+                    // Tasks we can start asynchronously but need to complete before other dependent code is called
+                    essentialAsyncTasks.AddRange(new List<Task>()
+                    {
+                        Task.Run(() => responders = findResponders()), // Set up responders
+                        Task.Run(() => monitors = findMonitors()), // Set up monitors 
+                        Task.Run(() => updateHomeSystemStation(configuration)), // Set up home system details
+                        Task.Run(() => // Set up squadron details
+                        {
+                            updateSquadronSystem(configuration);
+                            Cmdr.squadronname = configuration.SquadronName;
+                            Cmdr.squadronid = configuration.SquadronID;
+                            Cmdr.squadronrank = configuration.SquadronRank;
+                            Cmdr.squadronallegiance = configuration.SquadronAllegiance;
+                            Cmdr.squadronpower = configuration.SquadronPower;
+                            Cmdr.squadronfaction = configuration.SquadronFaction;
+                        }),
+                    });
+                }
+                else
+                {
+                    Logging.Info("Mandatory upgrade required! EDDI initializing in safe mode until upgrade is completed.");
+                }
 
-                    // Set up the app service
+                // Tasks we can start asynchronously and don't need to wait for
+                Cmdr.gender = configuration.Gender;
+                Task.Run(() => updateDestinationSystemStation(configuration));
+                Task.Run(() =>
+                {
+                    // Set up the Frontier API service
                     if (CompanionAppService.Instance.CurrentState == CompanionAppService.State.Authorized)
                     {
                         // Carry out initial population of profile
@@ -184,37 +205,27 @@ namespace Eddi
                         }
                         catch (Exception ex)
                         {
-                            Logging.Debug("Failed to obtain profile: " + ex);
+                            Logging.Debug("Failed to obtain Frontier API profile: " + ex);
                         }
                     }
-
-                    Cmdr.gender = configuration.Gender;
-                    Cmdr.squadronname = configuration.SquadronName;
-                    Cmdr.squadronid = configuration.SquadronID;
-                    Cmdr.squadronrank = configuration.SquadronRank;
-                    Cmdr.squadronallegiance = configuration.SquadronAllegiance;
-                    Cmdr.squadronpower = configuration.SquadronPower;
-                    Cmdr.squadronfaction = configuration.SquadronFaction;
                     if (CompanionAppService.Instance.CurrentState == CompanionAppService.State.Authorized)
                     {
-                        Logging.Info("EDDI access to the companion app is enabled");
+                        Logging.Info("EDDI access to the Frontier API is enabled.");
+                        // Pass our commander's Frontier API name to the StarMapService (if it has been set) 
+                        // (the Frontier API name may differ from the EDSM name)
+                        if (Cmdr?.name != null)
+                        {
+                            StarMapService.commanderFrontierApiName = Cmdr.name;
+                        }
                     }
                     else
                     {
-                        Logging.Info("EDDI access to the companion app is disabled");
+                        Logging.Info("EDDI access to the Frontier API is not enabled.");
                     }
+                });
 
-                    // Pass our commander's Elite name to the StarMapService (if it has been set via the Frontier API or an event) and initialize the StarMapService
-                    // (the Elite name may differ from the EDSM name)
-                    if (Cmdr?.name != null)
-                    {
-                        StarMapService.commanderEliteName = Cmdr.name;
-                    }
-                }
-                else
-                {
-                    Logging.Info("Mandatory upgrade required! EDDI initializing in safe mode until upgrade is completed.");
-                }
+                // Make sure that our essential tasks have completed before we start
+                Task.WaitAll(essentialAsyncTasks.ToArray());
 
                 // We always start in normal space
                 Environment = Constants.ENVIRONMENT_NORMAL_SPACE;
@@ -829,6 +840,10 @@ namespace Eddi
                     {
                         passEvent = eventDiscoveryScan((DiscoveryScanEvent)@event);
                     }
+                    else if (@event is SystemScanComplete)
+                    {
+                        passEvent = eventSystemScanComplete((SystemScanComplete)@event);
+                    }
 
                     // Additional processing is over, send to the event responders if required
                     if (passEvent)
@@ -854,6 +869,19 @@ namespace Eddi
             }
         }
 
+        private bool eventSystemScanComplete(SystemScanComplete @event)
+        {
+            // There is a bug in the player journal output (as of player journal v.25) that can cause the `SystemScanComplete` event to fire multiple times 
+            // in rapid succession when performing a system scan of a star system with only stars and no other bodies.
+            if (CurrentStarSystem != null && (bool)CurrentStarSystem?.systemScanCompleted)
+            {
+                // We will suppress repetitions of the event within the same star system.
+                return false;
+            }
+            CurrentStarSystem.systemScanCompleted = true;
+            return true;
+        }
+
         private bool eventDiscoveryScan(DiscoveryScanEvent @event)
         {
             CurrentStarSystem.discoverableBodies = @event.bodies;
@@ -863,8 +891,8 @@ namespace Eddi
         private bool eventSettlementApproached(SettlementApproachedEvent @event)
         {
             bool passEvent = true;
-            Station station = CurrentStarSystem.stations.Find(s => s.name == @event.name);
-            if (station == null && @event.systemAddress == CurrentStarSystem.systemAddress)
+            Station station = CurrentStarSystem?.stations?.Find(s => s.name == @event.name);
+            if (station == null && @event.systemAddress == CurrentStarSystem?.systemAddress)
             {
                 // This settlement is unknown to us, might not be in our data source or we might not have connectivity.  Use a placeholder
                 station = new Station
@@ -1497,6 +1525,7 @@ namespace Eddi
             CurrentStarSystem.Faction = theEvent.controllingfaction;
             CurrentStellarBody = CurrentStarSystem.bodies.Find(b => b.bodyname == theEvent.star) 
                 ?? CurrentStarSystem.bodies.Find(b => b.distance == 0);
+            CurrentStarSystem.conflicts = theEvent.conflicts;
 
             // Update system faction data if available
             if (theEvent.factions != null)

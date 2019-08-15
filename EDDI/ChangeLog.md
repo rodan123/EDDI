@@ -1,6 +1,28 @@
-﻿# Change Log
+# Change Log
 
 Full details of the variables available for each noted event, and VoiceAttack integrations, are available in the individual [event pages](https://github.com/EDCD/EDDI/wiki/Events).
+
+### Development
+  * Speech responder
+    * Fixed a bug with speech queues that could in some circumstances cause EDDI to crash in the middle of combat.
+
+### 3.4.2-b1
+  * Core
+    * Application startup no longer waits for network operations to respond before displaying the UI.
+    * Added vehicle (SLF & SRV) definition and loadout description localization
+    * Fixed a crash that could occur when looking up information about specific factions. 
+    * Fixed a bug that could cause EDDI to crash / not load with some Windows language settings. 
+  * Speech responder
+    * Increased EDDI's maximum volume level. Users who prefer prior volume levels should set volume to approximately 80% of their former setting.
+    * Updated the `Docking granted` script to include basic landing pad info for surface ports.
+    * Revised `Blueprint make report` and `Blueprint material report` scripts to reference localized and updated blueprint data.
+    * Updated documentation for the `BlueprintDetails()` function and `blueprint` object, available via [Help](https://github.com/EDCD/EDDI/blob/master/SpeechResponder/Help.md) and [Variables](https://github.com/EDCD/EDDI/blob/master/SpeechResponder/Variables.md) in the SpeechResponder.
+    * The `FSDJump` event now includes a `conflicts` property, containing a list of `conflict` objects.
+    * Revised the `System state report` script to describe all factions in the system rather than just the controlling faction and to describe any conflicts between system factions. 
+    * Updated the `Galnet news published` script to add an option (enabled by default) to read article titles rather than full article text.
+    * Fixed a bug with the `Bodies mapped` script. 
+  * VoiceAttack responder
+    * Updated EDDI.vap commands for invoking the `Blueprint make report` and `Blueprint material report` scripts.
 
 ### 3.4.1
   * Amended a configuration error in the Frontier API module.

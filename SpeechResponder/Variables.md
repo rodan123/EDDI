@@ -150,8 +150,8 @@ A material.
 An engineering blueprint.
 
     - `name` the name of the blueprint (e.g. 'heavy duty')
-    - `modulename` the name of the applicable module (e.g. 'shield booster')
     - `grade` the grade of the engineering blueprint (e.g. 'grade 4')
+    - `materials` the materials required to produce the blueprint (a list of items with `material` and `amount` keys for each item)
 
 #### Rarity
 
@@ -438,7 +438,7 @@ Values are the same as for the current starsystem.
 
 #### Next starsystem
 
-Information about your next targeted starsystem is available under the `nextsystem` object.
+Information about your next targeted starsystem is available under the `nextsystem` object. When you begin a jump to a targeted system, the information is transferred to the current `system` object.
 
 Any values might be missing, depending on EDDI's configuration and the information avaialable about the system.
 
@@ -640,6 +640,20 @@ An object describing the presence and state of a faction within a system
     - `influence` the faction's influence level within the system
     - `happiness` the current happiness level within the faction
     - `squadronfaction` true if the faction is the pilot's current squadron faction
+
+### Conflict
+
+A conflict object
+
+    - `state` the faction state of the factions in conflict (e.g. war, civil war, or election)
+    - `status` the status of the conflict (e.g. active, pending)
+    - `stake` the system asset at stake in the conflict (if any)
+    - `conflictdays` the number of days that the conflict has been ongoing
+    - `margin` the difference between the number of days won by one faction vs. the other
+    - `faction1` the name of the first faction in the conflict
+    - `faction1dayswon` the number of conflict days that faction1 has won.
+    - `faction2` the name of the second faction in the conflict
+    - `faction2dayswon` the number of conflict days that faction2 has won.
 ---
 
 ## Status

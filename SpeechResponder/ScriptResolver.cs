@@ -250,7 +250,7 @@ namespace EddiSpeechResponder
                 {
                     foreach (KeyValuePair<Cottle.Value, Cottle.Value> value in values[0].Fields)
                     {
-                        string valueString = value.Value.ToString();
+                        string valueString = value.Value.AsString;
                         if (value.Key == 0)
                         {
                             output = valueString;
@@ -261,7 +261,7 @@ namespace EddiSpeechResponder
                         }
                         else
                         {
-                            output = $"{output}{(values.Count() > 2 ? "," : "")} {localisedAnd} {valueString}";
+                            output = $"{output}{(values[0].Fields.Count() > 2 ? "," : "")} {localisedAnd} {valueString}";
                         }
                     }
                 }
@@ -965,9 +965,11 @@ namespace EddiSpeechResponder
 
             store["BlueprintDetails"] = new NativeFunction((values) =>
             {
-                BlueprintMaterials result = BlueprintMaterials.FromName(values[0].AsString);
+                string blueprintName = values[0].AsString;
+                int blueprintGrade = Convert.ToInt32(values[1].AsNumber);
+                Blueprint result = Blueprint.FromNameAndGrade(blueprintName, blueprintGrade);
                 return (result == null ? new ReflectionValue(new object()) : new ReflectionValue(result));
-            }, 1);
+            }, 2);
 
             store["TrafficDetails"] = new NativeFunction((values) =>
             {
@@ -1108,6 +1110,13 @@ namespace EddiSpeechResponder
                 return "";
             }, 2);
 
+            store["RefreshProfile"] = new NativeFunction((values) =>
+            {
+                bool stationRefresh = (values.Count == 0 ? false : values[0].AsBoolean);
+                EDDI.Instance.refreshProfile(stationRefresh);
+                return "";
+            }, 0, 1);
+            
             // Variables
             foreach (KeyValuePair<string, Cottle.Value> entry in vars)
             {

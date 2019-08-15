@@ -126,10 +126,6 @@
     <value>közel</value>
     <comment/>
   </data>
-  <data name="onthewayto" xml:space="preserve">
-    <value>útban</value>
-    <comment/>
-  </data>
   <data name="over" xml:space="preserve">
     <value>több mint</value>
     <comment/>

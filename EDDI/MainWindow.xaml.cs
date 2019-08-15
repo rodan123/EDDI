@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Speech.Synthesis;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -301,7 +302,11 @@ namespace Eddi
             foreach (DirectoryInfo dir in subDirs)
             {
                 string name = dir.Name;
-                if (name == "x86" || name == "x64")
+                if (
+                    name == "x86" 
+                    || name == "x64" 
+                    || !dir.GetFiles().Any(f => f.Extension.Equals(".dll"))
+                    )
                 {
                     continue;
                 }
@@ -678,14 +683,14 @@ namespace Eddi
         private void squadronFactionDropDownUpdated(object sender, SelectionChangedEventArgs e)
         {
             EDDIConfiguration eddiConfiguration = EDDIConfiguration.FromFile();
-            string squadronFaction = squadronFactionDropDown.SelectedItem?.ToString();
+            string squadronFaction = squadronFactionDropDown.SelectedItem?.ToString(); // This can be a localized "None"
 
             if (eddiConfiguration.SquadronFaction != squadronFaction)
             {
-                eddiConfiguration.SquadronFaction = squadronFaction == "None" ? null : squadronFaction;
+                eddiConfiguration.SquadronFaction = squadronFaction == Power.None.localizedName ? null : squadronFaction;
                 EDDI.Instance.Cmdr.squadronfaction = eddiConfiguration.SquadronFaction;
 
-                if (squadronFaction != "None")
+                if (squadronFaction != Power.None.localizedName)
                 {
                     StarSystem system = StarSystemSqLiteRepository.Instance.GetOrCreateStarSystem(eddiConfiguration.SquadronSystem, true);
                     Faction faction = system.factions.Find(f => f.name == squadronFaction);
@@ -1087,8 +1092,9 @@ namespace Eddi
             {
                 Logging.Info("VoiceAttack version: " + EDDI.Instance.vaVersion);
             }
-            Logging.Info("Commander name: " + (EDDI.Instance.Cmdr != null ? EDDI.Instance.Cmdr.name : "unknown"));
-            Logging.Info("Current culture: " + CultureInfo.DefaultThreadCurrentCulture.IetfLanguageTag ?? "unknown");
+            Logging.Info("Commander name: " + (EDDI.Instance.Cmdr != null ? EDDI.Instance.Cmdr.name : "null"));
+            Logging.Info("Default UI culture: " + (CultureInfo.DefaultThreadCurrentUICulture?.IetfLanguageTag ?? "automatic"));
+            Logging.Info("Current UI culture: " + (CultureInfo.CurrentUICulture?.IetfLanguageTag ?? "null"));
 
             // Prepare a truncated log file for export if verbose logging is enabled
             if (eddiVerboseLogging.IsChecked.Value)

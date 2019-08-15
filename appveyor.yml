@@ -3,19 +3,43 @@ branches:
   except:
   - l10n_develop
 skip_tags: true
-image: Visual Studio 2017
+skip_commits:
+  # Skip commits where all of the files modified are docs
+  files:
+    - docs/*
+    - '**/*.html'
+    - '**/*.md'
+image: 
+- Visual Studio 2017
 configuration: Release
 nuget:
   project_feed: true
 before_build:
 - cmd: nuget restore
 build:
+  project: EDDI.sln      # path to Visual Studio solution or project
   parallel: true
   verbosity: minimal
-test:
-  categories:
-    except:
-    - Speech
-    - DocGen
-    - Network
-    - Credentials
+test_script:
+ # This powershell script may be run locally from your EDDI repo installation folder.
+ # The OpenCover file path must be updated if the OpenCover package version is updated
+ # The VSTest target file path must be updated if the CI is building using something other than Visual Studios 2017 Community Edition
+ - ps: |
+      $openCoverConsole = '.\packages\OpenCover.4.6.519\tools\OpenCover.Console.exe'
+      $openCoverReg = '-register:user'
+      $openCoverArgs = '-mergebyhash -skipautoprops -excludebyattribute:*.ExcludeFromCodeCoverage*,*.GeneratedCodeAttribute* -excludebyfile:*\*.Designer.cs,*.xaml -filter:"+[Eddi*]* +[Utilities*]* +[Tests*]UnitTests*"'
+      $target = '-target:"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe"'
+      $targetArgs = '-targetargs:"bin\Release\Tests.dll' + $(If ($APPVEYOR) {' /logger:Appveyor'}) + ' /tests:UnitTests /Parallel /InIsolation /Blame"'
+      New-Item -ItemType directory -Path '.\TestResults' -Force
+      $resultsPath = '.\TestResults\coverage.xml'
+      $output = '-output:' + $resultsPath
+      $runCoverageCmd = "$openCoverConsole $openCoverArgs $openCoverReg $target $targetArgs $output"
+      ECHO $runCoverageCmd
+      IEX $runCoverageCmd
+after_test:
+ # Our CodeCov token is "c0cc9048-1cdc-464b-b2fa-dac79464e1c4" 
+ - ps: |
+      cd TestResults
+      $env:PATH = 'C:\msys64\usr\bin;' + $env:PATH
+      Invoke-WebRequest -Uri 'https://codecov.io/bash' -OutFile codecov.sh
+      bash codecov.sh -f coverage.xml -t c0cc9048-1cdc-464b-b2fa-dac79464e1c4
