@@ -1,12 +1,15 @@
-﻿using EddiDataDefinitions;
+using EddiDataDefinitions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
+using System.Linq;
+using Tests.Properties;
 
 namespace UnitTests
 {
     [TestClass]
     // this class is pure and doesn't need TestBase.MakeSafe()
-    public class DataDefinitionTests
+    public class DataDefinitionTests : TestBase
     {
         [TestMethod]
         public void TestDataDefinitionReactiveArmour()
@@ -102,9 +105,18 @@ namespace UnitTests
         [TestMethod]
         public void TestOcellusStationModel()
         {
+            // The same station may use the model "Ocellus" for one event and "Bernal" for another. 
+
             StationModel model = StationModel.FromEDName("Ocellus");
-            Assert.AreEqual("Bernal", model.basename);
+            Assert.AreEqual("Ocellus", model.basename);
             Assert.AreEqual("Ocellus", model.edname);
+
+            StationModel model2 = StationModel.FromEDName("Bernal");
+            Assert.AreEqual("Bernal", model2.basename);
+            Assert.AreEqual("Bernal", model2.edname);
+
+            // Regardless of whether the edname is "Ocellus" or "Bernal", the output should be the same.
+            Assert.AreEqual(model.invariantName, model2.invariantName);
         }
 
         [TestMethod]
@@ -185,6 +197,99 @@ namespace UnitTests
             Body actualBody = starSystem.bodies[0];
             Assert.AreEqual("testSystem 1", actualBody.bodyname);
             Assert.AreEqual(moon, actualBody.bodyType);
+        }
+
+        [TestMethod]
+        public void TestBlueprintFromEdNameAndGrade()
+        {
+            string blueprintName = "WakeScanner_Fast Scan_3";
+            int grade = 3;
+            Blueprint blueprint = Blueprint.FromEDNameAndGrade(blueprintName, grade);
+            Assert.IsNotNull(blueprint);
+            Assert.AreEqual(grade, blueprint.grade);
+            Assert.AreEqual("SensorFastScan", blueprint.blueprintTemplate?.edname);
+            Assert.AreEqual(3, blueprint.materials.Count);
+            Assert.IsTrue(blueprint.materials.Select(m => m.edname).Contains("phosphorus"));
+            Assert.IsTrue(blueprint.materials.Select(m => m.edname).Contains("uncutfocuscrystals"));
+            Assert.IsTrue(blueprint.materials.Select(m => m.edname).Contains("symmetrickeys"));
+        }
+
+        [TestMethod]
+        public void TestBlueprintFromTemplateEdNameAndGrade()
+        {
+            // We should also be able to handle receiving a template name rather than a blueprint name while still providing essential info.
+            string blueprintTemplate = "Sensor_FastScan";
+            int grade = 3;
+            Blueprint blueprintFromTemplate = Blueprint.FromEDNameAndGrade(blueprintTemplate, grade);
+            Assert.IsNotNull(blueprintFromTemplate);
+            Assert.AreEqual(grade, blueprintFromTemplate.grade);
+            Assert.AreEqual("SensorFastScan", blueprintFromTemplate.blueprintTemplate.edname);
+            Assert.AreEqual(3, blueprintFromTemplate.materials.Count);
+            string[] materials = blueprintFromTemplate.materials.Select(m => m.edname).ToArray();
+            Assert.IsTrue(materials.Contains("phosphorus"));
+            Assert.IsTrue(materials.Contains("uncutfocuscrystals"));
+            Assert.IsTrue(materials.Contains("symmetrickeys"));
+        }
+
+        [TestMethod]
+        public void TestBlueprintNameAndGrade()
+        {
+            string blueprintName = "Dirty Drive Tuning";
+            int grade = 5;
+            Blueprint blueprint = Blueprint.FromNameAndGrade(blueprintName, grade);
+            Assert.IsNotNull(blueprint);
+            Assert.AreEqual(128673659, blueprint.blueprintId);
+            Assert.AreEqual(grade, blueprint.grade);
+            Assert.AreEqual("EngineDirty", blueprint.blueprintTemplate?.edname);
+            Assert.AreEqual(3, blueprint.materials.Count);
+            Assert.IsTrue(blueprint.materials.Select(m => m.edname).Contains("industrialfirmware"));
+            Assert.IsTrue(blueprint.materials.Select(m => m.edname).Contains("cadmium"));
+            Assert.IsTrue(blueprint.materials.Select(m => m.edname).Contains("pharmaceuticalisolators"));
+        }
+
+        [TestMethod]
+        public void TestBlueprintBadNameAndGrade()
+        {
+            string blueprintName = "No such blueprint";
+            int grade = 5;
+            Blueprint blueprint = Blueprint.FromNameAndGrade(blueprintName, grade);
+            Assert.IsNull(blueprint);
+        }
+
+        [TestMethod]
+        public void TestBlueprintFromBlueprintID()
+        {
+            long blueprintId = 128740124;
+            Blueprint blueprint = Blueprint.FromEliteID(blueprintId);
+            Assert.IsNotNull(blueprint);
+            Assert.AreEqual(3, blueprint.grade);
+            Assert.IsNotNull(blueprint.blueprintTemplate);
+            Assert.AreEqual(3, blueprint.materials.Count);
+            Assert.IsTrue(blueprint.materials.Select(m => m.edname).Contains("phosphorus"));
+            Assert.IsTrue(blueprint.materials.Select(m => m.edname).Contains("uncutfocuscrystals"));
+            Assert.IsTrue(blueprint.materials.Select(m => m.edname).Contains("symmetrickeys"));
+        }
+
+        [TestMethod]
+        public void TestBlueprintFromBadBlueprintID()
+        {
+            long blueprintId = -1;
+            Blueprint blueprint = Blueprint.FromEliteID(blueprintId);
+            Assert.IsNull(blueprint);
+        }
+
+        [TestMethod]
+        public void TestVehicleProperties()
+        {
+            JObject json = DeserializeJsonResource<JObject>(Resources.vehicle);
+            Vehicle v0 = Vehicle.FromJson(0, json);
+            Assert.AreEqual(0, v0.subslot, "testing v0 subslot from JSON");
+            Assert.AreEqual(v0.localizedName, "SRV Scarab");
+            Assert.AreEqual(v0.localizedDescription, "dual plasma repeaters");
+
+            Vehicle v1 = Vehicle.FromJson(1, json);
+            Assert.AreEqual(1, v1.subslot, "testing v1 subslot from JSON");
+            Assert.AreEqual(0, v0.subslot, "testing v0 subslot after setting v1 subslot");
         }
     }
 }

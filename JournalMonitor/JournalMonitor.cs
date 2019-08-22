@@ -226,6 +226,14 @@ namespace EddiJournalMonitor
                                         factions = getFactions(factionsVal, systemName);
                                     }
 
+                                    // Parse conflicts array data
+                                    List<Conflict> conflicts = new List<Conflict>();
+                                    data.TryGetValue("Conflicts", out object conflictsVal);
+                                    if (conflictsVal != null)
+                                    {
+                                        conflicts = getConflicts(conflictsVal, factions);
+                                    }
+
                                     // Calculate remaining distance to route destination (if it exists)
                                     decimal destDistance = 0;
                                     string destination = EDDI.Instance.DestinationStarSystem?.systemname;
@@ -234,7 +242,7 @@ namespace EddiJournalMonitor
                                         destDistance = EDDI.Instance.getSystemDistanceFromDestination(systemName);
                                     }
 
-                                    events.Add(new JumpedEvent(timestamp, systemName, systemAddress, x, y, z, starName, distance, fuelUsed, fuelRemaining, boostUsed, controllingfaction, factions, economy, economy2, security, population, destination, destDistance) { raw = line, fromLoad = fromLogLoad });
+                                    events.Add(new JumpedEvent(timestamp, systemName, systemAddress, x, y, z, starName, distance, fuelUsed, fuelRemaining, boostUsed, controllingfaction, factions, conflicts, economy, economy2, security, population, destination, destDistance) { raw = line, fromLoad = fromLogLoad });
                                 }
                                 handled = true;
                                 break;
@@ -524,8 +532,10 @@ namespace EddiJournalMonitor
                                             bool modified = val != null ? true : false;
                                             Dictionary<string, object> engineeringData = (Dictionary<string, object>)val;
                                             string blueprint = modified ? JsonParsing.getString(engineeringData, "BlueprintName") : null;
-                                            Modifications modification = Modifications.FromEDName(blueprint) ?? Modifications.None;
+                                            long blueprintId = modified ? JsonParsing.getLong(engineeringData, "BlueprintID") : 0;
                                             int level = modified ? JsonParsing.getInt(engineeringData, "Level") : 0;
+                                            Blueprint modification = Blueprint.FromEliteID(blueprintId, engineeringData) 
+                                                ?? Blueprint.FromEDNameAndGrade(blueprint, level) ?? Blueprint.None;
                                             decimal quality = modified ? JsonParsing.getDecimal(engineeringData, "Quality") : 0;
 
                                             if (slot.Contains("Hardpoint"))
@@ -1101,8 +1111,8 @@ namespace EddiJournalMonitor
                                             item.TryGetValue("EngineerModifications", out val);
                                             bool modified = val != null ? true : false;
                                             module.modified = modified;
-                                            module.engineermodification = Modifications.FromEDName((string)val) ?? Modifications.None;
                                             module.engineerlevel = modified ? JsonParsing.getInt(item, "Level") : 0;
+                                            module.engineermodification = Blueprint.FromEDNameAndGrade((string)val, module.engineerlevel) ?? Blueprint.None;
                                             module.engineerquality = modified? JsonParsing.getDecimal(item, "Quality") : 0;
 
                                             StoredModule storedModule = new StoredModule
@@ -1119,19 +1129,22 @@ namespace EddiJournalMonitor
                                         }
 
                                         string[] systemNames = storedModules.Where(s => !string.IsNullOrEmpty(s.system)).Select(s => s.system).Distinct().ToArray();
-                                        List<StarSystem> systemsData = StarSystemSqLiteRepository.Instance.GetOrCreateStarSystems(systemNames);
-                                        List<StoredModule> storedModulesHolder = new List<StoredModule>();
-                                        foreach (StoredModule storedModule in storedModules)
+                                        List<StarSystem> systemsData = StarSystemSqLiteRepository.Instance.GetOrFetchStarSystems(systemNames);
+                                        if (systemsData?.Any() ?? false)
                                         {
-                                            if (!storedModule.intransit)
+                                            List<StoredModule> storedModulesHolder = new List<StoredModule>();
+                                            foreach (StoredModule storedModule in storedModules)
                                             {
-                                                StarSystem systemData = systemsData.FirstOrDefault(s => s.systemname == storedModule.system);
-                                                Station stationData = systemData?.stations?.FirstOrDefault(s => s.marketId == storedModule.marketid);
-                                                storedModule.station = stationData?.name;
+                                                if (!storedModule.intransit)
+                                                {
+                                                    StarSystem systemData = systemsData.FirstOrDefault(s => s.systemname == storedModule.system);
+                                                    Station stationData = systemData?.stations?.FirstOrDefault(s => s.marketId == storedModule.marketid);
+                                                    storedModule.station = stationData?.name;
+                                                }
+                                                storedModulesHolder.Add(storedModule);
                                             }
-                                            storedModulesHolder.Add(storedModule);
+                                            storedModules = storedModulesHolder;
                                         }
-                                        storedModules = storedModulesHolder;
                                     }
                                     events.Add(new StoredModulesEvent(timestamp, marketId, station, system, storedModules) { raw = line, fromLoad = fromLogLoad });
                                 }
@@ -1284,8 +1297,8 @@ namespace EddiJournalMonitor
                                             module.hot = JsonParsing.getBool(data, "Hot");
                                             string engineerModifications = JsonParsing.getString(data, "EngineerModifications");
                                             module.modified = engineerModifications != null;
-                                            module.engineermodification = Modifications.FromEDName(engineerModifications) ?? Modifications.None;
                                             module.engineerlevel = JsonParsing.getOptionalInt(data, "Level") ?? 0;
+                                            module.engineermodification = Blueprint.FromEDName(engineerModifications) ?? Blueprint.None;
                                             module.engineerquality = JsonParsing.getOptionalDecimal(data, "Quality") ?? 0;
                                             modules.Add(module);
                                         }
@@ -1334,8 +1347,8 @@ namespace EddiJournalMonitor
                                     module.hot = JsonParsing.getBool(data, "Hot");
                                     string engineerModifications = JsonParsing.getString(data, "EngineerModifications");
                                     module.modified = engineerModifications != null;
-                                    module.engineermodification = Modifications.FromEDName(engineerModifications) ?? Modifications.None;
                                     module.engineerlevel = JsonParsing.getOptionalInt(data, "Level") ?? 0;
+                                    module.engineermodification = Blueprint.FromEDNameAndGrade(engineerModifications, module.engineerlevel) ?? Blueprint.None;
                                     module.engineerquality = JsonParsing.getOptionalDecimal(data, "Quality") ?? 0;
 
                                     // Set retrieved module defaults
@@ -1402,8 +1415,8 @@ namespace EddiJournalMonitor
                                     module.hot = JsonParsing.getBool(data, "Hot");
                                     string engineerModifications = JsonParsing.getString(data, "EngineerModifications");
                                     module.modified = engineerModifications != null;
-                                    module.engineermodification = Modifications.FromEDName(engineerModifications) ?? Modifications.None;
                                     module.engineerlevel = JsonParsing.getOptionalInt(data, "Level") ?? 0;
+                                    module.engineermodification = Blueprint.FromEDNameAndGrade(engineerModifications, module.engineerlevel) ?? Blueprint.None;
                                     module.engineerquality = JsonParsing.getOptionalDecimal(data, "Quality") ?? 0;
 
                                     data.TryGetValue("Cost", out val);
@@ -2582,9 +2595,10 @@ namespace EddiJournalMonitor
                                 {
                                     decimal amount = JsonParsing.getDecimal(data, "Scooped");
                                     decimal total = JsonParsing.getDecimal(data, "Total");
-                                    bool full = EDDI.Instance.CurrentShip?.fueltanktotalcapacity == null
+                                    Ship currentShip = EDDI.Instance.CurrentShip;
+                                    bool full = currentShip?.fueltanktotalcapacity == null
                                         ? false
-                                        : Math.Round(total) == EDDI.Instance.CurrentShip.fueltanktotalcapacity;
+                                        : total == (currentShip?.fueltanktotalcapacity ?? 0M);
 
                                     events.Add(new ShipRefuelledEvent(timestamp, "Scoop", null, amount, total, full) { raw = line, fromLoad = fromLogLoad });
                                 }
@@ -3431,6 +3445,8 @@ namespace EddiJournalMonitor
                             case "WingInvite":
                             case "WingJoin":
                             case "WingLeave":
+                            case "SharedBookmarkToSquadron":
+                            case "SAASignalsFound":
                                 // we silently ignore these, but forward them to the responders
                                 break;
                             default:
@@ -3467,32 +3483,44 @@ namespace EddiJournalMonitor
             return events;
         }
 
-        private static SignalSource GetSignalSource(IDictionary<string, object> data)
-        {
-            // The source may be a direct source or a USS. If a USS, we want the USS type.
-            SignalSource source;
-            if (JsonParsing.getString(data, "USSType") != null)
-            {
-                string signalSource = JsonParsing.getString(data, "USSType");
-                source = SignalSource.FromEDName(signalSource) ?? new SignalSource();
-                source.fallbackLocalizedName = JsonParsing.getString(data, "USSType_Localised") ?? signalSource;
-            }
-            else
-            {
-                string signalSource = JsonParsing.getString(data, "SignalName");
-                source = SignalSource.FromEDName(signalSource) ?? new SignalSource();
-                source.fallbackLocalizedName = JsonParsing.getString(data, "SignalName_Localised") ?? signalSource;
-            }
-
-            return source;
-        }
-
         private static Superpower getAllegiance(IDictionary<string, object> data, string key)
         {
             data.TryGetValue(key, out object val);
             // FD sends "" rather than null; fix that here
             if (((string)val) == "") { val = null; }
             return Superpower.FromNameOrEdName((string)val);
+        }
+
+        private static List<Conflict> getConflicts(object conflictsVal, List<Faction> factions)
+        {
+            if (conflictsVal is null || factions is null) { return null; }
+
+            List<Conflict> conflicts = new List<Conflict>();
+            var conflictsList = conflictsVal as List<object>;
+            foreach (IDictionary<string, object> conflictDetail in conflictsList)
+            {
+                FactionState conflictType = FactionState.FromEDName(JsonParsing.getString(conflictDetail, "WarType")) ?? FactionState.None;
+                string status = JsonParsing.getString(conflictDetail, "Status");
+
+                // Faction 1
+                conflictDetail.TryGetValue("Faction1", out object faction1Val);
+                Dictionary<string, object> faction1Detail = (Dictionary<string, object>)faction1Val;
+                string faction1Name = JsonParsing.getString(faction1Detail, "Name");
+                Faction faction1 = factions.Find(f => f.name == faction1Name);
+                string faction1Stake = JsonParsing.getString(faction1Detail, "Stake");
+                int faction1DaysWon = JsonParsing.getInt(faction1Detail, "WonDays");
+
+                // Faction 2
+                conflictDetail.TryGetValue("Faction2", out object faction2Val);
+                Dictionary<string, object> faction2Detail = (Dictionary<string, object>)faction2Val;
+                string faction2Name = JsonParsing.getString(faction2Detail, "Name");
+                Faction faction2 = factions.Find(f => f.name == faction2Name);
+                string faction2Stake = JsonParsing.getString(faction2Detail, "Stake");
+                int faction2DaysWon = JsonParsing.getInt(faction2Detail, "WonDays");
+
+                conflicts.Add(new Conflict(conflictType, status, faction1, faction1Stake, faction1DaysWon, faction2, faction2Stake, faction2DaysWon));
+            }
+            return conflicts;
         }
 
         private static string getFactionName(IDictionary<string, object> data, string key)
@@ -3641,6 +3669,26 @@ namespace EddiJournalMonitor
             }
 
             return factions;
+        }
+
+        private static SignalSource GetSignalSource(IDictionary<string, object> data)
+        {
+            // The source may be a direct source or a USS. If a USS, we want the USS type.
+            SignalSource source;
+            if (JsonParsing.getString(data, "USSType") != null)
+            {
+                string signalSource = JsonParsing.getString(data, "USSType");
+                source = SignalSource.FromEDName(signalSource) ?? new SignalSource();
+                source.fallbackLocalizedName = JsonParsing.getString(data, "USSType_Localised") ?? signalSource;
+            }
+            else
+            {
+                string signalSource = JsonParsing.getString(data, "SignalName");
+                source = SignalSource.FromEDName(signalSource) ?? new SignalSource();
+                source.fallbackLocalizedName = JsonParsing.getString(data, "SignalName_Localised") ?? signalSource;
+            }
+
+            return source;
         }
 
         private static string npcSpeechBy(string from, string message)

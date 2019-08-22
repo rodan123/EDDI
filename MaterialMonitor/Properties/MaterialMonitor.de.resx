@@ -117,6 +117,7 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  
   <data name="desc" xml:space="preserve">
     <value>Beobachte die Materialmenge und sende eine Benachrichtigung, wenn der eingestellte Grenzwert erreicht wird.</value>
   </data>
@@ -124,7 +125,7 @@
     <value>Gewünscht</value>
   </data>
   <data name="find_encoded_button" xml:space="preserve">
-    <value>Händler - Encoded Data</value>
+    <value>Händler-Encoded Data</value>
   </data>
   <data name="find_guardian_button" xml:space="preserve">
     <value>Guardian Broker</value>
@@ -133,10 +134,10 @@
     <value>Human Broker</value>
   </data>
   <data name="find_manufactured_button" xml:space="preserve">
-    <value>Händler - gefert. Materialien</value>
+    <value>Händler-gefert. Materialien</value>
   </data>
   <data name="find_raw_button" xml:space="preserve">
-    <value>Händler - Rohmaterialien</value>
+    <value>Händler-Rohmaterial</value>
   </data>
   <data name="inventory_header" xml:space="preserve">
     <value>Vorrat</value>
@@ -162,8 +163,9 @@
   <data name="p3" xml:space="preserve">
     <value>Tip: Maximiere die erlaubte Stationsentfernung zur Minimierung der Suchzeiten.</value>
   </data>
+  
   <data name="tab_station_distance" xml:space="preserve">
-    <value>Maximale Entfernung der Station vom Hauptstern (Ls):</value>
+    <value>Max. Entfernung der Stat. vom Hauptstern (Ls):</value>
   </data>
   <data name="type_header" xml:space="preserve">
     <value>Typ</value>

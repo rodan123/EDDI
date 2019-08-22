@@ -129,10 +129,6 @@
     <value>près de</value>
     <comment/>
   </data>
-  <data name="onthewayto" xml:space="preserve">
-    <value>en route vers</value>
-    <comment/>
-  </data>
   <data name="over" xml:space="preserve">
     <value>au-delà de</value>
     <comment/>

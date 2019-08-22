@@ -128,6 +128,9 @@ namespace EddiDataDefinitions
         [JsonIgnore, Obsolete("Please use Faction.Government instead")]
         public string government => Faction.government;
 
+        [JsonIgnore]
+        public List<Conflict> conflicts { get; set; }
+
         /// <summary>Details of stations</summary>
         public List<Station> stations { get; set; }
 
@@ -180,6 +183,10 @@ namespace EddiDataDefinitions
 
         /// <summary>distance from home</summary>
         public decimal? distancefromhome;
+
+        /// <summary>Whether a system scan has already been completed for this system in the current play session</summary>
+        [JsonIgnore]
+        public bool systemScanCompleted;
 
         // Not intended to be user facing - materials available within the system
         [JsonIgnore]

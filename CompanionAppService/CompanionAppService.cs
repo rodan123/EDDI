@@ -67,6 +67,7 @@ namespace EddiCompanionAppService
 
         public CompanionAppCredentials Credentials;
         public bool inBeta { get; set; } = false;
+        public bool active => CurrentState == State.Authorized;
 
         private static CompanionAppService instance;
         private string clientID; // we are not allowed to check the client ID into version control or publish it to 3rd parties
@@ -434,15 +435,12 @@ namespace EddiCompanionAppService
                 JObject marketJson = JObject.Parse(market);
                 string lastStarport = (string)marketJson["lastStarport"]["name"];
 
-                cachedProfile.CurrentStarSystem = StarSystemSqLiteRepository.Instance.GetOrCreateStarSystem(systemName);
-                cachedProfile.LastStation = cachedProfile.CurrentStarSystem.stations.Find(s => s.name == lastStarport);
+                cachedProfile.CurrentStarSystem = StarSystemSqLiteRepository.Instance.GetOrFetchStarSystem(systemName);
+                cachedProfile.LastStation = cachedProfile.CurrentStarSystem?.stations?.Find(s => s.name == lastStarport);
                 if (cachedProfile.LastStation == null)
                 {
                     // Don't have a station so make one up
-                    cachedProfile.LastStation = new Station
-                    {
-                        name = lastStarport
-                    };
+                    cachedProfile.LastStation = new Station { name = lastStarport };
                 }
                 cachedProfile.LastStation.systemname = systemName;
 
@@ -638,7 +636,7 @@ namespace EddiCompanionAppService
                 string systemName = json["lastSystem"] == null ? null : (string)json["lastSystem"]["name"];
                 if (systemName != null)
                 {
-                    Profile.CurrentStarSystem = StarSystemSqLiteRepository.Instance.GetOrCreateStarSystem(systemName);
+                    Profile.CurrentStarSystem = StarSystemSqLiteRepository.Instance.GetOrFetchStarSystem(systemName);
                 }
 
                 if (json["lastStarport"] != null)

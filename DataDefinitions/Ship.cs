@@ -35,7 +35,7 @@ namespace EddiDataDefinitions
 
         /// <summary>the size of this ship</summary>
         [JsonIgnore]
-        public string size { get; set; }
+        public LandingPadSize size { get; set; }
 
         /// <summary>the size of the military compartment slots</summary>
         [JsonIgnore]
@@ -334,7 +334,7 @@ namespace EddiDataDefinitions
             phoneticmanufacturer = PhoneticManufacturer;
             model = Model;
             phoneticmodel = PhoneticModel;
-            size = Size;
+            size = LandingPadSize.FromEDName(Size);
             militarysize = MilitarySize;
             health = 100M;
             hardpoints = new List<Hardpoint>();
@@ -353,11 +353,11 @@ namespace EddiDataDefinitions
         {
             string model = (defaultname ?? SpokenModel()) ?? "ship";
             string result = ("your " + model);
-            if (!string.IsNullOrEmpty(phoneticname))
+            if (!string.IsNullOrWhiteSpace(phoneticname))
             {
                 result = "<phoneme alphabet=\"ipa\" ph=\"" + phoneticname + "\">" + name + "</phoneme>";
             }
-            else if (!string.IsNullOrEmpty(name))
+            else if (!string.IsNullOrWhiteSpace(name))
             {
                 result = name;
             }

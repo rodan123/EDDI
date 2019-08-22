@@ -202,7 +202,7 @@
     <value>Langstreckensensor</value>
   </data>
   <data name="SensorWideAngle" xml:space="preserve">
-    <value>Weitwinkelsensor</value>
+    <value>Weitwinkelscanner</value>
   </data>
   <data name="ShieldBoosterExplosive" xml:space="preserve">
     <value>Explosionsresistente Schildverstärker</value>
@@ -277,7 +277,8 @@
     <value>Leichter Sogwolken-Scanner</value>
   </data>
   <data name="WakeScannerLongRange" xml:space="preserve">
-    <value>Langstrecken-Sogwolken-Scanner</value>
+    <value>Langstreckenscanner
+</value>
   </data>
   <data name="WakeScannerReinforced" xml:space="preserve">
     <value>Verstärkter Sogwolken-Scanner</value>
@@ -286,7 +287,7 @@
     <value>Abgeschirmter Sogwolken-Scanner</value>
   </data>
   <data name="WakeScannerWideAngle" xml:space="preserve">
-    <value>Weitwinkel-Sogwolken-Scanner</value>
+    <value>Weitwinkelscanner</value>
   </data>
   <data name="AFMShielded" xml:space="preserve">
     <value>Abgeschirmte Wartungseinheit</value>
@@ -361,7 +362,7 @@
     <value>Leichter Tötungsbefehl-Scanner</value>
   </data>
   <data name="KillWarrantScannerLongRange" xml:space="preserve">
-    <value>Langstrecken-Tötungsbefehl-Scanner</value>
+    <value>Langstreckenscanner</value>
   </data>
   <data name="KillWarrantScannerReinforced" xml:space="preserve">
     <value>Verstärkter Tötungsbefehl-Scanner</value>
@@ -403,10 +404,10 @@
     <value>Schneller Fracht-Scanner</value>
   </data>
   <data name="CargoScannerLongRange" xml:space="preserve">
-    <value>Langstrecken-Fracht-Scanner</value>
+    <value>Langstreckenscanner</value>
   </data>
   <data name="CargoScannerWideAngle" xml:space="preserve">
-    <value>Weitwinkel-Fracht-Scanner</value>
+    <value>Weitwinkelscanner</value>
   </data>
   <data name="ECMLightWeight" xml:space="preserve">
     <value>Leichte elektronische Gegenmaße</value>
@@ -418,7 +419,7 @@
     <value>Beschleunigter Tötungsbefehlscanner</value>
   </data>
   <data name="KillWarrantScannerWideAngle" xml:space="preserve">
-    <value>Weitwinkel-Tötungsbefehl-Scanner</value>
+    <value>Weitwinkelscanner</value>
   </data>
   <data name="PAOvercharged" xml:space="preserve">
     <value>Optimierter Plasmabeschleuniger</value>
