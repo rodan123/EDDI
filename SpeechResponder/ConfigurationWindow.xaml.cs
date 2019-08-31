@@ -78,7 +78,13 @@ namespace EddiSpeechResponder
 
         private void eddiScriptsUpdated(object sender, RoutedEventArgs e)
         {
-            updateScriptsConfiguration();
+            if (sender is CheckBox checkbox)
+            {
+                if (checkbox.IsLoaded)
+                {
+                    updateScriptsConfiguration();
+                }
+            }
         }
 
         private void eddiScriptsUpdated(object sender, DataTransferEventArgs e)
@@ -88,9 +94,12 @@ namespace EddiSpeechResponder
 
         private void eddiScriptsUpdated(object sender, SelectionChangedEventArgs e)
         {
-            if (e.RemovedItems.Count > 0)
+            if (sender is ComboBox comboBox)
             {
-                updateScriptsConfiguration();
+                if (comboBox.IsLoaded && (comboBox.IsDropDownOpen || comboBox.IsKeyboardFocused))
+                {
+                    updateScriptsConfiguration();
+                }
             }
         }
 
@@ -101,7 +110,11 @@ namespace EddiSpeechResponder
             EDDI.Instance.SpeechResponderModalWait = true;
             editScriptWindow.ShowDialog();
             EDDI.Instance.SpeechResponderModalWait = false;
-            scriptsData.Items.Refresh();
+            if ((bool)editScriptWindow.DialogResult)
+            {
+                updateScriptsConfiguration();
+                scriptsData.Items.Refresh();
+            }
         }
 
         private void viewScript(object sender, RoutedEventArgs e)
@@ -266,40 +279,70 @@ namespace EddiSpeechResponder
 
         private void subtitlesEnabled(object sender, RoutedEventArgs e)
         {
-            SpeechResponderConfiguration configuration = SpeechResponderConfiguration.FromFile();
-            configuration.Subtitles = true;
-            configuration.ToFile();
-            EDDI.Instance.Reload("Speech responder");
+            if (sender is CheckBox checkBox)
+            {
+                if (checkBox.IsLoaded)
+                {
+                    SpeechResponderConfiguration configuration = SpeechResponderConfiguration.FromFile();
+                    configuration.Subtitles = true;
+                    configuration.ToFile();
+                    EDDI.Instance.Reload("Speech responder");
+                }
+            }
         }
 
         private void subtitlesDisabled(object sender, RoutedEventArgs e)
         {
-            SpeechResponderConfiguration configuration = SpeechResponderConfiguration.FromFile();
-            configuration.Subtitles = false;
-            configuration.ToFile();
-            EDDI.Instance.Reload("Speech responder");
+            if (sender is CheckBox checkBox)
+            {
+                if (checkBox.IsLoaded)
+                {
+                    SpeechResponderConfiguration configuration = SpeechResponderConfiguration.FromFile();
+                    configuration.Subtitles = false;
+                    configuration.ToFile();
+                    EDDI.Instance.Reload("Speech responder");
+                }
+            }
         }
 
         private void subtitlesOnlyEnabled(object sender, RoutedEventArgs e)
         {
-            SpeechResponderConfiguration configuration = SpeechResponderConfiguration.FromFile();
-            configuration.SubtitlesOnly = true;
-            configuration.ToFile();
-            EDDI.Instance.Reload("Speech responder");
+            if (sender is CheckBox checkBox)
+            {
+                if (checkBox.IsLoaded)
+                {
+                    SpeechResponderConfiguration configuration = SpeechResponderConfiguration.FromFile();
+                    configuration.SubtitlesOnly = true;
+                    configuration.ToFile();
+                    EDDI.Instance.Reload("Speech responder");
+                }
+            }
         }
 
         private void subtitlesOnlyDisabled(object sender, RoutedEventArgs e)
         {
-            SpeechResponderConfiguration configuration = SpeechResponderConfiguration.FromFile();
-            configuration.SubtitlesOnly = false;
-            configuration.ToFile();
-            EDDI.Instance.Reload("Speech responder");
+            if (sender is CheckBox checkBox)
+            {
+                if (checkBox.IsLoaded)
+                {
+                    SpeechResponderConfiguration configuration = SpeechResponderConfiguration.FromFile();
+                    configuration.SubtitlesOnly = false;
+                    configuration.ToFile();
+                    EDDI.Instance.Reload("Speech responder");
+                }
+            }
         }
 
         private void SpeechResponderHelp_Click(object sender, RoutedEventArgs e)
         {
-            MarkdownWindow speechResponderHelpWindow = new MarkdownWindow("speechResponderHelp.md");
-            speechResponderHelpWindow.Show();
+            if (sender is CheckBox checkBox)
+            {
+                if (checkBox.IsLoaded)
+                {
+                    MarkdownWindow speechResponderHelpWindow = new MarkdownWindow("speechResponderHelp.md");
+                    speechResponderHelpWindow.Show();
+                }
+            }
         }
     }
 }

@@ -50,7 +50,7 @@ namespace EddiCompanionAppService
         private State _currentState;
         public State CurrentState
         {
-            get =>_currentState;
+            get => _currentState;
             private set
             {
                 if (_currentState == value) { return; }
@@ -434,15 +434,16 @@ namespace EddiCompanionAppService
                 market = "{\"lastStarport\":" + market + "}";
                 JObject marketJson = JObject.Parse(market);
                 string lastStarport = (string)marketJson["lastStarport"]["name"];
+                long? marketId = (long?)marketJson["lastStarport"]["id"];
 
                 cachedProfile.CurrentStarSystem = StarSystemSqLiteRepository.Instance.GetOrFetchStarSystem(systemName);
                 cachedProfile.LastStation = cachedProfile.CurrentStarSystem?.stations?.Find(s => s.name == lastStarport);
                 if (cachedProfile.LastStation == null)
                 {
                     // Don't have a station so make one up
-                    cachedProfile.LastStation = new Station { name = lastStarport };
+                    cachedProfile.LastStation = new Station { name = lastStarport, marketId = marketId };
                 }
-                cachedProfile.LastStation.systemname = systemName;
+                cachedProfile.CurrentStarSystem.systemname = systemName;
 
                 if (cachedProfile.LastStation.hasmarket ?? false)
                 {
@@ -450,7 +451,7 @@ namespace EddiCompanionAppService
                     cachedProfile.LastStation.commodities = CommodityQuotesFromProfile(marketJson);
                     cachedProfile.LastStation.prohibited = ProhibitedCommoditiesFromProfile(marketJson);
                 }
-                
+
                 if (cachedProfile.LastStation.hasoutfitting ?? false)
                 {
                     Logging.Debug("Getting station outfitting data");
@@ -632,6 +633,8 @@ namespace EddiCompanionAppService
                     debt = (long)json["commander"]["debt"]
                 };
                 Profile.Cmdr = Commander;
+                Profile.docked = (bool)json["commander"]["docked"];
+                Profile.alive = (bool)json["commander"]["alive"];
 
                 string systemName = json["lastSystem"] == null ? null : (string)json["lastSystem"]["name"];
                 if (systemName != null)
@@ -641,20 +644,21 @@ namespace EddiCompanionAppService
 
                 if (json["lastStarport"] != null)
                 {
-                    Profile.LastStation =  Profile.CurrentStarSystem.stations.Find(s => s.name == (string)json["lastStarport"]["name"]);
+                    Profile.LastStation = Profile.CurrentStarSystem.stations.Find(s => s.name == (string)json["lastStarport"]["name"]);
                     if (Profile.LastStation == null)
                     {
                         // Don't have a station so make one up
                         Profile.LastStation = new Station
                         {
-                            name = (string)json["lastStarport"]["name"]
+                            name = (string)json["lastStarport"]["name"],
+                            marketId = (long?)json["lastStarport"]["id"]
                         };
                     }
-
-                    Profile.LastStation.systemname = Profile.CurrentStarSystem.systemname;
-                    Profile.LastStation.systemAddress = Profile.CurrentStarSystem.systemAddress;
-                    Profile.LastStation.marketId = (long?)json["lastStarport"]["id"];
-
+                    if ((bool)json["commander"]["docked"])
+                    {
+                        Profile.LastStation.systemname = Profile.CurrentStarSystem.systemname;
+                        Profile.LastStation.systemAddress = Profile.CurrentStarSystem.systemAddress;
+                    }
                 }
             }
 

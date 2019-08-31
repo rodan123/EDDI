@@ -1,9 +1,8 @@
 ﻿using Eddi;
-using EddiCompanionAppService;
 using EddiDataDefinitions;
 using EddiDataProviderService;
 using EddiEvents;
-using EddiSpeechService; // Used in release but not in debug.
+using EddiSpeechService;
 using Newtonsoft.Json;
 using RestSharp;
 using System;
@@ -55,7 +54,7 @@ namespace EDDNResponder
         }
 
         public EDDNResponder() : this(EddiDataProviderService.StarSystemSqLiteRepository.Instance)
-        {}
+        { }
 
         public EDDNResponder(StarSystemRepository starSystemRepository)
         {
@@ -132,29 +131,6 @@ namespace EDDNResponder
 
             if (LocationIsSet())
             {
-                if (edType == "Docked" && systemName != null && stationName != null && marketId != null)
-                {
-                    if (EDDI.Instance.CurrentStation?.name == stationName && EDDI.Instance.CurrentStarSystem?.systemAddress == systemAddress)
-                    {
-                        try
-                        {
-                            // Send station data from the CAPI servers
-                            sendCommodityInformation();
-                            sendOutfittingInformation();
-                            sendShipyardInformation();
-                        }
-                        catch (Exception ex)
-                        {
-                            Dictionary<string, object> exdata = new Dictionary<string, object>
-                            {
-                                { "Responder state", this },
-                                { "Exception", ex }
-                            };
-                            Logging.Error("Failed to send Frontier API data to EDDN", exdata);
-                        }
-                    }
-                }
-
                 if (edType == "Location" || edType == "FSDJump" || edType == "Docked" || edType == "Scan")
                 {
                     data = StripPersonalData(data);
@@ -238,6 +214,7 @@ namespace EDDNResponder
                 {
                     invalidState = true;
 #if DEBUG
+                    var _ = SpeechService.Instance; // just a dummy to stop the using statement from being pruned
 #else
                     Logging.Warn("The EDDN responder is in an invalid state and is unable to send messages.", JsonConvert.SerializeObject(this) + " Event: " + JsonConvert.SerializeObject(data));
 //                    SpeechService.Instance.Say(null, EddiEddnResponder.Properties.EddnResources.errPosition);
@@ -333,60 +310,38 @@ namespace EDDNResponder
 
         private void handleMarketInformationUpdatedEvent(MarketInformationUpdatedEvent theEvent)
         {
-            // This event is triggered by an update to the profile via the Frontier API
-            // Check to make sure the marketId from the acquired profile matches our current station's marketId before continuing
-            if (eventStationMatches(marketId, theEvent.update))
+            // This event is triggered by an update to the profile via the Frontier API or via the `Market`, `Outfitting`, or `Shipyard` journal events.
+            // Check to make sure the marketId from the event matches our current station's marketId before continuing
+            if (eventStationMatches(theEvent))
             {
-                // When we dock we have access to commodity and outfitting information
-                switch (theEvent.update)
-                {
-                    case "market":
-                        {
-                            sendCommodityInformation();
-                        }
-                        break;
-                    case "outfitting":
-                        {
-                            sendOutfittingInformation();
-                        }
-                        break;
-                    case "profile":
-                        {
-                            sendCommodityInformation();
-                            sendOutfittingInformation();
-                            sendShipyardInformation();
-                        }
-                        break;
-                    case "shipyard":
-                        {
-                            sendShipyardInformation();
-                        }
-                        break;
-                }
+                // When we dock we have access to commodity, outfitting, and shipyard information
+                sendCommodityInformation(theEvent);
+                sendOutfittingInformation(theEvent);
+                sendShipyardInformation(theEvent);
             }
         }
 
-        private void sendCommodityInformation()
+        private void sendCommodityInformation(MarketInformationUpdatedEvent theEvent)
         {
-            if (EDDI.Instance.CurrentStation != null && EDDI.Instance.CurrentStation.commodities != null && EDDI.Instance.CurrentStation.commodities.Count > 0)
+            if (theEvent.commodities?.Count > 0)
             {
-                List<EDDNCommodity> eddnCommodities = prepareCommodityInformation();
+                List<EDDNCommodity> eddnCommodities = prepareCommodityInformation(theEvent.commodities);
 
                 // Only send the message if we have commodities
                 if (eddnCommodities.Count > 0)
                 {
                     IDictionary<string, object> data = new Dictionary<string, object>
                     {
-                        { "timestamp", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ") },
-                        { "systemName", systemName },
-                        { "stationName", stationName },
-                        { "marketId", marketId },
-                        { "horizons", EDDI.Instance.inHorizons}
+                        { "timestamp", theEvent.timestamp.ToString("yyyy-MM-ddTHH:mm:ssZ") },
+                        { "systemName", theEvent.starSystem },
+                        { "stationName", theEvent.stationName },
+                        { "marketId", theEvent.marketId },
+                        { "horizons", theEvent.inHorizons}
                     };
                     data.Add("commodities", eddnCommodities);
-                    if (EDDI.Instance.CurrentStation.prohibited?.Count > 0 && EDDI.Instance.CurrentStation.name == stationName)
+                    if (theEvent.prohibitedCommodities?.Count > 0)
                     {
-                        data.Add("prohibited", EDDI.Instance.CurrentStation.prohibited);
+                        data.Add("prohibited", theEvent.prohibitedCommodities);
                     }
 
                     SendToEDDN("https://eddn.edcd.io/schemas/commodity/3", data);
@@ -394,10 +349,10 @@ namespace EDDNResponder
             }
         }
 
-        private static List<EDDNCommodity> prepareCommodityInformation()
+        private static List<EDDNCommodity> prepareCommodityInformation(List<CommodityMarketQuote> commodities)
         {
             List<EDDNCommodity> eddnCommodities = new List<EDDNCommodity>();
-            foreach (CommodityMarketQuote quote in EDDI.Instance.CurrentStation.commodities)
+            foreach (CommodityMarketQuote quote in commodities)
             {
                 if (quote.definition == null)
                 {
@@ -425,12 +380,12 @@ namespace EDDNResponder
             return eddnCommodities;
         }
 
-        private void sendOutfittingInformation()
+        private void sendOutfittingInformation(MarketInformationUpdatedEvent theEvent)
         {
-            if (EDDI.Instance.CurrentStation != null && EDDI.Instance.CurrentStation.outfitting != null)
+            if (theEvent.outfitting != null)
             {
                 List<string> eddnModules = new List<string>();
-                foreach (Module module in EDDI.Instance.CurrentStation.outfitting)
+                foreach (Module module in theEvent.outfitting)
                 {
                     if ((!module.IsPowerPlay())
                         && (module.EDName.StartsWith("Int_") || module.EDName.StartsWith("Hpt_") || module.EDName.Contains("_Armour_"))
@@ -445,12 +400,12 @@ namespace EDDNResponder
                 {
                     IDictionary<string, object> data = new Dictionary<string, object>
                     {
-                        { "timestamp", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ") },
-                        { "systemName", systemName },
-                        { "stationName", stationName },
-                        { "marketId", marketId },
+                        { "timestamp", theEvent.timestamp.ToString("yyyy-MM-ddTHH:mm:ssZ") },
+                        { "systemName", theEvent.starSystem },
+                        { "stationName", theEvent.stationName },
+                        { "marketId", theEvent.marketId },
                         { "modules", eddnModules },
-                        { "horizons", EDDI.Instance.inHorizons}
+                        { "horizons", theEvent.inHorizons}
                     };
 
                     SendToEDDN("https://eddn.edcd.io/schemas/outfitting/2", data);
@@ -458,12 +413,12 @@ namespace EDDNResponder
             }
         }
 
-        private void sendShipyardInformation()
+        private void sendShipyardInformation(MarketInformationUpdatedEvent theEvent)
         {
-            if (EDDI.Instance.CurrentStation != null && EDDI.Instance.CurrentStation.shipyard != null)
+            if (theEvent.shipyard != null)
             {
                 List<string> eddnShips = new List<string>();
-                foreach (Ship ship in EDDI.Instance.CurrentStation.shipyard)
+                foreach (Ship ship in theEvent.shipyard)
                 {
                     if (ship?.EDName != null)
                     {
@@ -477,12 +432,12 @@ namespace EDDNResponder
                 {
                     IDictionary<string, object> data = new Dictionary<string, object>
                     {
-                        { "timestamp", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ") },
-                        { "systemName", systemName },
-                        { "stationName", stationName },
-                        { "marketId", marketId },
+                        { "timestamp", theEvent.timestamp.ToString("yyyy-MM-ddTHH:mm:ssZ") },
+                        { "systemName", theEvent.starSystem },
+                        { "stationName", theEvent.stationName },
+                        { "marketId", theEvent.marketId },
                         { "ships", eddnShips },
-                        { "horizons", EDDI.Instance.inHorizons}
+                        { "horizons", theEvent.inHorizons}
                     };
 
                     SendToEDDN("https://eddn.edcd.io/schemas/shipyard/2", data);
@@ -636,20 +591,9 @@ namespace EDDNResponder
             return false;
         }
 
-        private bool eventStationMatches(long? eventMarketId, string update)
+        private bool eventStationMatches(MarketInformationUpdatedEvent theEvent)
         {
-            if (update == "profile")
-            {
-                Profile profile = CompanionAppService.Instance?.Profile();
-                if (profile != null)
-                {
-                    if (profile.LastStation?.marketId == eventMarketId && (bool?)profile.json["commander"]["docked"] == true)
-                    {
-                        return true;
-                    }
-                }
-            }
-            else if (EDDI.Instance?.CurrentStation?.marketId == marketId)
+            if (theEvent.starSystem == systemName && theEvent.stationName == stationName && theEvent.marketId == marketId)
             {
                 return true;
             }

@@ -5,10 +5,10 @@ using EddiMissionMonitor;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
-using System.Linq;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
@@ -63,7 +63,6 @@ namespace EddiMaterialMonitor
         {
             BindingOperations.CollectionRegistering += Inventory_CollectionRegistering;
             readMaterials();
-            populateMaterialBlueprints();
             Logging.Info("Initialised " + MonitorName() + " " + MonitorVersion());
         }
 
@@ -271,7 +270,7 @@ namespace EddiMaterialMonitor
         /// </summary>
         private void incMaterial(string edname, int amount, bool fromLogLoad = false)
         {
-            lock(inventoryLock)
+            lock (inventoryLock)
             {
                 Material material = Material.FromEDName(edname);
                 MaterialAmount ma = inventory.Where(inv => inv.edname == material.edname).FirstOrDefault();
@@ -312,7 +311,7 @@ namespace EddiMaterialMonitor
         /// </summary>
         private void decMaterial(string edname, int amount, bool fromLogLoad = false)
         {
-            lock(inventoryLock)
+            lock (inventoryLock)
             {
                 Material material = Material.FromEDName(edname);
                 MaterialAmount ma = inventory.Where(inv => inv.edname == material.edname).FirstOrDefault();
@@ -354,7 +353,7 @@ namespace EddiMaterialMonitor
         /// </summary>
         private void setMaterial(string edname, int amount)
         {
-            lock(inventoryLock)
+            lock (inventoryLock)
             {
                 Material material = Material.FromEDName(edname);
                 MaterialAmount ma = inventory.Where(inv => inv.edname == material.edname).FirstOrDefault();
@@ -380,7 +379,7 @@ namespace EddiMaterialMonitor
 
         public void writeMaterials()
         {
-            lock(inventoryLock)
+            lock (inventoryLock)
             {
                 // Write material configuration with current inventory
                 MaterialMonitorConfiguration configuration = new MaterialMonitorConfiguration
@@ -396,7 +395,7 @@ namespace EddiMaterialMonitor
 
         private void readMaterials()
         {
-            lock(inventoryLock)
+            lock (inventoryLock)
             {
                 // Obtain current inventory from  configuration
                 MaterialMonitorConfiguration configuration = MaterialMonitorConfiguration.FromFile();
@@ -452,23 +451,6 @@ namespace EddiMaterialMonitor
                 foreach (MaterialAmount ma in newInventory)
                 {
                     inventory.Add(ma);
-                }
-            }
-        }
-
-        private void populateMaterialBlueprints()
-        {
-            string data = Net.DownloadString(Constants.EDDI_SERVER_URL + "materialuses.json");
-            if (data != null)
-            {
-                Dictionary<string, List<Blueprint>> blueprints = JsonConvert.DeserializeObject<Dictionary<string, List<Blueprint>>>(data);
-                foreach (KeyValuePair<string, List<Blueprint>> kv in blueprints)
-                {
-                    Material material = Material.AllOfThem.FirstOrDefault(m => m.invariantName == kv.Key);
-                    if (material != null)
-                    {
-                        material.blueprints = kv.Value;
-                    }
                 }
             }
         }
