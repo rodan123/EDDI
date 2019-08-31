@@ -1,7 +1,6 @@
 ﻿using EddiDataDefinitions;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -25,7 +24,7 @@ namespace EddiSpeechService
                 case "Aisling Duval":
                     return "<phoneme alphabet=\"ipa\" ph=\"" + Properties.Phonetics.aisling + "\">Aisling</phoneme> <phoneme alphabet=\"ipa\" ph=\"" + Properties.Phonetics.duval + "\">Duval</phoneme>";
                 case "Arissa Lavigny-Duval":
-                    return "<phoneme alphabet=\"ipa\" ph=\"" + Properties.Phonetics.arissa + "\">Arissa</phoneme> <phoneme alphabet=\"ipa\" ph=\"" + Properties.Phonetics.lavigny +"\">Lavigny</phoneme> <phoneme alphabet=\"ipa\" ph=\"" + Properties.Phonetics.duval + "\">Duval</phoneme>";
+                    return "<phoneme alphabet=\"ipa\" ph=\"" + Properties.Phonetics.arissa + "\">Arissa</phoneme> <phoneme alphabet=\"ipa\" ph=\"" + Properties.Phonetics.lavigny + "\">Lavigny</phoneme> <phoneme alphabet=\"ipa\" ph=\"" + Properties.Phonetics.duval + "\">Duval</phoneme>";
                 case "Denton Patreus":
                     return "<phoneme alphabet=\"ipa\" ph=\"" + Properties.Phonetics.denton + "\">Denton</phoneme> <phoneme alphabet=\"ipa\" ph=\"" + Properties.Phonetics.patreus + "\">Patreus</phoneme>";
                 case "Edmund Mahon":
@@ -237,7 +236,7 @@ namespace EddiSpeechService
             {
                 faction = FACTION_FIXES[faction];
             }
-            
+
             // Faction names can contain system names; hunt them down and change them
             foreach (var pronunciation in STAR_SYSTEM_PRONUNCIATIONS)
             {
@@ -326,7 +325,7 @@ namespace EddiSpeechService
         }
 
         /// <summary>Fix up star system names</summary>
-        public static string StarSystem(string starSystem, bool useICAO=false)
+        public static string StarSystem(string starSystem, bool useICAO = false)
         {
             if (starSystem == null)
             {
@@ -474,6 +473,9 @@ namespace EddiSpeechService
             {
                 station = STATION_MODEL_FIXES[station];
             }
+            // Strip plus signs and spaces from station name suffixes
+            char[] charsToTrim = { '+', ' ' };
+            station = station.TrimEnd(charsToTrim);
             return station;
         }
 
@@ -496,7 +498,7 @@ namespace EddiSpeechService
             return sb.ToString();
         }
 
-        public static string ICAO(string callsign, bool passDash=false)
+        public static string ICAO(string callsign, bool passDash = false)
         {
             if (callsign == null)
             {
@@ -753,7 +755,7 @@ namespace EddiSpeechService
                         return Properties.Phrases.nearly + " " + minus + (number + 1) + order;
                 }
             }
-           // Describe (less precisely) decimal values for more complex numbers
+            // Describe (less precisely) decimal values for more complex numbers
             else
             {
                 if (nextDigit < 2)

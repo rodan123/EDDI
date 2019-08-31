@@ -15,9 +15,15 @@ namespace EddiCompanionAppService
         public Commander Cmdr { get; set; }
 
         /// <summary>The current starsystem</summary>
-        public StarSystem CurrentStarSystem{ get; set; }
+        public StarSystem CurrentStarSystem { get; set; }
 
         /// <summary>The last station the commander docked at</summary>
         public Station LastStation { get; set; }
+
+        /// <summary>Whether this profile describes a docked commander</summary>
+        public bool docked { get; set; }
+
+        /// <summary>Whether this profile describes a currently living commander</summary>
+        public bool alive { get; set; }
     }
 }

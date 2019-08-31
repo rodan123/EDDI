@@ -1,7 +1,6 @@
 ﻿using Eddi;
 using EddiDataDefinitions;
 using EddiDataProviderService;
-using EddiEddpMonitor;
 using EddiEvents;
 using NetMQ;
 using NetMQ.Sockets;
@@ -114,8 +113,7 @@ namespace EddiEddpMonitor
                                 subscriber.Subscribe("eddp.delta.system");
                                 while (running && !reloading)
                                 {
-                                    string topic = null;
-                                    if (subscriber.TryReceiveFrameString(new TimeSpan(0, 0, 1), out topic))
+                                    if (subscriber.TryReceiveFrameString(new TimeSpan(0, 0, 1), out string topic))
                                     {
                                         string message = subscriber.ReceiveFrameString();
                                         Logging.Debug("Message is " + message);

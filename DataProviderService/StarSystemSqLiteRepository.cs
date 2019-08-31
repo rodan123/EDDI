@@ -213,7 +213,7 @@ namespace EddiDataProviderService
                     string name = kv.Key;
 
                     // Old versions of the data could have a string "No volcanism" for volcanism.  If so we remove it
-                    string data = ((string)kv.Value)?.Replace(@"""No volcanism""", "null");
+                    string data = kv.Value?.Replace(@"""No volcanism""", "null");
 
                     // Determine whether our data is stale (We won't deserialize the the entire system if it's stale) 
                     IDictionary<string, object> system = Deserializtion.DeserializeData(data);
@@ -474,12 +474,12 @@ namespace EddiDataProviderService
             var dbSystems = Instance.ReadStarSystems(starSystems);
             foreach (StarSystem system in starSystems)
             {
-                StarSystemDatabaseResult dbSystem = dbSystems.FirstOrDefault(s => 
+                StarSystemDatabaseResult dbSystem = dbSystems.FirstOrDefault(s =>
                     s.systemAddress != null && s.systemAddress == system.systemAddress ? true :
-                    s.edsmId != null && s.edsmId == system.EDSMID ? true : 
+                    s.edsmId != null && s.edsmId == system.EDSMID ? true :
                     s.systemName == system.systemname ? true : false);
 
-                if (dbSystem?.starSystemJson is null || 
+                if (dbSystem?.starSystemJson is null ||
                     (dbSystem.systemAddress is null && dbSystem.edsmId is null))
                 {
                     // If we're updating to schema version 2, systemAddress and edsmId will both be null. 

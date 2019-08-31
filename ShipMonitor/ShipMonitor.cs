@@ -2,8 +2,8 @@
 using EddiCargoMonitor;
 using EddiCrimeMonitor;
 using EddiDataDefinitions;
-using EddiStatusMonitor;
 using EddiEvents;
+using EddiStatusMonitor;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -302,7 +302,7 @@ namespace EddiShipMonitor
                     setShipIdent(ship, @event.shipident);
                     if (@event.fuelcapacity.HasValue)
                     {
-                        ship.fueltanktotalcapacity = (decimal?)@event.fuelcapacity;
+                        ship.fueltanktotalcapacity = @event.fuelcapacity;
                     }
                     if (!@event.fromLoad) { writeShips(); }
                 }
