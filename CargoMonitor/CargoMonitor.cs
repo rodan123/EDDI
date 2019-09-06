@@ -265,7 +265,7 @@ namespace EddiCargoMonitor
                             if (total != cargo.total || stolen != cargo.stolen || missionCount != cargo.haulageData.Count())
                             {
                                 UpdateCargoFromInfo(cargo, cargoInfo);
-                                if (@event.update) { return; }
+                                //if (@event.update) { return; }
                             }
                         }
                         else
