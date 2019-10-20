@@ -533,6 +533,7 @@ namespace EddiVoiceAttackResponder
                 vaProxy.SetText("Squadron allegiance", cmdr?.squadronallegiance?.localizedName);
                 vaProxy.SetText("Squadron power", cmdr?.squadronpower?.localizedName);
                 vaProxy.SetText("Squadron faction", cmdr?.squadronfaction);
+                vaProxy.SetText("Power", cmdr?.Power?.localizedName);
 
                 // Backwards-compatibility with 1.x
                 vaProxy.SetText("System rank", cmdr?.title);
@@ -664,7 +665,7 @@ namespace EddiVoiceAttackResponder
                             decimal dx = (EDDI.Instance.CurrentStarSystem.x - StoredShipStarSystem.x) ?? 0M;
                             decimal dy = (EDDI.Instance.CurrentStarSystem.y - StoredShipStarSystem.y) ?? 0M;
                             decimal dz = (EDDI.Instance.CurrentStarSystem.z - StoredShipStarSystem.z) ?? 0M;
-                            decimal distance = (decimal)(Math.Sqrt((double)(dx * dx + dy * dy + dz * dz)));
+                            decimal distance = (decimal)(Math.Sqrt((double)((dx * dx) + (dy * dy) + (dz * dz))));
                             vaProxy.SetDecimal(prefix + " distance", distance);
                         }
                         else
@@ -790,6 +791,7 @@ namespace EddiVoiceAttackResponder
                 vaProxy.SetDecimal(prefix + " minutes since previous visit", system?.visits > 1 && system?.lastvisit.HasValue == true ? (long)(DateTime.UtcNow - system.lastvisit.Value).TotalMinutes : (decimal?)null);
                 vaProxy.SetText(prefix + " comment", system?.comment);
                 vaProxy.SetDecimal(prefix + " distance from home", system?.distancefromhome);
+                vaProxy.SetBoolean(prefix + " scoopable", system?.scoopable);
 
                 if (system != null)
                 {
@@ -875,6 +877,7 @@ namespace EddiVoiceAttackResponder
                 vaProxy.SetDecimal(prefix + " age probability", body?.ageprobability);
                 vaProxy.SetDecimal(prefix + " estimated inner hab zone", body?.estimatedhabzoneinner);
                 vaProxy.SetDecimal(prefix + " estimated outer hab zone", body?.estimatedhabzoneouter);
+                vaProxy.SetBoolean(prefix + " scoopable", body?.scoopable);
             }
             // Body specific items 
             if (body?.bodyType?.invariantName == "Planet")
@@ -935,6 +938,7 @@ namespace EddiVoiceAttackResponder
                 vaProxy.SetBoolean(prefix + " srv under ship", status?.srv_under_ship);
                 vaProxy.SetBoolean(prefix + " srv turret deployed", status?.srv_turret_deployed);
                 vaProxy.SetBoolean(prefix + " srv handbrake activated", status?.srv_handbrake_activated);
+                vaProxy.SetBoolean(prefix + " srv high beams", status?.srv_high_beams);
                 vaProxy.SetBoolean(prefix + " scooping fuel", status?.scooping_fuel);
                 vaProxy.SetBoolean(prefix + " silent running", status?.silent_running);
                 vaProxy.SetBoolean(prefix + " cargo scoop deployed", status?.cargo_scoop_deployed);
@@ -943,6 +947,7 @@ namespace EddiVoiceAttackResponder
                 vaProxy.SetBoolean(prefix + " hardpoints deployed", status?.hardpoints_deployed);
                 vaProxy.SetBoolean(prefix + " flight assist off", status?.flight_assist_off);
                 vaProxy.SetBoolean(prefix + " supercruise", status?.supercruise);
+                vaProxy.SetBoolean(prefix + " hyperspace", status?.hyperspace);
                 vaProxy.SetBoolean(prefix + " shields up", status?.shields_up);
                 vaProxy.SetBoolean(prefix + " landing gear down", status?.landing_gear_down);
                 vaProxy.SetBoolean(prefix + " landed", status?.landed);
@@ -962,6 +967,7 @@ namespace EddiVoiceAttackResponder
                 vaProxy.SetDecimal(prefix + " longitude", status?.longitude);
                 vaProxy.SetDecimal(prefix + " altitude", status?.altitude);
                 vaProxy.SetDecimal(prefix + " heading", status?.heading);
+                vaProxy.SetDecimal(prefix + " slope", status?.slope);
                 vaProxy.SetDecimal(prefix + " fuel", status?.fuel);
                 vaProxy.SetDecimal(prefix + " fuel percent", status?.fuel_percent);
                 vaProxy.SetInt(prefix + " fuel rate", status?.fuel_seconds);

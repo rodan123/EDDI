@@ -371,6 +371,7 @@ namespace EddiDataDefinitions
                 new CommodityDefinition(128924330, null, "Grandidierite", Minerals, 0, false),
                 new CommodityDefinition(128924331, null, "Alexandrite", Minerals, 0, false),
                 new CommodityDefinition(128924332, null, "Opal", Minerals, 0, false),
+                new CommodityDefinition(128924333, null, "RockforthFertiliser", Chemicals, 0, false),
                 // PowerPlay
                 new CommodityDefinition(128671289, null, "AislingMediaMaterials", Powerplay, 0, false),
                 new CommodityDefinition(128671290, null, "AislingMediaResources", Powerplay, 0, false),
@@ -441,15 +442,12 @@ namespace EddiDataDefinitions
 
         public static CommodityDefinition CommodityDefinitionFromEliteID(long id)
         {
-            try
+            if (CommoditiesByEliteID.TryGetValue(id, out CommodityDefinition commodityDefinition))
             {
-                return CommoditiesByEliteID[id];
+                return commodityDefinition;
             }
-            catch (KeyNotFoundException)
-            {
-                Logging.Info($"Unrecognized Commodity Definition EliteID {id}");
-                throw;
-            }
+            Logging.Info($"Unrecognized Commodity Definition EliteID {id}");
+            return null;
         }
 
         private static string NormalizedName(string rawName)

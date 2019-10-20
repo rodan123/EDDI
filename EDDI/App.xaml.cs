@@ -21,13 +21,14 @@ namespace Eddi
             StartRollbar(); // do immediately to initialize error reporting
             ApplyAnyOverrideCulture(); // this must be done before any UI is generated
 
-            MainWindow mainWindow = null;
+#pragma warning disable IDE0067 // Dispose objects before losing scope
             Mutex eddiMutex = new Mutex(true, Constants.EDDI_SYSTEM_MUTEX_NAME, out bool firstOwner);
+#pragma warning restore IDE0067 // Dispose objects before losing scope
 
             if (firstOwner)
             {
                 App app = new App();
-                mainWindow = new MainWindow();
+                MainWindow mainWindow = new MainWindow();
                 app.Run(mainWindow);
                 eddiMutex.ReleaseMutex();
             }
@@ -83,16 +84,27 @@ namespace Eddi
 
         public static void ApplyAnyOverrideCulture()
         {
+            string overrideCultureName = null;
             try
             {
-                string overrideCultureName = Eddi.Properties.Settings.Default.OverrideCulture;
+                // Use Eddi.Properties.Settings if an override culture isn't set in our configuration
+                EDDIConfiguration configuration = EDDIConfiguration.FromFile();
+                if (configuration.OverrideCulture is null && !string.IsNullOrEmpty(Eddi.Properties.Settings.Default.OverrideCulture))
+                {
+                    configuration.OverrideCulture = Eddi.Properties.Settings.Default.OverrideCulture;
+                    configuration.ToFile();
+                }
+
+                overrideCultureName = configuration.OverrideCulture;
+
                 // we are using the InvariantCulture name "" to mean user's culture
-                CultureInfo overrideCulture = String.IsNullOrEmpty(overrideCultureName) ? null : new CultureInfo(overrideCultureName);
+                CultureInfo overrideCulture = string.IsNullOrEmpty(overrideCultureName) ? null : new CultureInfo(overrideCultureName);
                 ApplyCulture(overrideCulture);
             }
             catch
             {
                 ApplyCulture(null);
+                Debug.WriteLine("Culture [{0}] not available", overrideCultureName);
             }
         }
 

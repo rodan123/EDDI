@@ -25,11 +25,6 @@ namespace EddiEdsmResponder
             return Properties.EDSMResources.name;
         }
 
-        public string ResponderVersion()
-        {
-            return "1.0.0";
-        }
-
         public string ResponderDescription()
         {
             return Properties.EDSMResources.desc;
@@ -37,7 +32,7 @@ namespace EddiEdsmResponder
 
         public EDSMResponder()
         {
-            Logging.Info("Initialised " + ResponderName() + " " + ResponderVersion());
+            Logging.Info($"Initialized {ResponderName()}");
         }
 
         public bool Start()
@@ -87,7 +82,7 @@ namespace EddiEdsmResponder
                 return;
             }
 
-            if (EDDI.Instance.inBeta)
+            if (EDDI.Instance.gameIsBeta)
             {
                 // We don't send data whilst in beta
                 return;
@@ -106,7 +101,7 @@ namespace EddiEdsmResponder
                 {
                     Logging.Error("Failed to prepare event meta-data for submittal to EDSM", ex);
                 }
-                if (eventData != null && !EDDI.Instance.inBeta)
+                if (eventData != null && !EDDI.Instance.gameIsBeta)
                 {
                     StarMapService.Instance.sendEvent(eventData);
                 }

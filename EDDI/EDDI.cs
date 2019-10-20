@@ -46,13 +46,13 @@ namespace Eddi
         public bool inCrew { get; private set; } = false;
         public bool inHorizons { get; private set; } = true;
 
-        private bool _inBeta = false;
-        public bool inBeta
+        private bool _gameIsBeta = false;
+        public bool gameIsBeta
         {
-            get => _inBeta;
+            get => _gameIsBeta;
             private set
             {
-                _inBeta = value;
+                _gameIsBeta = value;
                 CompanionAppService.Instance.inBeta = value;
             }
         }
@@ -157,8 +157,8 @@ namespace Eddi
                 Cmdr = new Commander();
                 // Set up the Elite configuration
                 EliteConfiguration eliteConfiguration = EliteConfiguration.FromFile();
-                inBeta = eliteConfiguration.Beta;
-                Logging.Info(inBeta ? "On beta" : "On live");
+                gameIsBeta = eliteConfiguration.Beta;
+                Logging.Info(gameIsBeta ? "On beta" : "On live");
                 inHorizons = eliteConfiguration.Horizons;
 
                 // Retrieve commander preferences
@@ -223,6 +223,11 @@ namespace Eddi
                         Logging.Info("EDDI access to the Frontier API is not enabled.");
                     }
                 });
+                Task.Run(() =>
+                {
+                    // Set up the Inara service
+                    EddiInaraService.InaraService.Start(gameIsBeta, EddiIsBeta());
+                });
 
                 // Make sure that our essential tasks have completed before we start
                 Task.WaitAll(essentialAsyncTasks.ToArray());
@@ -238,13 +243,15 @@ namespace Eddi
             }
         }
 
+        public bool EddiIsBeta() => Constants.EDDI_VERSION.phase < Utilities.Version.TestPhase.rc;
+
         public bool ShouldUseTestEndpoints()
         {
 #if DEBUG
             return true;
 #else
             // use test endpoints if the game is in beta or EDDI is not release candidate or final
-            return EDDI.Instance.inBeta || (Constants.EDDI_VERSION.phase < Utilities.Version.TestPhase.rc);
+            return EDDI.Instance.gameIsBeta || EddiIsBeta();
 #endif
         }
 
@@ -700,6 +707,10 @@ namespace Eddi
                     {
                         passEvent = eventUndocked((UndockedEvent)@event);
                     }
+                    else if (@event is DockingRequestedEvent dockingRequestedEvent)
+                    {
+                        passEvent = eventDockingRequested(dockingRequestedEvent);
+                    }
                     else if (@event is TouchdownEvent)
                     {
                         passEvent = eventTouchdown((TouchdownEvent)@event);
@@ -844,6 +855,34 @@ namespace Eddi
                     {
                         passEvent = eventSystemScanComplete((SystemScanComplete)@event);
                     }
+                    else if (@event is PowerplayEvent)
+                    {
+                        passEvent = eventPowerplay((PowerplayEvent)@event);
+                    }
+                    else if (@event is PowerDefectedEvent)
+                    {
+                        passEvent = eventPowerDefected((PowerDefectedEvent)@event);
+                    }
+                    else if (@event is PowerJoinedEvent)
+                    {
+                        passEvent = eventPowerJoined((PowerJoinedEvent)@event);
+                    }
+                    else if (@event is PowerLeftEvent)
+                    {
+                        passEvent = eventPowerLeft((PowerLeftEvent)@event);
+                    }
+                    else if (@event is PowerPreparationVoteCast)
+                    {
+                        passEvent = eventPowerPreparationVoteCast((PowerPreparationVoteCast)@event);
+                    }
+                    else if (@event is PowerSalaryClaimedEvent)
+                    {
+                        passEvent = eventPowerSalaryClaimed((PowerSalaryClaimedEvent)@event);
+                    }
+                    else if (@event is PowerVoucherReceivedEvent)
+                    {
+                        passEvent = eventPowerVoucherReceived((PowerVoucherReceivedEvent)@event);
+                    }
 
                     // Additional processing is over, send to the event responders if required
                     if (passEvent)
@@ -869,6 +908,109 @@ namespace Eddi
             }
         }
 
+        private bool eventPowerVoucherReceived(PowerVoucherReceivedEvent @event)
+        {
+            Cmdr.Power = @event.Power;
+            return true;
+        }
+
+        private bool eventPowerSalaryClaimed(PowerSalaryClaimedEvent @event)
+        {
+            Cmdr.Power = @event.Power;
+            return true;
+        }
+
+        private bool eventPowerPreparationVoteCast(PowerPreparationVoteCast @event)
+        {
+            Cmdr.Power = @event.Power;
+            return true;
+        }
+
+        private bool eventPowerLeft(PowerLeftEvent @event)
+        {
+            Cmdr.Power = Power.None;
+            Cmdr.powermerits = null;
+            Cmdr.powerrating = 0;
+
+            // Store power merits
+            EDDIConfiguration configuration = EDDIConfiguration.FromFile();
+            configuration.powerMerits = Cmdr.powermerits;
+            configuration.ToFile();
+
+            return true;
+        }
+
+        private bool eventPowerJoined(PowerJoinedEvent @event)
+        {
+            Cmdr.Power = @event.Power;
+            Cmdr.powermerits = 0;
+            Cmdr.powerrating = 1;
+
+            // Store power merits
+            EDDIConfiguration configuration = EDDIConfiguration.FromFile();
+            configuration.powerMerits = Cmdr.powermerits;
+            configuration.ToFile();
+
+            return true;
+        }
+
+        private bool eventPowerDefected(PowerDefectedEvent @event)
+        {
+            Cmdr.Power = @event.toPower;
+            // Merits are halved upon defection
+            Cmdr.powermerits = (int)Math.Round((double)Cmdr.powermerits / 2, 0);
+            if (Cmdr.powermerits > 10000)
+            {
+                Cmdr.powerrating = 4;
+            }
+            if (Cmdr.powermerits > 1500)
+            {
+                Cmdr.powerrating = 3;
+            }
+            if (Cmdr.powermerits > 750)
+            {
+                Cmdr.powerrating = 2;
+            }
+            if (Cmdr.powermerits > 100)
+            {
+                Cmdr.powerrating = 1;
+            }
+            else
+            {
+                Cmdr.powerrating = 0;
+            }
+
+            // Store power merits
+            EDDIConfiguration configuration = EDDIConfiguration.FromFile();
+            configuration.powerMerits = Cmdr.powermerits;
+            configuration.ToFile();
+
+            return true;
+        }
+
+        private bool eventPowerplay(PowerplayEvent @event)
+        {
+            if (Cmdr.powermerits is null)
+            {
+                // Per the journal, this is written at startup. In actuality, it can also be written whenever switching FSD states
+                // and needs to be filtered to prevent redundant outputs.
+                Cmdr.Power = @event.Power;
+                Cmdr.powerrating = @event.rank;
+                Cmdr.powermerits = @event.merits;
+
+                // Store power merits
+                EDDIConfiguration configuration = EDDIConfiguration.FromFile();
+                configuration.powerMerits = @event.merits;
+                configuration.ToFile();
+
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         private bool eventSystemScanComplete(SystemScanComplete @event)
         {
             // There is a bug in the player journal output (as of player journal v.25) that can cause the `SystemScanComplete` event to fire multiple times 
@@ -884,7 +1026,11 @@ namespace Eddi
 
         private bool eventDiscoveryScan(DiscoveryScanEvent @event)
         {
-            CurrentStarSystem.discoverableBodies = @event.bodies;
+            if (CurrentStarSystem != null)
+            {
+                CurrentStarSystem.totalbodies = @event.totalbodies;
+                StarSystemSqLiteRepository.Instance.SaveStarSystem(CurrentStarSystem);
+            }
             return true;
         }
 
@@ -1053,7 +1199,6 @@ namespace Eddi
             CurrentStarSystem.x = theEvent.x;
             CurrentStarSystem.y = theEvent.y;
             CurrentStarSystem.z = theEvent.z;
-            setSystemDistanceFromHome(CurrentStarSystem);
 
             // Update the mutable system data from the journal
             if (theEvent.population != null)
@@ -1087,6 +1232,10 @@ namespace Eddi
                     updateSquadronData(squadronFaction, CurrentStarSystem.systemname);
                 }
             }
+
+            // (When pledged) Powerplay information
+            CurrentStarSystem.Power = theEvent.Power is null ? CurrentStarSystem.Power : theEvent.Power;
+            CurrentStarSystem.powerState = theEvent.powerState is null ? CurrentStarSystem.powerState : theEvent.powerState;
 
             if (theEvent.docked || theEvent.bodytype.ToLowerInvariant() == "station")
             {
@@ -1161,6 +1310,25 @@ namespace Eddi
             return true;
         }
 
+        private bool eventDockingRequested(DockingRequestedEvent theEvent)
+        {
+            Station station = CurrentStarSystem.stations.Find(s => s.name == theEvent.station);
+            if (station == null)
+            {
+                // This station is unknown to us, might not be in our data source or we might not have connectivity.  Use a placeholder
+                station = new Station
+                {
+                    name = theEvent.station,
+                    marketId = theEvent.marketId,
+                    systemname = CurrentStarSystem.systemname,
+                    systemAddress = CurrentStarSystem.systemAddress
+                };
+                CurrentStarSystem.stations.Add(station);
+            }
+            station.Model = theEvent.stationDefinition;
+            return true;
+        }
+
         private bool eventDocked(DockedEvent theEvent)
         {
             updateCurrentSystem(theEvent.system);
@@ -1203,6 +1371,11 @@ namespace Eddi
             station.Faction = theEvent.controllingfaction;
             station.stationServices = theEvent.stationServices;
             station.economyShares = theEvent.economyShares;
+
+            // Update other station information available from the event
+            station.Model = theEvent.stationModel;
+            station.stationServices = theEvent.stationServices;
+            station.distancefromstar = theEvent.distancefromstar;
 
             CurrentStation = station;
             CurrentStellarBody = null;
@@ -1268,8 +1441,8 @@ namespace Eddi
             if (allowMarketUpdate)
             {
                 MarketInfoReader info = MarketInfoReader.FromFile();
-                if (info != null && info.MarketID == theEvent.marketId 
-                    && info.StarSystem == theEvent.system 
+                if (info != null && info.MarketID == theEvent.marketId
+                    && info.StarSystem == theEvent.system
                     && info.StationName == theEvent.station)
                 {
                     List<CommodityMarketQuote> quotes = new List<CommodityMarketQuote>();
@@ -1312,9 +1485,9 @@ namespace Eddi
             if (allowOutfittingUpdate)
             {
                 OutfittingInfoReader info = OutfittingInfoReader.FromFile();
-                if (info.Items != null && info.MarketID == theEvent.marketId 
-                    && info.StarSystem == theEvent.system 
-                    && info.StationName == theEvent.station 
+                if (info.Items != null && info.MarketID == theEvent.marketId
+                    && info.StarSystem == theEvent.system
+                    && info.StationName == theEvent.station
                     && info.Horizons == Instance.inHorizons)
                 {
                     List<EddiDataDefinitions.Module> modules = new List<EddiDataDefinitions.Module>();
@@ -1357,9 +1530,9 @@ namespace Eddi
             if (allowShipyardUpdate)
             {
                 ShipyardInfoReader info = ShipyardInfoReader.FromFile();
-                if (info.PriceList != null && info.MarketID == theEvent.marketId 
-                    && info.StarSystem == theEvent.system 
-                    && info.StationName == theEvent.station 
+                if (info.PriceList != null && info.MarketID == theEvent.marketId
+                    && info.StarSystem == theEvent.system
+                    && info.StationName == theEvent.station
                     && info.Horizons == Instance.inHorizons)
                 {
                     List<Ship> ships = new List<Ship>();
@@ -1421,7 +1594,7 @@ namespace Eddi
                     CurrentStarSystem = StarSystemSqLiteRepository.Instance.GetOrCreateStarSystem(name);
                 }
                 setSystemDistanceFromHome(CurrentStarSystem);
-                setSystemDistanceFromDestination(CurrentStarSystem?.systemname);
+                setSystemDistanceFromDestination(CurrentStarSystem);
             }
         }
 
@@ -1504,7 +1677,7 @@ namespace Eddi
         {
             // Test whether we're in beta by checking the filename, version described by the header, 
             // and certain version / build combinations
-            inBeta =
+            gameIsBeta =
                 (
                     @event.filename.Contains("Beta") ||
                     @event.version.Contains("Beta") ||
@@ -1516,9 +1689,9 @@ namespace Eddi
                         )
                     )
                 );
-            Logging.Info(inBeta ? "On beta" : "On live");
+            Logging.Info(gameIsBeta ? "On beta" : "On live");
             EliteConfiguration config = EliteConfiguration.FromFile();
-            config.Beta = inBeta;
+            config.Beta = gameIsBeta;
             config.ToFile();
 
             return true;
@@ -1587,12 +1760,17 @@ namespace Eddi
                 CurrentStarSystem.AddOrUpdateBody(CurrentStellarBody);
             }
 
+            // (When pledged) Powerplay information
+            CurrentStarSystem.Power = theEvent.Power is null ? CurrentStarSystem.Power : theEvent.Power;
+            CurrentStarSystem.powerState = theEvent.powerState is null ? CurrentStarSystem.powerState : theEvent.powerState;
+
             // Update to most recent information
             CurrentStarSystem.visitLog.Add(theEvent.timestamp);
             CurrentStarSystem.updatedat = (long)theEvent.timestamp.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             StarSystemSqLiteRepository.Instance.SaveStarSystem(CurrentStarSystem);
 
             setSystemDistanceFromHome(CurrentStarSystem);
+            setSystemDistanceFromDestination(CurrentStarSystem);
             setCommanderTitle();
 
             // After jump has completed we are always in supercruise
@@ -1966,6 +2144,7 @@ namespace Eddi
         private bool eventStarScanned(StarScannedEvent theEvent)
         {
             // We just scanned a star.  We can only proceed if we know our current star system
+            updateCurrentSystem(theEvent.star?.systemname);
             if (CurrentStarSystem == null) { return false; }
 
             Body star = CurrentStarSystem?.bodies?.Find(s => s.bodyname == theEvent.bodyname);
@@ -1981,6 +2160,7 @@ namespace Eddi
         private bool eventBodyScanned(BodyScannedEvent theEvent)
         {
             // We just scanned a body.  We can only proceed if we know our current star system
+            updateCurrentSystem(theEvent.body?.systemname);
             if (CurrentStarSystem == null) { return false; }
 
             // Add this body if it hasn't been previously added to our database, but don't
@@ -2000,22 +2180,22 @@ namespace Eddi
 
         private bool eventBodyMapped(BodyMappedEvent theEvent)
         {
-            if (CurrentStarSystem != null)
+            if (CurrentStarSystem != null && theEvent.systemAddress == CurrentStarSystem?.systemAddress)
             {
-                Body body = CurrentStarSystem.bodies.Find(b => b.bodyname == theEvent.bodyName);
-                if (body?.mapped is null && !(theEvent.body is null))
-                {
-                    CurrentStarSystem.AddOrUpdateBody(theEvent.body);
-                    StarSystemSqLiteRepository.Instance.SaveStarSystem(CurrentStarSystem);
-                    updateCurrentStellarBody(theEvent.bodyName, CurrentStarSystem?.systemname, CurrentStarSystem?.systemAddress);
-                }
+                // We've already updated the body (via the journal monitor) if the CurrentStarSystem isn't null
+                // Here, we just need to save the data and update our current stellar body
+                StarSystemSqLiteRepository.Instance.SaveStarSystem(CurrentStarSystem);
+                updateCurrentStellarBody(theEvent.bodyName, CurrentStarSystem?.systemname, CurrentStarSystem?.systemAddress);
             }
             return true;
         }
 
         private bool eventRingMapped(RingMappedEvent theEvent)
         {
-            updateCurrentStellarBody(theEvent.ringname, CurrentStarSystem?.systemname, CurrentStarSystem?.systemAddress);
+            if (CurrentStarSystem != null && theEvent.systemAddress == CurrentStarSystem?.systemAddress)
+            {
+                updateCurrentStellarBody(theEvent.ringname, CurrentStarSystem?.systemname, CurrentStarSystem?.systemAddress);
+            }
             return true;
         }
 
@@ -2042,6 +2222,7 @@ namespace Eddi
                         if (configuration != null)
                         {
                             Cmdr.gender = configuration.Gender;
+                            Cmdr.powermerits = configuration.powerMerits;
                             Cmdr.squadronname = configuration.SquadronName;
                             Cmdr.squadronid = configuration.SquadronID;
                             Cmdr.squadronrank = configuration.SquadronRank;
@@ -2057,6 +2238,8 @@ namespace Eddi
                         {
                             CurrentStarSystem = profile?.CurrentStarSystem;
                             setSystemDistanceFromHome(CurrentStarSystem);
+                            setSystemDistanceFromDestination(CurrentStarSystem);
+
 
                             if (profile.docked && profile.CurrentStarSystem?.systemname == CurrentStarSystem.systemname && CurrentStarSystem.stations != null)
                             {
@@ -2143,35 +2326,27 @@ namespace Eddi
 
         private void setSystemDistanceFromHome(StarSystem system)
         {
-            if (HomeStarSystem != null && HomeStarSystem.x != null && system.x != null)
-            {
-                system.distancefromhome = (decimal)Math.Round(Math.Sqrt(Math.Pow((double)(system.x - HomeStarSystem.x), 2)
-                    + Math.Pow((double)(system.y - HomeStarSystem.y), 2)
-                    + Math.Pow((double)(system.z - HomeStarSystem.z), 2)), 2);
-                Logging.Debug("Distance from home is " + system.distancefromhome);
-            }
+            system.distancefromhome = getSystemDistance(system, HomeStarSystem);
+            Logging.Debug("Distance from home is " + system.distancefromhome);
         }
 
-        public decimal getSystemDistanceFromDestination(string system)
+        public void setSystemDistanceFromDestination(StarSystem system)
         {
-            decimal distance = 0;
-            if (system != null)
-            {
-                StarSystem starSystem = StarSystemSqLiteRepository.Instance.GetOrFetchStarSystem(system, true);
+            DestinationDistanceLy = getSystemDistance(system, DestinationStarSystem);
+            Logging.Debug("Distance from destination system is " + DestinationDistanceLy);
+        }
 
-                if (DestinationStarSystem?.x != null && starSystem?.x != null)
-                {
-                    distance = (decimal)Math.Round(Math.Sqrt(Math.Pow((double)(starSystem.x - DestinationStarSystem.x), 2)
-                        + Math.Pow((double)(starSystem.y - DestinationStarSystem.y), 2)
-                        + Math.Pow((double)(starSystem.z - DestinationStarSystem.z), 2)), 2);
-                }
+        public decimal getSystemDistance(StarSystem curr, StarSystem dest)
+        {
+            double square(double x) => x * x;
+            decimal distance = 0;
+            if (curr?.x != null && dest?.x != null)
+            {
+                distance = (decimal)Math.Round(Math.Sqrt(square((double)(curr.x - dest.x))
+                            + square((double)(curr.y - dest.y))
+                            + square((double)(curr.z - dest.z))), 2);
             }
             return distance;
-        }
-
-        public void setSystemDistanceFromDestination(string system)
-        {
-            DestinationDistanceLy = getSystemDistanceFromDestination(system);
         }
 
         /// <summary>Work out the title for the commander in the current system</summary>

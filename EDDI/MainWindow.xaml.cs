@@ -10,6 +10,7 @@ using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Security.Principal;
 using System.Speech.Synthesis;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -178,10 +179,12 @@ namespace Eddi
                 // Allow the EDDI VA plugin to change window state
                 VaWindowStateChange = new vaWindowStateChangeDelegate(OnVaWindowStateChange);
                 heroText.Text = Properties.EddiResources.change_affect_va;
+                chooseLanguageText.Text = Properties.MainWindow.choose_lang_label_va;
             }
             else
             {
                 heroText.Text = Properties.EddiResources.if_using_va;
+                chooseLanguageText.Text = Properties.MainWindow.choose_lang_label;
             }
 
             EDDIConfiguration eddiConfiguration = EDDIConfiguration.FromFile();
@@ -222,11 +225,12 @@ namespace Eddi
             List<LanguageDef> langs = GetAvailableLangs(); // already correctly sorted
             chooseLanguageDropDown.ItemsSource = langs;
             chooseLanguageDropDown.DisplayMemberPath = "displayName";
-            chooseLanguageDropDown.SelectedItem = langs.Find(l => l.ci.Name == Eddi.Properties.Settings.Default.OverrideCulture);
+            chooseLanguageDropDown.SelectedItem = langs.Find(l => l.ci.Name == eddiConfiguration.OverrideCulture);
             chooseLanguageDropDown.SelectionChanged += (sender, e) =>
             {
                 LanguageDef cultureDef = (LanguageDef)chooseLanguageDropDown.SelectedItem;
-                Eddi.Properties.Settings.Default.OverrideCulture = cultureDef.ci.Name;
+                eddiConfiguration.OverrideCulture = cultureDef.ci.Name;
+                eddiConfiguration.ToFile();
             };
 
             // Configure the Frontier API tab
@@ -858,7 +862,8 @@ namespace Eddi
 
         private void companionApiStatusChanged(CompanionAppService.State oldState, CompanionAppService.State newState)
         {
-            setStatusInfo();
+            // The calling thread for this method may not have direct access to the MainWindow dispatcher so we invoke the dispatcher here.
+            EDDI.Instance.MainWindow?.Dispatcher?.Invoke(setStatusInfo);
 
             if (oldState == CompanionAppService.State.AwaitingCallback &&
                 newState == CompanionAppService.State.Authorized)
@@ -941,6 +946,10 @@ namespace Eddi
         {
             if (CompanionAppService.Instance.CurrentState == CompanionAppService.State.LoggedOut)
             {
+                if (IsAdministrator())
+                {
+                    SpeechService.Instance.Say(null, Properties.EddiResources.frontier_api_admin_mode, 0);
+                }
                 CompanionAppService.Instance.Login();
             }
             else
@@ -953,6 +962,13 @@ namespace Eddi
                     SpeechService.Instance.Say(null, Properties.EddiResources.frontier_api_cant_login_from_va, 0);
                 }
             }
+        }
+
+        public static bool IsAdministrator()
+        {
+            var identity = WindowsIdentity.GetCurrent();
+            var principal = new WindowsPrincipal(identity);
+            return principal.IsInRole(WindowsBuiltInRole.Administrator);
         }
 
         // Handle Text-to-speech tab
