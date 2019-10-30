@@ -25,16 +25,18 @@ namespace EddiSpeechResponder
 {
     public class ScriptResolver
     {
-        private Dictionary<string, Script> scripts = new Dictionary<string, Script>();
-        private Random random;
-        private CustomSetting setting;
+        private readonly Dictionary<string, Script> scripts = new Dictionary<string, Script>();
+        private readonly Random random;
+        private readonly CustomSetting setting;
+        private readonly DataProviderService dataProviderService;
 
         public static object Instance { get; set; }
 
         public ScriptResolver(Dictionary<string, Script> scripts)
         {
+            dataProviderService = new DataProviderService();
             random = new Random();
-            if (scripts != null) { this.scripts = scripts; }
+            this.scripts = scripts;
             setting = new CustomSetting
             {
                 Trimmer = BuiltinTrimmers.CollapseBlankCharacters
@@ -519,7 +521,7 @@ namespace EddiSpeechResponder
                 {
                     return null;
                 }
-                long? now = (long?)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc))).TotalSeconds;
+                long? now = Dates.fromDateTimeToSeconds(DateTime.UtcNow);
 
                 return now - date;
             }, 1);
@@ -847,11 +849,11 @@ namespace EddiSpeechResponder
                 }
                 else if (values.Count == 1)
                 {
-                    result = DataProviderService.GetFactionByName(values[0].AsString);
+                    result = dataProviderService.GetFactionByName(values[0].AsString);
                 }
                 else
                 {
-                    result = DataProviderService.GetFactionByName(values[0].AsString, values[1].AsString);
+                    result = dataProviderService.GetFactionByName(values[0].AsString, values[1].AsString);
                 }
                 return (result == null ? new ReflectionValue(new object()) : new ReflectionValue(result));
             }, 1, 2);
@@ -1005,20 +1007,20 @@ namespace EddiSpeechResponder
                     {
                         if (values[1].AsString == "traffic")
                         {
-                            result = DataProviderService.GetSystemTraffic(systemName);
+                            result = dataProviderService.GetSystemTraffic(systemName);
                         }
                         if (values[1].AsString == "deaths")
                         {
-                            result = DataProviderService.GetSystemDeaths(systemName);
+                            result = dataProviderService.GetSystemDeaths(systemName);
                         }
                         else if (values[1].AsString == "hostility")
                         {
-                            result = DataProviderService.GetSystemHostility(systemName);
+                            result = dataProviderService.GetSystemHostility(systemName);
                         }
                     }
                     if (result == null)
                     {
-                        result = DataProviderService.GetSystemTraffic(systemName);
+                        result = dataProviderService.GetSystemTraffic(systemName);
                     }
                 }
                 return (result == null ? new ReflectionValue(new object()) : new ReflectionValue(result));
