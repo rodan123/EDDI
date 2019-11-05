@@ -186,6 +186,7 @@ namespace Eddi
                 }
 
                 // Tasks we can start asynchronously and don't need to wait for
+                Cmdr.name = configuration.CommanderName;
                 Cmdr.gender = configuration.Gender;
                 Task.Run(() => updateDestinationSystemStation(configuration));
                 Task.Run(() =>
@@ -734,6 +735,10 @@ namespace Eddi
                     {
                         passEvent = eventEnteredNormalSpace((EnteredNormalSpaceEvent)@event);
                     }
+                    else if (@event is CommanderLoadingEvent)
+                    {
+                        passEvent = eventCommanderLoading((CommanderLoadingEvent)@event);
+                    }
                     else if (@event is CommanderContinuedEvent)
                     {
                         passEvent = eventCommanderContinued((CommanderContinuedEvent)@event);
@@ -902,7 +907,7 @@ namespace Eddi
                 }
             }
         }
-
+        
         private bool eventPowerVoucherReceived(PowerVoucherReceivedEvent @event)
         {
             Cmdr.Power = @event.Power;
@@ -1010,12 +1015,15 @@ namespace Eddi
         {
             // There is a bug in the player journal output (as of player journal v.25) that can cause the `SystemScanComplete` event to fire multiple times 
             // in rapid succession when performing a system scan of a star system with only stars and no other bodies.
-            if (CurrentStarSystem != null && (bool)CurrentStarSystem?.systemScanCompleted)
+            if (CurrentStarSystem != null)
             {
-                // We will suppress repetitions of the event within the same star system.
-                return false;
+                if ((bool)CurrentStarSystem?.systemScanCompleted)
+                {
+                    // We will suppress repetitions of the event within the same star system.
+                    return false;
+                }
+                CurrentStarSystem.systemScanCompleted = true;
             }
-            CurrentStarSystem.systemScanCompleted = true;
             return true;
         }
 
@@ -1031,7 +1039,6 @@ namespace Eddi
 
         private bool eventSettlementApproached(SettlementApproachedEvent @event)
         {
-            bool passEvent = true;
             Station station = CurrentStarSystem?.stations?.Find(s => s.name == @event.name);
             if (station == null && @event.systemAddress == CurrentStarSystem?.systemAddress)
             {
@@ -1042,9 +1049,9 @@ namespace Eddi
                     marketId = @event.marketId,
                     systemname = CurrentStarSystem.systemname
                 };
-                CurrentStarSystem.stations.Add(station);
+                CurrentStarSystem?.stations?.Add(station);
             }
-            return passEvent;
+            return true;
         }
 
         private bool eventFriends(FriendsEvent @event)
@@ -1567,30 +1574,25 @@ namespace Eddi
 
         private void updateCurrentSystem(string name)
         {
-            if (name == null)
+            if (name == null || CurrentStarSystem?.systemname == name) { return; }
+
+            // We have changed system so update the old one as to when we left
+            StarSystemSqLiteRepository.Instance.LeaveStarSystem(CurrentStarSystem);
+
+            LastStarSystem = CurrentStarSystem;
+            if (NextStarSystem?.systemname == name)
             {
-                return;
+                CurrentStarSystem = NextStarSystem;
+                NextStarSystem = null;
             }
-            if (CurrentStarSystem == null || CurrentStarSystem.systemname != name)
+            else
             {
-                if (CurrentStarSystem != null && CurrentStarSystem.systemname != name)
-                {
-                    // We have changed system so update the old one as to when we left
-                    StarSystemSqLiteRepository.Instance.LeaveStarSystem(CurrentStarSystem);
-                }
-                LastStarSystem = CurrentStarSystem;
-                if (NextStarSystem?.systemname == name)
-                {
-                    CurrentStarSystem = NextStarSystem;
-                    NextStarSystem = null;
-                }
-                else
-                {
-                    CurrentStarSystem = StarSystemSqLiteRepository.Instance.GetOrCreateStarSystem(name);
-                }
-                setSystemDistanceFromHome(CurrentStarSystem);
-                setSystemDistanceFromDestination(CurrentStarSystem);
+                CurrentStarSystem = StarSystemSqLiteRepository.Instance.GetOrCreateStarSystem(name);
             }
+
+            setSystemDistanceFromHome(CurrentStarSystem);
+            setSystemDistanceFromDestination(CurrentStarSystem);
+            setCommanderTitle();
         }
 
         private void updateCurrentStellarBody(string bodyName, string systemName, long? systemAddress = null)
@@ -1764,10 +1766,6 @@ namespace Eddi
             CurrentStarSystem.updatedat = Dates.fromDateTimeToSeconds(theEvent.timestamp);
             StarSystemSqLiteRepository.Instance.SaveStarSystem(CurrentStarSystem);
 
-            setSystemDistanceFromHome(CurrentStarSystem);
-            setSystemDistanceFromDestination(CurrentStarSystem);
-            setCommanderTitle();
-
             // After jump has completed we are always in supercruise
             Environment = Constants.ENVIRONMENT_SUPERCRUISE;
 
@@ -1832,16 +1830,22 @@ namespace Eddi
             return true;
         }
 
+        private bool eventCommanderLoading(CommanderLoadingEvent theEvent) 
+        {
+            // Set our commander name and ID
+            Cmdr.name = theEvent.name;
+            Cmdr.EDID = theEvent.frontierID;
+            return true;
+        }
+
         private bool eventCommanderContinued(CommanderContinuedEvent theEvent)
         {
             // If we see this it means that we aren't in CQC
             inCQC = false;
 
-            // Set our commander name
-            if (Cmdr.name == null)
-            {
-                Cmdr.name = theEvent.commander;
-            }
+            // Set our commander name and ID
+            Cmdr.name = theEvent.commander;
+            Cmdr.EDID = theEvent.frontierID;
 
             // Set game version
             inHorizons = theEvent.horizons;
@@ -2220,26 +2224,14 @@ namespace Eddi
                     // Save a timestamp when the API refreshes, so that we can compare whether events are more or less recent
                     ApiTimeStamp = DateTime.UtcNow;
 
-                    long profileTime = Dates.fromDateTimeToSeconds(DateTime.UtcNow);
                     Profile profile = CompanionAppService.Instance.Profile();
                     if (profile != null)
                     {
-                        // Use the profile as primary information for our commander and shipyard
-                        Cmdr = profile.Cmdr;
+                        // Update our commander object
+                        Cmdr = Commander.FromFrontierApiCmdr(Cmdr, profile.Cmdr, ApiTimeStamp, JournalTimeStamp, out bool cmdrMatches);
 
-                        // Reinstate information not obtained from the Companion API (gender settings)
-                        EDDIConfiguration configuration = EDDIConfiguration.FromFile();
-                        if (configuration != null)
-                        {
-                            Cmdr.gender = configuration.Gender;
-                            Cmdr.powermerits = configuration.powerMerits;
-                            Cmdr.squadronname = configuration.SquadronName;
-                            Cmdr.squadronid = configuration.SquadronID;
-                            Cmdr.squadronrank = configuration.SquadronRank;
-                            Cmdr.squadronallegiance = configuration.SquadronAllegiance;
-                            Cmdr.squadronpower = configuration.SquadronPower;
-                            Cmdr.squadronfaction = configuration.SquadronFaction;
-                        }
+                        // Stop if the commander returned from the profile does not match our expected commander name
+                        if (!cmdrMatches) { return false; }
 
                         bool updatedCurrentStarSystem = false;
 
@@ -2249,7 +2241,7 @@ namespace Eddi
                             CurrentStarSystem = profile?.CurrentStarSystem;
                             setSystemDistanceFromHome(CurrentStarSystem);
                             setSystemDistanceFromDestination(CurrentStarSystem);
-
+                            setCommanderTitle();
 
                             if (profile.docked && profile.CurrentStarSystem?.systemname == CurrentStarSystem.systemname && CurrentStarSystem.stations != null)
                             {
@@ -2258,7 +2250,7 @@ namespace Eddi
                                 {
                                     // Only set the current station if it is not present, otherwise we leave it to events
                                     Logging.Debug("Set current station to " + CurrentStation.name);
-                                    CurrentStation.updatedat = profileTime;
+                                    CurrentStation.updatedat = Dates.fromDateTimeToSeconds(DateTime.UtcNow);
                                     updatedCurrentStarSystem = true;
                                 }
                             }
@@ -2275,9 +2267,7 @@ namespace Eddi
                             };
                             updateThread.Start();
                         }
-
-                        setCommanderTitle();
-
+                        
                         if (updatedCurrentStarSystem)
                         {
                             Logging.Debug("Star system information updated from remote server; updating local copy");
