@@ -5,6 +5,7 @@ using Cottle.Settings;
 using Cottle.Stores;
 using Cottle.Values;
 using Eddi;
+using EddiBgsService;
 using EddiCargoMonitor;
 using EddiCrimeMonitor;
 using EddiDataDefinitions;
@@ -29,12 +30,15 @@ namespace EddiSpeechResponder
         private readonly Random random;
         private readonly CustomSetting setting;
         private readonly DataProviderService dataProviderService;
+        private readonly BgsService bgsService;
 
         public static object Instance { get; set; }
 
         public ScriptResolver(Dictionary<string, Script> scripts)
         {
+
             dataProviderService = new DataProviderService();
+            bgsService = new BgsService();
             random = new Random();
             this.scripts = scripts;
             setting = new CustomSetting
@@ -468,13 +472,14 @@ namespace EddiSpeechResponder
             //
             // Commander-specific functions
             //
+            store["CommanderName"] = new NativeFunction((values) => EDDI.Instance.Cmdr.SpokenName(), 0, 0);
+
             store["ShipName"] = new NativeFunction((values) =>
             {
                 int? localId = (values.Count == 0 ? (int?)null : (int)values[0].AsNumber);
                 string model = (values.Count == 2 ? values[1].AsString : null);
                 Ship ship = findShip(localId, model);
-                string result = (ship == null ? "your ship" : ship.SpokenName());
-                return result;
+                return ship.SpokenName();
             }, 0, 2);
 
             store["ShipCallsign"] = new NativeFunction((values) =>
@@ -849,11 +854,11 @@ namespace EddiSpeechResponder
                 }
                 else if (values.Count == 1)
                 {
-                    result = dataProviderService.GetFactionByName(values[0].AsString);
+                    result = bgsService.GetFactionByName(values[0].AsString);
                 }
                 else
                 {
-                    result = dataProviderService.GetFactionByName(values[0].AsString, values[1].AsString);
+                    result = bgsService.GetFactionByName(values[0].AsString, values[1].AsString);
                 }
                 return (result == null ? new ReflectionValue(new object()) : new ReflectionValue(result));
             }, 1, 2);
