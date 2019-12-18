@@ -117,186 +117,34 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="achenar" xml:space="preserve">
-    <value>akenar</value>
-    <comment>Optional phonetic pronunciation for achenar</comment>
+  <data name="copy" xml:space="preserve">
+    <value>Kopieren (Strg+C)</value>
   </data>
-  <data name="acihault" xml:space="preserve">
-    <value>əˈsiolt</value>
-    <comment>Optional phonetic pronunciation for acihault</comment>
+  <data name="cut" xml:space="preserve">
+    <value>Ausschneiden (Strg+X)</value>
   </data>
-  <data name="adan" xml:space="preserve">
-    <value>ˈæden</value>
-    <comment>Optional phonetic pronunciation for adan</comment>
+  <data name="delete" xml:space="preserve">
+    <value>Löschen (Entf)</value>
   </data>
-  <data name="aisling" xml:space="preserve">
-    <value>aʃling</value>
-    <comment>Optional phonetic pronunciation for aisling</comment>
+  <data name="delete_line" xml:space="preserve">
+    <value>Zeile löschen (Strg+D)</value>
   </data>
-  <data name="alcyone" xml:space="preserve">
-    <value>alsaɪnɪ</value>
-    <comment>Optional phonetic pronunciation for alcyone</comment>
+  <data name="find" xml:space="preserve">
+    <value>Suchen (Strg+F)</value>
   </data>
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+  <data name="paste" xml:space="preserve">
+    <value>Einfügen (Strg+V)</value>
+  </data>
+  <data name="redo" xml:space="preserve">
+    <value>Wieder herstellen (Strg+Y)</value>
+  </data>
+  <data name="show_line_numbers" xml:space="preserve">
+    <value>Zeilennummern anzeigen</value>
+  </data>
+  <data name="undo" xml:space="preserve">
+    <value>Rückgängig (Strg+Z)</value>
+  </data>
+  <data name="word_wrap" xml:space="preserve">
+    <value>Zeilenumbruch</value>
+  </data>
 </root>
