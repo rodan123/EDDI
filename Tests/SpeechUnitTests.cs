@@ -18,6 +18,11 @@ namespace UnitTests
             MakeSafe();
         }
 
+        private string CondenseSpaces(string s)
+        {
+            return System.Text.RegularExpressions.Regex.Replace(s, @"\s+", " ");
+        }
+
         [TestMethod]
         public void TestSpeechPriorityIfInOrder()
         {
@@ -151,7 +156,8 @@ namespace UnitTests
                 pathingResults.Add(pathedString);
             }
 
-            Assert.IsTrue(pathingResults.SetEquals(new HashSet<string>(pathingOptions)));
+            HashSet<string> expectedHashSet = new HashSet<string>(pathingOptions.Select(CondenseSpaces));
+            Assert.IsTrue(pathingResults.SetEquals(expectedHashSet));
         }
 
         [TestMethod]
@@ -171,7 +177,8 @@ namespace UnitTests
                 pathingResults.Add(pathedString);
             }
 
-            Assert.IsTrue(pathingResults.SetEquals(new HashSet<string>(pathingOptions)));
+            HashSet<string> expectedHashSet = new HashSet<string>(pathingOptions.Select(CondenseSpaces));
+            Assert.IsTrue(pathingResults.SetEquals(expectedHashSet));
         }
 
         [TestMethod]
@@ -199,7 +206,8 @@ namespace UnitTests
                 pathingResults.Add(pathedString);
             }
 
-            Assert.IsTrue(pathingResults.SetEquals(new HashSet<string>(pathingOptions)));
+            HashSet<string> expectedHashSet = new HashSet<string>(pathingOptions.Select(CondenseSpaces));
+            Assert.IsTrue(pathingResults.SetEquals(expectedHashSet));
         }
 
         [TestMethod]
@@ -249,31 +257,6 @@ namespace UnitTests
             string pathingString = @"[There can be only one.]";
             List<string> pathingOptions = new List<string>() {
                 "There can be only one."
-            };
-
-            HashSet<string> pathingResults = new HashSet<string>();
-            for (int i = 0; i < 1000; i++)
-            {
-                string pathedString = VoiceAttackPlugin.SpeechFromScript(pathingString);
-                pathingResults.Add(pathedString);
-            }
-
-            Assert.IsTrue(pathingResults.SetEquals(new HashSet<string>(pathingOptions)));
-        }
-
-        [TestMethod]
-        public void TestPathingString7()
-        {
-            string pathingString = @"[{TXT:Ship model} {TXT:Ship callsign (spoken)};This is {TXT:Ship model} {TXT:Ship callsign (spoken)}] [requesting docking permission;requesting docking clearance;requesting permission to dock;requesting clearance to dock].";
-            List<string> pathingOptions = new List<string>() {
-                "{TXT:Ship model} {TXT:Ship callsign (spoken)} requesting docking permission."
-                ,"This is {TXT:Ship model} {TXT:Ship callsign (spoken)} requesting docking permission."
-                ,"{TXT:Ship model} {TXT:Ship callsign (spoken)} requesting docking clearance."
-                ,"This is {TXT:Ship model} {TXT:Ship callsign (spoken)} requesting docking clearance."
-                ,"{TXT:Ship model} {TXT:Ship callsign (spoken)} requesting clearance to dock."
-                ,"This is {TXT:Ship model} {TXT:Ship callsign (spoken)} requesting clearance to dock."
-                ,"{TXT:Ship model} {TXT:Ship callsign (spoken)} requesting permission to dock."
-                ,"This is {TXT:Ship model} {TXT:Ship callsign (spoken)} requesting permission to dock."
             };
 
             HashSet<string> pathingResults = new HashSet<string>();
@@ -437,6 +420,42 @@ namespace UnitTests
                 Assert.Fail();
             }
             privateObject.Invoke("DequeueAllSpeech", System.Array.Empty<object>());
+        }
+
+        [TestMethod]
+        public void TestSpeechServiceEscaping1()
+        {
+            // Test escaping for invalid ssml.
+            var line = @"<invalid>test</invalid> <invalid withattribute='attribute'>test2</invalid>";
+            var result = SpeechService.escapeSsml(line);
+            Assert.AreEqual("&lt;invalid&gt;test&lt;/invalid&gt; &lt;invalid withattribute='attribute'&gt;test2&lt;/invalid&gt;", result);
+        }
+
+        [TestMethod]
+        public void TestSpeechServiceEscaping2()
+        {
+            // Test escaping for double quotes, single quotes, and <phoneme> ssml commands. XML characters outside of ssml elements are escaped.
+            var line = @"<phoneme alphabet=""ipa"" ph=""ʃɪnˈrɑːrtə"">Shinrarta</phoneme> <phoneme alphabet='ipa' ph='ˈdezɦrə'>Dezhra</phoneme> & Co's shop";
+            var result = SpeechService.escapeSsml(line);
+            Assert.AreEqual("<phoneme alphabet=\"ipa\" ph=\"ʃɪnˈrɑːrtə\">Shinrarta</phoneme> <phoneme alphabet='ipa' ph='ˈdezɦrə'>Dezhra</phoneme> &amp; Co&apos;s shop", result);
+        }
+
+        [TestMethod]
+        public void TestSpeechServiceEscaping3()
+        {
+            // Test escaping for <break> elements. XML characters outside of ssml elements are escaped.
+            var line = @"<break time=""100ms""/>He said ""Foo"".";
+            var result = SpeechService.escapeSsml(line);
+            Assert.AreEqual("<break time=\"100ms\"/>He said &quot;Foo&quot;.", result);
+        }
+
+        [TestMethod]
+        public void TestSpeechServiceEscaping4()
+        {
+            // Test escaping for Cereproc unique <usel> and <spurt> elements
+            var line = @"<spurt audio='g0001_004'>cough</spurt> This is a <usel variant=""1"">test</usel> sentence.";
+            var result = SpeechService.escapeSsml(line);
+            Assert.AreEqual(line, result);
         }
     }
 }

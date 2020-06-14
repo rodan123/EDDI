@@ -2,6 +2,60 @@
 
 Full details of the variables available for each noted event, and VoiceAttack integrations, are available in the individual [event pages](https://github.com/EDCD/EDDI/wiki/Events).
 
+### 3.5.3-b3
+  * Cargo Monitor
+    * Fixed a bug where the `need` property of mission-related cargo did not properly update for `Collect` mission types.
+  * Core
+    * Implemented a speculative fix for system visit counts sometimes becoming reset.
+  * Mission Monitor
+    * Added new `claim` state for missions where the expiration timer ceases upon completion of mission requirements. `Assassinate` and `Massacre` mission types, as an example. 
+  * Speech Responder
+    * Updated scripts to improve reporting of crime and mission related information: 
+      * `Crime check station` 
+      * `Crime check system`
+      * `Entered normal space`
+      * `Location`
+      * `Mission check galaxy` 
+      * `Mission check system` 
+      * `Mission check station`
+      * `Mission completed`
+      * `Mission report`
+      * `Touchdown`
+    * Updated the community translation of the default personality for Brazilian Portuguese.
+
+### 3.5.3-b2
+  * Frontier API
+    * Fixed an issue whereby the login process would try to launch a second instance of EDDI and fail.
+
+### 3.5.3-b1
+  * Core
+    * Added support for all documented events etc for the Fleet Carriers update.
+    * Behave gracefully rather than crashing to desktop when the EDSM servers are timing out.
+  * Events
+    * Added new event `Carrier cooldown`, triggered when you were docked at a fleet carrier during a jump and it completes its cooldown.
+    * Added new event `Carrier jump cancelled`, triggered when you cancel a scheduled fleet carrier jump.
+    * Added new event `Carrier jump engaged`, triggered when your fleet carrier performs a jump.
+    * Added new event `Carrier jump request`, triggered when you request that your fleet carrier performs a jump.
+    * Added new event `Carrier jump jumped`, triggered when you are docked at a fleet carrier as it completes a jump.
+    * Added new event `Carrier pads locked`, triggered when your fleet carrier locks landing pads prior to a jump.
+    * Added new event `Flight assist`, triggered when you toggle flight assist on or off.
+    * Added new event `Hardpoints`, triggered when you deploy or retract your hardpoints.
+    * Updated `Ship repaired` script .
+  * Inara Responder
+    * Many performance improvements.
+  * Speech Responder
+    * The `scoopable` property now considers all stars in the system, not just the primary star.
+    * Fixed vocalization of whitespace characters by `Spacialise()`.
+    * Fixed `event.station` not being populated in docking events.
+    * Fixed `event.startlanded` and `status.vehicle` not being populated on startup.
+    * The "Copy Personality" dialog now checks the name that you supply against the existing ones, to stop you from accidentally over-writing one.
+    * Fixed a crash to desktop if the personality JSON files were hand-edited into an invalid state. Instead an error is logged and the offending JSON file is renamed.
+  * Text-to-Speech
+    * Ensured that voice effects (except radio effects and audio gain) are completely omitted when "level of voice processing" is set to zero.
+  * VoiceAttack
+    * Fixed an exception that could occur when closing VoiceAttack.
+    * Fixed a bug ([#1666](https://github.com/EDCD/EDDI/issues/1666)) that could prevent variables `{DEC:System X} {DEC:System Y} {DEC:System Z}` from populating upon first entry into a system.
+
 ### 3.5.2
   * Speech responder
     * UI
@@ -231,8 +285,8 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Updated estimated scanning and mapping value calculations.
   * Crime Monitor
     * New monitor tracks all bond & bounty awards and fines & bounties incurred.
-	* Monitor attempts to determine the minor faction's 'home system' via its name, but defaults to system presence with highest influence.
-	* Minor faction's 'home system' may be manually entered and is archived for future use.
+    * Monitor attempts to determine the minor faction's 'home system' via its name, but defaults to system presence with highest influence.
+    * Minor faction's 'home system' may be manually entered and is archived for future use.
     * 'Add Record' button allows manual addition of claims, fines & bounties.
     * 'Find Legal Facilities' button allows standalone users to locate the nearest 'Legal Facilities' contact. 
     * New `FactionRecord` and `FactionReport` properties, available via Cottle scripting. See the `Variables` window for details.
@@ -248,9 +302,9 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Added 'Find Route', 'Next Route', 'Update Route', and 'Clear Route' buttons to give standalone users access to missions routing functionality.
   * Navigation Service
     * Consolidated all `RouteDetails()` functionality.
-	* Added `facilitator` route type to `RouteDetails()`, which finds and sets the `Destination` properties to the nearest 'Legal Facilities' contact.
-	* Added `encoded`, `manufactured` & `raw` to `RouteDetails()`, which finds and sets the `Destination` properties to the nearest Materials Trader.
-	* Added `guardian` & `human` to `RouteDetails()`, which finds and sets the `Destination` properties to the nearest Technology Broker.
+    * Added `facilitator` route type to `RouteDetails()`, which finds and sets the `Destination` properties to the nearest 'Legal Facilities' contact.
+    * Added `encoded`, `manufactured` & `raw` to `RouteDetails()`, which finds and sets the `Destination` properties to the nearest Materials Trader.
+    * Added `guardian` & `human` to `RouteDetails()`, which finds and sets the `Destination` properties to the nearest Technology Broker.
     * Destination system, distance & station data populated & maintained by `RouteDetails()`. Distance re-calculated after each jump.
     * The `missionsRouteList` & `missionsRouteDistance` properties simplified to `RouteList` & `RouteDistance`, respectively.
   * Ship Monitor
@@ -447,11 +501,11 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * `Federation promotion` Added the integer rank rating associated with the current promotion.
   * Ship monitor
     * Added new values to the current ship: `hullhealth` & `hot`
-	* Added `Hot` property to the Ship monitor UI
+    * Added `Hot` property to the Ship monitor UI
     * Added new values to modules: `hot`, `modification`, `engineerlevel`, and `engineerquality`
-	* Updated module-related events to handle engineering modification data
-	* Added `Stored ships` event handling, triggered when the `Shipyard` screen is selected in-game.
-	* Added `Stored modules` event handling, triggered when the `Outfitting` screen is selected in-game. New `storedmodule` object properties are available in Variables.md
+    * Updated module-related events to handle engineering modification data
+    * Added `Stored ships` event handling, triggered when the `Shipyard` screen is selected in-game.
+    * Added `Stored modules` event handling, triggered when the `Outfitting` screen is selected in-game. New `storedmodule` object properties are available in Variables.md
   * Speech responder
     * Revised `Empire promotion` script to include rank specific rewards.
     * Revised `Federation promotion` script to include rank specific rewards.
@@ -672,13 +726,13 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * New `RouteDetails()` function for Cottle scripting to query for various mission routes.
       * `expiring` - The destination of your next expiring mission.
       * `farthest` - The mission destination farthest from your current location.
-	  * `most`     - The system with the most missions.
-	  * `nearest`  - The mission destination nearest to your current location.
-	  * `route`    - The "Traveling Salesman" (RNNA) route for all active missions.
-	  * `update`   - The next mission destination, once all missions in current system are completed.
+      * `most`     - The system with the most missions.
+      * `nearest`  - The mission destination nearest to your current location.
+      * `route`    - The "Traveling Salesman" (RNNA) route for all active missions.
+      * `update`   - The next mission destination, once all missions in current system are completed.
     * New `Missions route` event to provide pertinent data for mission route queries.
     * New `Missions route` script to report the results of the `Missions route` event.
-	* New `Mission check galaxy` script, which reports all active missions.
+    * New `Mission check galaxy` script, which reports all active missions.
     * New `Mission check system` script, which reports active and completed missions in your current system.
     * New `Mission check station`, which reports active & completed missions, if docked or station in vicinity.
     * Revised `Commander continued` script to include the `Mission check galaxy` script.
@@ -953,21 +1007,21 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * If EDDI is run as a standalone app, its entire window state is now preserved. If EDDI is invoked via VoiceAttack commands, we only remember whether it was maximised and don't disturb the rest.
   * Core
     * Added Alliance Chieftan.
-	* Added decontamination limpets.
+    * Added decontamination limpets.
     * Added recon limpets.
     * EDDI will now more readily notice if your SRV or fighter was destroyed (EDDI couldn't always tell before).
   * Shipyard
     * Speculative fix for the concurrency bug that messes up shipmonitor.json when you buy a ship.
   * NPC Comms
-	* Reporting of NPC comms is much more succint.
-		Was: Message received from "name".  Message reads: "blah".
-		Now: From "name": "blah".
+    * Reporting of NPC comms is much more succint.
+        Was: Message received from "name".  Message reads: "blah".
+        Now: From "name": "blah".
   * Speech Responder
     * Added new 'Near surface' event, triggered when you enter or depart the gravity well around a surface
-	* ~~Added new 'SRV under ship' event, triggered when your SRV enters or leaves the proximity zone around your ship~~
-	* Added new 'SRV turret' event, triggered when you deploy or retract your SRV's turret
-	* Added new 'Ship fsd' event, triggered when there is a change to the status of your ship's fsd
-	* Added new 'Ship low fuel' event, triggered when your fuel level falls below 25%
+    * ~~Added new 'SRV under ship' event, triggered when your SRV enters or leaves the proximity zone around your ship~~
+    * Added new 'SRV turret' event, triggered when you deploy or retract your SRV's turret
+    * Added new 'Ship fsd' event, triggered when there is a change to the status of your ship's fsd
+    * Added new 'Ship low fuel' event, triggered when your fuel level falls below 25%
     * Added new 'Under attack' event
     * Add new event 'Shutdown', triggered on a clean shut down of the game.
     * The 'Vehicle destroyed' event now includes the variable `vehicle`, describing the vehicle that was destroyed.
@@ -1075,7 +1129,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
 
 ### 2.4.6-b2
   * Core
-	* Added support for the large AX weapons and the Type 10 Defender (export to EDShipyard and Coriolis should be compatible and work just as soon as they are ready).
+    * Added support for the large AX weapons and the Type 10 Defender (export to EDShipyard and Coriolis should be compatible and work just as soon as they are ready).
     * EDDI will now remember and restore its window size and position, the selected tab, and its minimized / maximized status on startup (and there was much rejoicing).
     * You can now specify your commander's gender in the "Commander Details" tab. Currently this is only relevant for titles of nobility in the Empire. You can specify "Neither" if you prefer to be addressed as "Commander" in situations where convention would otherwise require a gendered form of address.
     * Changes to your home system / station will now be honoured immediately rather than after the next app restart.

@@ -293,22 +293,34 @@ namespace EddiVoiceAttackResponder
         public static void VA_Exit1(dynamic vaProxy)
         {
             Logging.Info("EDDI VoiceAttack plugin exiting");
+            
+            // Stop the updater thread.
+            updaterThread?.Abort();
 
             if (Application.Current?.Dispatcher != null)
             {
                 try
                 {
-                    Application.Current.Dispatcher.Invoke(() => Application.Current.MainWindow?.Close());
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        Application.Current.Exit += OnExit;
+                        Application.Current.MainWindow?.Close();
+                        Application.Current.Shutdown();
+                    });
                 }
                 catch (Exception ex)
                 {
                     Logging.Debug("EDDI configuration UI close from VA failed." + ex + ".");
                 }
             }
+        }
 
-            updaterThread?.Abort();
-            Application.Current?.Dispatcher?.Invoke(() => Application.Current.Shutdown());
-            App.eddiMutex.ReleaseMutex();
+        private static void OnExit(object sender, ExitEventArgs e) 
+        {
+            if (!App.eddiMutex.SafeWaitHandle.IsClosed)
+            {
+                App.eddiMutex.ReleaseMutex();
+            }
         }
 
         public static void VA_StopCommand()
@@ -419,10 +431,11 @@ namespace EddiVoiceAttackResponder
             }
             try
             {
-                var profile = EddiInaraService.InaraService.Instance.GetCommanderProfile(commanderName);
-                if (profile != null)
+                EddiInaraService.IInaraService inaraService = new EddiInaraService.InaraService();
+                var result = inaraService.GetCommanderProfile(commanderName);
+                if (result != null)
                 {
-                    OpenOrStoreURI(ref vaProxy, profile.url);
+                    OpenOrStoreURI(ref vaProxy, result.url);
                 }
                 else
                 {
@@ -885,7 +898,11 @@ namespace EddiVoiceAttackResponder
                 string[] options = res.Split(';');
                 res = options[random.Next(0, options.Length)];
             }
-            return res;
+
+            // Step 3 - pass it through the script resolver
+            res = new ScriptResolver(null).resolveFromValue(res);
+
+            return res ?? "";
         }
 
         /// <summary>
@@ -911,7 +928,7 @@ namespace EddiVoiceAttackResponder
 
                     // Store in EDSM
                     IEdsmService edsmService = new StarMapService();
-                    edsmService?.sendStarMapComment(currentSystemName, comment);
+                    edsmService.sendStarMapComment(currentSystemName, comment);
                 }
             }
             catch (Exception e)

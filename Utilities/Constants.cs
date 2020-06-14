@@ -10,8 +10,8 @@ namespace Utilities
     {
         public const string EDDI_NAME = "EDDI";
         public const string EDDI_URL_PROTOCOL = "eddi";
-        public static Version EDDI_VERSION = new Version(3, 5, 2, Version.TestPhase.final, 0);
-        public const string EDDI_SERVER_URL = "http://edcd.github.io/EDDP/";
+        public static Version EDDI_VERSION = new Version(3, 5, 3, Version.TestPhase.b, 3);
+        public const string EDDI_SERVER_URL = "https://edcd.github.io/EDDP/";
         public static readonly string EDDI_SYSTEM_MUTEX_NAME = $"{EDDI_SERVER_URL}/{EDDI_NAME}/{Environment.GetEnvironmentVariable("UserName")}";
 
         public static readonly string DATA_DIR = Environment.GetEnvironmentVariable("AppData") + "\\" + EDDI_NAME;
@@ -67,6 +67,11 @@ namespace Utilities
         {
             {1, 4.00M}, {2, 6.00M}, {3, 7.75M}, {4, 9.25M}, {5, 10.50M}
         };
+
+        // Fleet Carrier Constants
+        public const int carrierPreJumpSeconds = 960; // 16 minutes to spool up before jumping (minus the absolute value of the difference from 10 seconds after the minute)
+        public const int carrierPostJumpSeconds = 300; // 5 minutes cool down
+        public const int carrierLandingPadLockdownSeconds = 180; // Landing pads are locked down 3 minutes prior to jumping
     }
 
     public class ConstantConverters

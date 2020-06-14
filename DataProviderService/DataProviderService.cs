@@ -31,10 +31,10 @@ namespace EddiDataProviderService
 
         public List<StarSystem> GetSystemsData(string[] systemNames, bool showCoordinates = true, bool showSystemInformation = true, bool showBodies = true, bool showStations = true, bool showFactions = true)
         {
-            if (systemNames == null || systemNames.Length == 0) { return null; }
+            if (systemNames == null || systemNames.Length == 0) { return new List<StarSystem>(); }
 
             List<StarSystem> starSystems = edsmService.GetStarMapSystems(systemNames, showCoordinates, showSystemInformation);
-            if (starSystems == null) { return null; }
+            if (starSystems == null) { return new List<StarSystem>(); }
 
             List<StarSystem> fullStarSystems = new List<StarSystem>();
             foreach (string systemName in systemNames)
@@ -63,17 +63,18 @@ namespace EddiDataProviderService
                     starSystem.AddOrUpdateBodies(bodies);
                 }
 
-                if (starSystem?.population > 0)
+                if (starSystem.population > 0)
                 {
                     List<Faction> factions = new List<Faction>();
+                    List<Station> stations = new List<Station>();
                     if (showFactions || showStations)
                     {
-                        factions = edsmService.GetStarMapFactions(starSystem.systemname);
+                        factions = edsmService.GetStarMapFactions(starSystem.systemname) ?? factions;
                         starSystem.factions = factions;
                     }
                     if (showStations)
                     {
-                        List<Station> stations = edsmService.GetStarMapStations(starSystem.systemname);
+                        stations = edsmService.GetStarMapStations(starSystem.systemname) ?? stations;
                         starSystem.stations = SetStationFactionData(stations, factions);
                         starSystem.stations = stations;
                     }
@@ -127,7 +128,7 @@ namespace EddiDataProviderService
                 try
                 {
                     List<StarMapResponseLogEntry> flightLogs = edsmService.getStarMapLog(lastSync);
-                    if (flightLogs.Count > 0)
+                    if (flightLogs?.Count > 0)
                     {
                         Logging.Debug("Syncing from EDSM");
                         Dictionary<string, string> comments = edsmService.getStarMapComments();
@@ -158,40 +159,43 @@ namespace EddiDataProviderService
         // EDSM flight log synchronization (named star systems)
         public List<StarSystem> syncFromStarMapService(List<StarSystem> starSystems)
         {
-            if (edsmService != null && starSystems.Count > 0)
+            if (edsmService != null && edsmService.EdsmCredentialsSet() && starSystems.Count > 0)
             {
                 try
                 {
                     List<StarMapResponseLogEntry> flightLogs = edsmService.getStarMapLog(null, starSystems.Select(s => s.systemname).ToArray());
                     Dictionary<string, string> comments = edsmService.getStarMapComments();
 
-                    foreach (StarSystem starSystem in starSystems)
+                    if (flightLogs != null)
                     {
-                        if (starSystem?.systemname != null)
+                        foreach (StarSystem starSystem in starSystems)
                         {
-                            Logging.Debug("Syncing star system " + starSystem.systemname + " from EDSM.");
-                            foreach (StarMapResponseLogEntry flightLog in flightLogs)
+                            if (starSystem?.systemname != null)
                             {
-                                if (flightLog.system == starSystem.systemname)
+                                Logging.Debug("Syncing star system " + starSystem.systemname + " from EDSM.");
+                                foreach (StarMapResponseLogEntry flightLog in flightLogs)
                                 {
-                                    if (starSystem.EDSMID == null)
+                                    if (flightLog.system == starSystem.systemname)
                                     {
-                                        starSystem.EDSMID = flightLog.systemId;
-                                    }
-                                    else
-                                    {
-                                        if (starSystem.EDSMID != flightLog.systemId)
+                                        if (starSystem.EDSMID == null)
                                         {
-                                            continue;
+                                            starSystem.EDSMID = flightLog.systemId;
                                         }
+                                        else
+                                        {
+                                            if (starSystem.EDSMID != flightLog.systemId)
+                                            {
+                                                continue;
+                                            }
+                                        }
+                                        starSystem.visitLog.Add(flightLog.date);
                                     }
-                                    starSystem.visitLog.Add(flightLog.date);
                                 }
-                            }
-                            var comment = comments.FirstOrDefault(s => s.Key == starSystem.systemname);
-                            if (!string.IsNullOrEmpty(comment.Value))
-                            {
-                                starSystem.comment = comment.Value;
+                                var comment = comments.FirstOrDefault(s => s.Key == starSystem.systemname);
+                                if (!string.IsNullOrEmpty(comment.Value))
+                                {
+                                    starSystem.comment = comment.Value;
+                                }
                             }
                         }
                     }
@@ -246,7 +250,7 @@ namespace EddiDataProviderService
         {
             StarSystemSqLiteRepository.Instance.SaveStarSystems(syncSystems);
             StarMapConfiguration starMapConfiguration = StarMapConfiguration.FromFile();
-            starMapConfiguration.lastSync = DateTime.UtcNow;
+            starMapConfiguration.lastFlightLogSync = DateTime.UtcNow;
             starMapConfiguration.ToFile();
         }
     }

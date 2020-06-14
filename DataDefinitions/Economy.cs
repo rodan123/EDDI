@@ -27,6 +27,7 @@ namespace EddiDataDefinitions
             var Tourism = new Economy("Tourism");
             var Military = new Economy("Military");
             var Prison = new Economy("Prison");
+            var Carrier = new Economy("Carrier");
         }
 
         public static readonly Economy None;
@@ -41,6 +42,7 @@ namespace EddiDataDefinitions
         public new static Economy FromEDName(string edname)
         {
             // Economy names from the journal are prefixed with "$economy_" and sufficed with ";" while economy names from the Frontier API are not.
+            if (string.IsNullOrEmpty(edname)) { return None; }
             string tidiedName = edname.Replace("$economy_", "").Replace(";", "");
             return ResourceBasedLocalizedEDName<Economy>.FromEDName(tidiedName);
         }

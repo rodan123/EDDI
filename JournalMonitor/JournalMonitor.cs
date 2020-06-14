@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Controls;
 using Utilities;
@@ -27,6 +28,8 @@ namespace EddiJournalMonitor
         { }
 
         private enum ShipyardType { ShipsHere, ShipsRemote }
+
+        private static Dictionary<long, CancellationTokenSource> carrierJumpCancellationTokenSources = new Dictionary<long, CancellationTokenSource>();
 
         public static void ForwardJournalEntry(string line, Action<Event> callback, bool isLogLoadEvent)
         {
@@ -117,7 +120,7 @@ namespace EddiJournalMonitor
                                     long marketId = JsonParsing.getLong(data, "MarketID");
                                     string stationName = JsonParsing.getString(data, "StationName");
                                     string stationState = JsonParsing.getString(data, "StationState") ?? string.Empty;
-                                    StationModel stationModel = StationModel.FromEDName(JsonParsing.getString(data, "StationType") ?? "None");
+                                    StationModel stationModel = StationModel.FromEDName(JsonParsing.getString(data, "StationType")) ?? StationModel.None;
                                     Faction controllingfaction = getFaction(data, "Station", systemName);
                                     decimal? distancefromstar = JsonParsing.getOptionalDecimal(data, "DistFromStarLS");
 
@@ -204,7 +207,7 @@ namespace EddiJournalMonitor
                                     long systemAddress = JsonParsing.getLong(data, "SystemAddress");
                                     string body = JsonParsing.getString(data, "Body");
                                     long? bodyId = JsonParsing.getOptionalLong(data, "BodyID");
-                                    BodyType bodyType = BodyType.FromEDName(JsonParsing.getString(data, "BodyType") ?? "None");
+                                    BodyType bodyType = BodyType.FromEDName(JsonParsing.getString(data, "BodyType")) ?? BodyType.None;
                                     events.Add(new EnteredNormalSpaceEvent(timestamp, system, systemAddress, body, bodyId, bodyType) { raw = line, fromLoad = fromLogLoad });
                                 }
                                 handled = true;
@@ -224,9 +227,9 @@ namespace EddiJournalMonitor
                                     int? boostUsed = JsonParsing.getOptionalInt(data, "BoostUsed"); // 1-3 are synthesis, 4 is any supercharge (white dwarf or neutron star)
                                     decimal distance = JsonParsing.getDecimal(data, "JumpDist");
                                     Faction controllingfaction = getFaction(data, "System", systemName);
-                                    Economy economy = Economy.FromEDName(JsonParsing.getString(data, "SystemEconomy") ?? "$economy_None");
-                                    Economy economy2 = Economy.FromEDName(JsonParsing.getString(data, "SystemSecondEconomy") ?? "$economy_None"); ;
-                                    SecurityLevel security = SecurityLevel.FromEDName(JsonParsing.getString(data, "SystemSecurity") ?? "None");
+                                    Economy economy = Economy.FromEDName(JsonParsing.getString(data, "SystemEconomy")) ?? Economy.None;
+                                    Economy economy2 = Economy.FromEDName(JsonParsing.getString(data, "SystemSecondEconomy")) ?? Economy.None;
+                                    SecurityLevel security = SecurityLevel.FromEDName(JsonParsing.getString(data, "SystemSecurity")) ?? SecurityLevel.None;
                                     long? population = JsonParsing.getOptionalLong(data, "Population");
 
                                     // Parse factions array data
@@ -315,7 +318,7 @@ namespace EddiJournalMonitor
                                     {
                                         // Target might be a ship, but if not then the string we provide is repopulated in ship.model so use it regardless
                                         Ship ship = ShipDefinitions.FromEDModel(target);
-                                        target = ship.model;
+                                        target = !string.IsNullOrEmpty(ship.model) ? ship.model : JsonParsing.getString(data, "Target_Localised");
                                     }
 
                                     string victimFaction = getFactionName(data, "VictimFaction");
@@ -1122,10 +1125,18 @@ namespace EddiJournalMonitor
                                                     {
                                                         StarSystem systemData = StarSystemSqLiteRepository.Instance.GetStarSystem(starSystem, true);
                                                         ship.station = systemData?.stations?.FirstOrDefault(s => s.marketId == ship.marketid)?.name;
+                                                        ship.x = systemData?.x;
+                                                        ship.y = systemData?.y;
+                                                        ship.z = systemData?.z;
+                                                        ship.distance = ship.Distance(EDDI.Instance?.CurrentStarSystem?.x, EDDI.Instance?.CurrentStarSystem?.y, EDDI.Instance?.CurrentStarSystem?.z);
                                                     }
                                                     else
                                                     {
                                                         ship.station = station;
+                                                        ship.x = EDDI.Instance?.CurrentStarSystem?.x;
+                                                        ship.y = EDDI.Instance?.CurrentStarSystem?.y;
+                                                        ship.z = EDDI.Instance?.CurrentStarSystem?.z;
+                                                        ship.distance = 0;
                                                     }
                                                     shipyard.Add(ship);
                                                 }
@@ -2865,10 +2876,10 @@ namespace EddiJournalMonitor
                                             long missionId = JsonParsing.getLong(missionProperties, "MissionID");
                                             string name = JsonParsing.getString(missionProperties, "Name");
                                             decimal expires = JsonParsing.getDecimal(missionProperties, "Expires");
-                                            DateTime expiry = DateTime.Now.AddSeconds((double)expires);
+                                            DateTime expiry = DateTime.UtcNow.AddSeconds((double)expires);
 
-                                            // If mission is 'Active' and expires = 0, then set status to 'Complete'
-                                            MissionStatus missionStatus = (i == 0 && expires == 0) ? MissionStatus.FromStatus(1) : status;
+                                            // If mission is 'Active' and expires = 0, then set status to 'Claim'
+                                            MissionStatus missionStatus = i == 0 && expires == 0 ? MissionStatus.FromStatus(3) : status;
                                             Mission newMission = new Mission(missionId, name, expiry, missionStatus);
                                             if (newMission == null)
                                             {
@@ -3117,45 +3128,51 @@ namespace EddiJournalMonitor
                                 break;
                             case "Repair":
                                 {
-                                    string item = JsonParsing.getString(data, "Item");
-                                    if (item == "Wear")
-                                    {
-                                        item = EddiDataDefinitions.Properties.Modules.ShipIntegrity;
-                                    }
-                                    else if (item != "All" && item != "Paint")
-                                    {
-                                        // Item might be a module
-                                        Module module = Module.FromEDName(item);
-                                        if (module != null)
-                                        {
-                                            if (module.mount != null)
-                                            {
-                                                // This is a weapon so provide a bit more information
-                                                string mount = "";
-                                                switch (module.mount)
-                                                {
-                                                // FIXME this breaks localisation
-                                                    case Module.ModuleMount.Fixed:
-                                                        mount = "fixed";
-                                                        break;
-                                                    case Module.ModuleMount.Gimballed:
-                                                        mount = "gimballed";
-                                                        break;
-                                                    case Module.ModuleMount.Turreted:
-                                                        mount = "turreted";
-                                                        break;
-                                                }
-                                                item = $"{module.@class}{module.grade} {mount} {module.localizedName}";
-                                            }
-                                            else
-                                            {
-                                                item = module.localizedName;
-                                            }
-                                        }
-                                    }
                                     data.TryGetValue("Cost", out object val);
                                     long price = (long)val;
-                                    events.Add(new ShipRepairedEvent(timestamp, item, price) { raw = line, fromLoad = fromLogLoad });
+
+                                    // Starting with version 3.7, the "Repair" event may contain one item or multiple items
+                                    // (With multiple items being a list of module names)
+                                    data.TryGetValue("Items", out object itemsVal);
+                                    if (itemsVal != null)
+                                    {
+                                        List<string> items = new List<string>();
+                                        List<Module> modules = new List<Module>();
+                                        if (itemsVal is List<object> moduleEdNames)
+                                        {
+                                            foreach (string moduleEdName in moduleEdNames)
+                                            {
+                                                items.Add(moduleEdName);
+                                                var module = Module.FromEDName(moduleEdName);
+                                                if (module != null)
+                                                {
+                                                    modules.Add(module);
+                                                }
+                                            }
+                                            events.Add(new ShipRepairedEvent(timestamp, items, modules, price) { raw = line, fromLoad = fromLogLoad });
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // Item might be all, wear, hull, paint, or the name of a module
+                                        string item = JsonParsing.getString(data, "Item");
+                                        
+                                        // We have a single "item"
+                                        if (!string.IsNullOrEmpty(item))
+                                        {
+                                            Module module = null;
+                                            if (item == "Wear")
+                                            {
+                                                item = EddiDataDefinitions.Properties.Modules.ShipIntegrity;
+                                            }
+                                            else if (item != "All" && item != "Paint")
+                                            {
+                                                // Item might be a module
+                                                module = Module.FromEDName(item);
+                                            }
+                                            events.Add(new ShipRepairedEvent(timestamp, item, module, price) { raw = line, fromLoad = fromLogLoad });
+                                        }
+                                    }
                                 }
                                 handled = true;
                                 break;
@@ -3173,7 +3190,7 @@ namespace EddiJournalMonitor
                                 {
                                     data.TryGetValue("Cost", out object val);
                                     long price = (long)val;
-                                    events.Add(new ShipRepairedEvent(timestamp, null, price) { raw = line, fromLoad = fromLogLoad });
+                                    events.Add(new ShipRepairedEvent(timestamp, "All", null, price) { raw = line, fromLoad = fromLogLoad });
                                 }
                                 handled = true;
                                 break;
@@ -3455,7 +3472,8 @@ namespace EddiJournalMonitor
                                     string systemName = JsonParsing.getString(data, "Name");
                                     long systemAddress = JsonParsing.getLong(data, "SystemAddress");
                                     int remainingJumpsInRoute = JsonParsing.getOptionalInt(data, "RemainingJumpsInRoute") ?? 0;
-                                    events.Add(new FSDTargetEvent(timestamp, systemName, systemAddress, remainingJumpsInRoute) { raw = line, fromLoad = fromLogLoad });
+                                    string starclass = JsonParsing.getString(data, "StarClass");
+                                    events.Add(new FSDTargetEvent(timestamp, systemName, systemAddress, remainingJumpsInRoute, starclass) { raw = line, fromLoad = fromLogLoad });
                                 }
                                 handled = true;
                                 break;
@@ -3637,7 +3655,8 @@ namespace EddiJournalMonitor
                                         statistics.thargoidencounters.totalencounters = JsonParsing.getOptionalLong(thargoid, "TG_ENCOUNTER_TOTAL");
                                         statistics.thargoidencounters.lastsystem = JsonParsing.getString(thargoid, "TG_ENCOUNTER_TOTAL_LAST_SYSTEM");
                                         statistics.thargoidencounters.lastshipmodel = JsonParsing.getString(thargoid, "TG_ENCOUNTER_TOTAL_LAST_SHIP");
-                                        statistics.thargoidencounters.lasttimestamp = DateTime.Parse(JsonParsing.getString(thargoid, "TG_ENCOUNTER_TOTAL_LAST_TIMESTAMP"));
+                                        var lastTimeStampString = JsonParsing.getString(thargoid, "TG_ENCOUNTER_TOTAL_LAST_TIMESTAMP");
+                                        statistics.thargoidencounters.lasttimestamp = !string.IsNullOrEmpty(lastTimeStampString) ? DateTime.Parse(lastTimeStampString) : (DateTime?)null;
                                     }
 
                                     data.TryGetValue("Crafting", out object craftingVal);
@@ -3725,21 +3744,230 @@ namespace EddiJournalMonitor
                                 }
                                 handled = true;
                                 break;
-                            case "DiscoveryScan":
-                            case "EngineerLegacyConvert":
+                            case "CarrierJump":
+                                {
+                                    // Get destination star system data
+                                    string systemName = JsonParsing.getString(data, "StarSystem");
+                                    data.TryGetValue("StarPos", out object starposVal);
+                                    List<object> starPos = (List<object>)starposVal;
+                                    decimal x = Math.Round(JsonParsing.getDecimal("X", starPos[0]) * 32) / (decimal)32.0;
+                                    decimal y = Math.Round(JsonParsing.getDecimal("Y", starPos[1]) * 32) / (decimal)32.0;
+                                    decimal z = Math.Round(JsonParsing.getDecimal("Z", starPos[2]) * 32) / (decimal)32.0;
+                                    long systemAddress = JsonParsing.getLong(data, "SystemAddress");
+                                    Economy systemEconomy = Economy.FromEDName(JsonParsing.getString(data, "SystemEconomy"));
+                                    Economy systemEconomy2 = Economy.FromEDName(JsonParsing.getString(data, "SystemSecondEconomy"));
+                                    Faction systemfaction = getFaction(data, "System", systemName);
+                                    SecurityLevel systemSecurity = SecurityLevel.FromEDName(JsonParsing.getString(data, "SystemSecurity"));
+                                    systemSecurity.fallbackLocalizedName = JsonParsing.getString(data, "SystemSecurity_Localised");
+                                    long? systemPopulation = JsonParsing.getOptionalLong(data, "Population");
+
+                                    // Get destination body data (if any)
+                                    string bodyName = JsonParsing.getString(data, "Body");
+                                    long? bodyId = JsonParsing.getOptionalLong(data, "BodyID");
+                                    BodyType bodyType = BodyType.FromEDName(JsonParsing.getString(data, "BodyType"));
+
+                                    // Get carrier data
+                                    bool docked = JsonParsing.getBool(data, "Docked");
+                                    string carrierName = JsonParsing.getString(data, "StationName");
+                                    StationModel carrierType = StationModel.FromEDName(JsonParsing.getString(data, "StationType"));
+                                    long carrierId = JsonParsing.getLong(data, "MarketID");
+                                    Faction stationFaction = getFaction(data, "Station", systemName);
+
+                                    // Get carrier services data
+                                    List<StationService> stationServices = new List<StationService>();
+                                    data.TryGetValue("StationServices", out object stationserviceVal);
+                                    List<string> stationservices = (stationserviceVal as List<object>)?.Cast<string>()?.ToList() ?? new List<string>();
+                                    foreach (string service in stationservices)
+                                    {
+                                        stationServices.Add(StationService.FromEDName(service));
+                                    }
+
+                                    // Get carrier economies and their shares
+                                    data.TryGetValue("StationEconomies", out object economiesVal);
+                                    List<object> economies = economiesVal as List<object> ?? new List<object>();
+                                    List<EconomyShare> stationEconomies = new List<EconomyShare>();
+                                    foreach (Dictionary<string, object> economyshare in economies)
+                                    {
+                                        Economy economy = Economy.FromEDName(JsonParsing.getString(economyshare, "Name"));
+                                        economy.fallbackLocalizedName = JsonParsing.getString(economyshare, "Name_Localised");
+                                        decimal share = JsonParsing.getDecimal(economyshare, "Proportion");
+                                        if (economy != Economy.None && share > 0)
+                                        {
+                                            stationEconomies.Add(new EconomyShare(economy, share));
+                                        }
+                                    }
+
+                                    // Parse factions array data
+                                    List<Faction> factions = new List<Faction>();
+                                    data.TryGetValue("Factions", out object factionsVal);
+                                    if (factionsVal != null)
+                                    {
+                                        factions = getFactions(factionsVal, systemName);
+                                    }
+
+                                    // Parse conflicts array data
+                                    List<Conflict> conflicts = new List<Conflict>();
+                                    data.TryGetValue("Conflicts", out object conflictsVal);
+                                    if (conflictsVal != null)
+                                    {
+                                        conflicts = getConflicts(conflictsVal, factions);
+                                    }
+
+                                    // Powerplay data (if pledged)
+                                    getPowerplayData(data, out Power powerplayPower, out PowerplayState powerplayState);
+
+                                    events.Add(new CarrierJumpedEvent(timestamp, systemName, systemAddress, x, y, z, bodyName, bodyId, bodyType, systemfaction, factions, conflicts, systemEconomy, systemEconomy2, systemSecurity, systemPopulation, powerplayPower, powerplayState, docked, carrierName, carrierType, carrierId, stationFaction, stationServices, stationEconomies) { raw = line, fromLoad = fromLogLoad });
+
+                                    // Generate secondary event when the carrier jump cooldown completes
+                                    if (!fromLogLoad)
+                                    {
+                                        Task.Run(async () =>
+                                        {
+                                            int timeMs = Constants.carrierPostJumpSeconds * 1000;
+                                            await Task.Delay(timeMs);
+                                            EDDI.Instance.enqueueEvent(new CarrierCooldownEvent(timestamp.AddMilliseconds(timeMs), systemName, systemAddress, bodyName, bodyId, bodyType, carrierName, carrierType, carrierId) { fromLoad = fromLogLoad });
+                                        }).ConfigureAwait(false);
+                                    }
+                                }
+                                handled = true;
+                                break;
+                            case "CarrierJumpRequest":
+                                {
+                                    long carrierId = JsonParsing.getLong(data, "CarrierID");
+                                    long systemAddress = JsonParsing.getLong(data, "SystemAddress");
+                                    string systemName = JsonParsing.getString(data, "SystemName");
+                                    string bodyName = JsonParsing.getString(data, "Body");
+                                    long bodyId = JsonParsing.getLong(data, "BodyID");
+
+                                    events.Add(new CarrierJumpRequestEvent(timestamp, systemName, systemAddress, bodyName, bodyId, carrierId) { raw = line, fromLoad = fromLogLoad });
+
+                                    // Cancel any pending carrier jump related events
+                                    if (carrierJumpCancellationTokenSources.TryGetValue(carrierId, out var carrierJumpCancellationTS))
+                                    {
+                                        carrierJumpCancellationTokenSources.Remove(carrierId);
+                                        carrierJumpCancellationTS.Cancel();
+                                        carrierJumpCancellationTS.Dispose();
+                                    }
+
+                                    if (!fromLogLoad)
+                                    {
+                                        // Generate a new cancellation token source
+                                        carrierJumpCancellationTS = new CancellationTokenSource();
+                                        carrierJumpCancellationTokenSources.Add(carrierId, carrierJumpCancellationTS);
+
+                                        // Generate secondary tasks to spawn events when the carrier locks down landing pads and when it begins jumping.
+                                        // These may be cancelled via the cancellation token source above.
+
+                                        // Jumps seems to always be scheduled for 16 minutes after the request, minus the absolute value of the difference from 10 seconds after the minute
+                                        // (i.e. between 15 minutes and 15 minutes 50 seconds after the request)
+                                        int varSeconds = Math.Abs(10 - timestamp.Second);
+
+                                        Task.Run(async () =>
+                                        {
+                                            int timeMs = (Constants.carrierPreJumpSeconds - varSeconds - Constants.carrierLandingPadLockdownSeconds) * 1000;
+                                            await Task.Delay(timeMs);
+                                            EDDI.Instance.enqueueEvent(new CarrierPadsLockedEvent(timestamp.AddMilliseconds(timeMs), carrierId) { fromLoad = fromLogLoad });
+                                        }, carrierJumpCancellationTS.Token).ConfigureAwait(false);
+
+                                        Task.Run(async () =>
+                                        {
+                                            int timeMs = (Constants.carrierPreJumpSeconds - varSeconds) * 1000;
+                                            await Task.Delay(timeMs);
+                                            string originStarSystem = EDDI.Instance.CurrentStarSystem?.systemname;
+                                            long? originSystemAddress = EDDI.Instance.CurrentStarSystem?.systemAddress;
+                                            EDDI.Instance.enqueueEvent(new CarrierJumpEngagedEvent(timestamp.AddMilliseconds(timeMs), systemName, systemAddress, originStarSystem, originSystemAddress, bodyName, bodyId, carrierId) { fromLoad = fromLogLoad });
+                                        }, carrierJumpCancellationTS.Token).ConfigureAwait(false);
+                                    }
+                                }
+                                handled = true;
+                                break;
+                            case "CarrierJumpCancelled":
+                                {
+                                    long carrierId = JsonParsing.getLong(data, "CarrierID");
+                                    // Cancel any pending carrier jump related events
+                                    if (carrierJumpCancellationTokenSources.TryGetValue(carrierId, out var carrierJumpCancellationTS))
+                                    {
+                                        carrierJumpCancellationTokenSources.Remove(carrierId);
+                                        carrierJumpCancellationTS.Cancel();
+                                        carrierJumpCancellationTS.Dispose();
+                                    }
+                                    events.Add(new CarrierJumpCancelledEvent(timestamp, carrierId) { raw = line, fromLoad = fromLogLoad });
+                                }
+                                handled = true;
+                                break;
+                            case "AsteroidCracked":
+                                {
+                                    string bodyName = JsonParsing.getString(data, "Body");
+                                    events.Add(new AsteroidCrackedEvent(timestamp, bodyName) { raw = line, fromLoad = fromLogLoad });
+                                }       
+                                handled = true;
+                                break;
+                            case "ProspectedAsteroid":
+                                {
+                                    data.TryGetValue("Materials", out object val); // (array of Name and Proportion)
+                                    List<CommodityPresence> commodities = new List<CommodityPresence>();
+                                    if (val is List<object> listVal)
+                                    {
+                                        foreach (var commodityVal in listVal)
+                                        {   
+                                            if (commodityVal is Dictionary<string, object> commodityData)
+                                            {
+                                                string commodityEdName = JsonParsing.getString(commodityData, "Name");
+                                                CommodityDefinition commodity = CommodityDefinition.FromEDName(commodityEdName);
+                                                decimal proportion = JsonParsing.getDecimal(commodityData, "Proportion"); // Out of 100
+                                                if (commodity != null)
+                                                {
+                                                    commodity.fallbackLocalizedName = JsonParsing.getString(commodityData, "Name_Localised");
+                                                    commodities.Add(new CommodityPresence(commodity, proportion));
+                                                }
+                                            }
+                                        }
+                                    }
+                                    string content = JsonParsing.getString(data, "Content"); // (a string representing High/Medium/Low material content)
+                                    AsteroidMaterialContent materialContent = new AsteroidMaterialContent(content);
+                                    materialContent.fallbackLocalizedName = JsonParsing.getString(data, "Content_Localised")?.Replace("Material Content: ", "");
+                                    decimal remaining = JsonParsing.getDecimal(data, "Remaining"); // Out of 100
+
+                                    // If a motherlode commodity is present
+                                    CommodityDefinition motherlodeCommodityDefinition = null;
+                                    string motherlodeEDName = JsonParsing.getString(data, "MotherlodeMaterial"); 
+                                    if (!string.IsNullOrEmpty(motherlodeEDName))
+                                    {
+                                        motherlodeCommodityDefinition = CommodityDefinition.FromEDName(motherlodeEDName);
+                                    }
+
+                                    events.Add(new AsteroidProspectedEvent(timestamp, commodities, materialContent, remaining, motherlodeCommodityDefinition) { raw = line, fromLoad = fromLogLoad });
+                                }   
+                                handled = true;
+                                break;
+                            case "CarrierBuy":
+                            case "CarrierStats":
+                            case "CarrierBankTransfer":
+                            case "CarrierCancelDecommission":
+                            case "CarrierCrewServices":
+                            case "CarrierDecommission":
+                            case "CarrierDepositFuel":
+                            case "CarrierDockingPermission":
+                            case "CarrierFinance":
+                            case "CarrierModulePack":
+                            case "CarrierNameChanged":
+                            case "CarrierShipPack":
+                            case "CarrierTradeOrder":
                             case "CodexDiscovery":
                             case "CodexEntry":
+                            case "CrimeVictim":
+                            case "DiscoveryScan":
+                            case "EngineerLegacyConvert":
+                            case "NavRoute":
                             case "ReservoirReplenished":
                             case "RestockVehicle":
-                            case "ProspectedAsteroid":
-                            case "AsteroidCracked":
-                            case "CrimeVictim":
                             case "Scanned":
+                            case "SharedBookmarkToSquadron":
                             case "WingAdd":
                             case "WingInvite":
                             case "WingJoin":
                             case "WingLeave":
-                            case "SharedBookmarkToSquadron":
+                            case "WonATrophyForSquadron":
                                 // we silently ignore these, but forward them to the responders
                                 break;
                             default:
@@ -3855,7 +4083,7 @@ namespace EddiJournalMonitor
                     FactionPresence factionPresense = new FactionPresence()
                     {
                         systemName = systemName,
-                        FactionState = FactionState.FromEDName(JsonParsing.getString(factionData, "FactionState") ?? "None"),
+                        FactionState = FactionState.FromEDName(JsonParsing.getString(factionData, "FactionState")) ?? FactionState.None,
                     };
                     faction.presences.Add(factionPresense);
                 }
@@ -3899,8 +4127,8 @@ namespace EddiJournalMonitor
             {
                 // Core data
                 string fName = JsonParsing.getString(factionDetail, "Name");
-                FactionState fState = FactionState.FromEDName(JsonParsing.getString(factionDetail, "FactionState") ?? "None");
-                Government fGov = Government.FromEDName(JsonParsing.getString(factionDetail, "SystemGovernment") ?? "$government_None;");
+                FactionState fState = FactionState.FromEDName(JsonParsing.getString(factionDetail, "FactionState")) ?? FactionState.None;
+                Government fGov = Government.FromEDName(JsonParsing.getString(factionDetail, "SystemGovernment")) ?? Government.None;
                 decimal influence = JsonParsing.getDecimal(factionDetail, "Influence");
                 Superpower fAllegiance = getAllegiance(factionDetail, "Allegiance");
                 Happiness happiness = Happiness.FromEDName(JsonParsing.getString(factionDetail, "Happiness") ?? string.Empty);
@@ -3929,7 +4157,7 @@ namespace EddiJournalMonitor
                     var activeStatesList = (List<object>)activeStatesVal;
                     foreach (IDictionary<string, object> activeState in activeStatesList)
                     {
-                        factionPresense.ActiveStates.Add(FactionState.FromEDName(JsonParsing.getString(activeState, "State") ?? "None"));
+                        factionPresense.ActiveStates.Add(FactionState.FromEDName(JsonParsing.getString(activeState, "State")) ?? FactionState.None);
                     }
                 }
 
@@ -3941,7 +4169,7 @@ namespace EddiJournalMonitor
                     foreach (IDictionary<string, object> pendingState in pendingStatesList)
                     {
                         FactionTrendingState pTrendingState = new FactionTrendingState(
-                            FactionState.FromEDName(JsonParsing.getString(pendingState, "State") ?? "None"),
+                            FactionState.FromEDName(JsonParsing.getString(pendingState, "State")) ?? FactionState.None,
                             JsonParsing.getInt(pendingState, "Trend")
                         );
                         factionPresense.PendingStates.Add(pTrendingState);
@@ -3956,7 +4184,7 @@ namespace EddiJournalMonitor
                     foreach (IDictionary<string, object> recoveringState in recoveringStatesList)
                     {
                         FactionTrendingState rTrendingState = new FactionTrendingState(
-                            FactionState.FromEDName(JsonParsing.getString(recoveringState, "State") ?? "None"),
+                            FactionState.FromEDName(JsonParsing.getString(recoveringState, "State")) ?? FactionState.None,
                             JsonParsing.getInt(recoveringState, "Trend")
                         );
                         factionPresense.RecoveringStates.Add(rTrendingState);
@@ -4160,6 +4388,7 @@ namespace EddiJournalMonitor
 
         public void Stop()
         {
+            foreach (var carrierJumpCancellationTS in carrierJumpCancellationTokenSources.Values) { carrierJumpCancellationTS.Dispose(); }
             stop();
         }
 

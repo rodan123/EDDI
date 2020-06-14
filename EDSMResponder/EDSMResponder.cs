@@ -45,12 +45,14 @@ namespace EddiEdsmResponder
         public bool Start()
         {
             Reload();
-
+            edsmService?.StartJournalSync();
             return edsmService != null;
         }
 
         public void Stop()
         {
+            edsmService?.StopJournalSync();
+            // Stop flight log synchronization
             updateThread?.Abort();
             updateThread = null;
         }
@@ -66,12 +68,13 @@ namespace EddiEdsmResponder
             if (edsmService != null)
             {
                 // Renew our credentials for the EDSM API
+                StarMapService.inGameCommanderName = EDDI.Instance.Cmdr.name;
                 edsmService.SetEdsmCredentials();
 
-                if (updateThread == null)
+                if (updateThread == null && edsmService.EdsmCredentialsSet())
                 {
                     // Spin off a thread to download & sync flight logs & system comments from EDSM in the background 
-                    updateThread = new Thread(() => dataProviderService.syncFromStarMapService(StarMapConfiguration.FromFile()?.lastSync))
+                    updateThread = new Thread(() => dataProviderService.syncFromStarMapService(StarMapConfiguration.FromFile()?.lastFlightLogSync))
                     {
                         IsBackground = true,
                         Name = "EDSM updater"
@@ -105,23 +108,23 @@ namespace EddiEdsmResponder
             {
                 /// Retrieve applicable transient game state info (metadata) 
                 /// for the event and send the event with transient info to EDSM
-                string eventData = null;
+                IDictionary<string, object> eventObject = null;
                 try
                 {
-                    eventData = prepareEventData(theEvent);
+                    eventObject = prepareEventData(theEvent);
                 }
                 catch (System.Exception ex)
                 {
                     Logging.Error("Failed to prepare event meta-data for submittal to EDSM", ex);
                 }
-                if (eventData != null && !EDDI.Instance.gameIsBeta)
+                if (eventObject != null && !EDDI.Instance.gameIsBeta)
                 {
-                    edsmService.sendEvent(eventData);
+                    edsmService.EnqueueEvent(eventObject);
                 }
             }
         }
 
-        private string prepareEventData(Event theEvent)
+        private IDictionary<string, object> prepareEventData(Event theEvent)
         {
             // Prep transient game state info (metadata) per https://www.edsm.net/en/api-journal-v1.
             // Unpackage the event, add transient game state info as applicable, then repackage and send the event
@@ -245,7 +248,7 @@ namespace EddiEdsmResponder
                 eventObject.Add("_shipId", EDDI.Instance.CurrentShip.LocalId);
             }
 
-            return JsonConvert.SerializeObject(eventObject).Normalize();
+            return eventObject;
         }
 
         public UserControl ConfigurationTabItem()
