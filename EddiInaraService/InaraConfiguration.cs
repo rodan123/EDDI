@@ -20,12 +20,15 @@ namespace EddiInaraService
         [JsonProperty("lastSync")]
         public DateTime lastSync { get; set; }
 
+        [JsonProperty("isAPIkeyValid")]
+        public bool isAPIkeyValid { get; set; } = true;
+
         [JsonIgnore]
         private string dataPath;
 
         [JsonIgnore]
         static readonly object fileLock = new object();
-
+        
         /// <summary>
         /// Obtain credentials from a file.  If the file name is not supplied the the default
         /// path of Constants.Data_DIR\inara.json is used

@@ -2,15 +2,15 @@
 using EddiCargoMonitor;
 using EddiDataDefinitions;
 using EddiEvents;
+using EddiInaraService;
 using EddiMissionMonitor;
 using EddiShipMonitor;
+using EddiSpeechService;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Threading;
 using System.Windows.Controls;
-using EddiInaraService;
 using Utilities;
 
 namespace EddiInaraResponder
@@ -19,11 +19,7 @@ namespace EddiInaraResponder
 
     public class InaraResponder : EDDIResponder
     {
-        private Thread updateThread;
-        private bool bgSyncRunning;
-
-        // Background sync interval in milliseconds
-        private const int syncIntervalMilliSeconds = 60 * 5 * 1000; // 5 minutes
+        private readonly IInaraService inaraService = new InaraService();
 
         public string ResponderName()
         {
@@ -40,56 +36,34 @@ namespace EddiInaraResponder
             return Properties.InaraResources.desc;
         }
 
-        public InaraResponder()
-        {
-        Logging.Info($"Initialized {ResponderName()}");
-    }
-
         public bool Start()
         {
-            // Set up an event handler to send any pending events when the application exits.
-            AppDomain.CurrentDomain.ProcessExit += OnApplicationExit;
-
             Reload();
-            return InaraService.Instance != null;
+
+            // Subscribe to events from the Inara configuration that require our attention
+            InaraService.invalidAPIkey += OnInvalidAPIkey;
+
+            Logging.Info($"Initialized {ResponderName()}");
+            return true;
+        }
+
+        private void OnInvalidAPIkey(object sender, EventArgs e) 
+        {
+            // Alert the user that there is a problem with the Inara API key
+            Logging.Info("API key is invalid: Please open the Inara Responder and update the API key.");
+            ShipMonitor shipMonitor = (ShipMonitor)EDDI.Instance.ObtainMonitor(EddiShipMonitor.Properties.ShipMonitor.ResourceManager.GetString("name", CultureInfo.InvariantCulture));
+            SpeechService.Instance.Say(shipMonitor.GetCurrentShip(), Properties.InaraResources.invalidKeyErr);
         }
 
         public void Stop()
         {
-            bgSyncRunning = false;
-            updateThread?.Abort();
-            updateThread = null;
-            SendQueuedAPIEventsAsync();
+            inaraService.Stop();
         }
 
         public void Reload()
         {
             Stop();
-            InaraService.Start(EDDI.Instance.gameIsBeta, EDDI.Instance.EddiIsBeta());
-            try
-            {
-                updateThread = new Thread(BackgroundSync)
-                {
-                    Name = "Inara sync",
-                    IsBackground = true
-                };
-                updateThread.Start();
-            }
-            catch (ThreadAbortException tax)
-            {
-                Thread.ResetAbort();
-                Logging.Debug("Thread aborted", tax);
-            }
-        }
-
-        private void BackgroundSync()
-        {
-            bgSyncRunning = true;
-            while (bgSyncRunning)
-            {
-                SendQueuedAPIEventsAsync();
-                Thread.Sleep(syncIntervalMilliSeconds);
-            }
+            inaraService.Start(EDDI.Instance.EddiIsBeta());
         }
 
         public UserControl ConfigurationTabItem()
@@ -122,11 +96,6 @@ namespace EddiInaraResponder
                 return;
             }
 
-            if (InaraService.Instance?.lastSync > theEvent.timestamp)
-            {
-                return;
-            }
-
             try
             {
                 Logging.Debug("Handling event " + JsonConvert.SerializeObject(theEvent));
@@ -140,196 +109,197 @@ namespace EddiInaraResponder
                 {
                     handleCommanderStartedEvent(commanderStartedEvent);
                 }
-                else if (InaraService.Instance != null)
+                else if (theEvent is CommanderContinuedEvent commanderContinuedEvent)
                 {
-                    if (theEvent is CommanderContinuedEvent commanderContinuedEvent)
-                    {
-                        handleCommanderContinuedEvent(commanderContinuedEvent);
-                    }
-                    else if (theEvent is CommanderProgressEvent commanderProgressEvent)
-                    {
-                        handleCommanderProgressEvent(commanderProgressEvent);
-                    }
-                    else if (theEvent is CommanderRatingsEvent commanderRatingsEvent)
-                    {
-                        handleCommanderRatingsEvent(commanderRatingsEvent);
-                    }
-                    else if (theEvent is EngineerProgressedEvent engineerProgressedEvent)
-                    {
-                        handleEngineerProgressedEvent(engineerProgressedEvent);
-                    }
-                    else if (theEvent is StatisticsEvent statisticsEvent)
-                    {
-                        handleStatisticsEvent(statisticsEvent);
-                    }
-                    else if (theEvent is PowerplayEvent powerplayEvent)
-                    {
-                        handlePowerplayEvent(powerplayEvent);
-                    }
-                    else if (theEvent is PowerLeftEvent powerLeftEvent)
-                    {
-                        handlePowerLeftEvent(powerLeftEvent);
-                    }
-                    else if (theEvent is PowerJoinedEvent powerJoinedEvent)
-                    {
-                        handlePowerJoinedEvent(powerJoinedEvent);
-                    }
-                    else if (theEvent is CommanderReputationEvent commanderReputationEvent)
-                    {
-                        handleCommanderReputationEvent(commanderReputationEvent);
-                    }
-                    else if (theEvent is JumpedEvent jumpedEvent)
-                    {
-                        handleJumpedEvent(jumpedEvent);
-                    }
-                    else if (theEvent is LocationEvent locationEvent)
-                    {
-                        handleLocationEvent(locationEvent);
-                    }
-                    else if (theEvent is CargoEvent cargoEvent)
-                    {
-                        handleCargoEvent(cargoEvent);
-                    }
-                    else if (theEvent is CommodityCollectedEvent commodityCollectedEvent)
-                    {
-                        handleCommodityCollectedEvent(commodityCollectedEvent);
-                    }
-                    else if (theEvent is CommodityEjectedEvent commodityEjectedEvent)
-                    {
-                        handleCommodityEjectedEvent(commodityEjectedEvent);
-                    }
-                    else if (theEvent is CommodityPurchasedEvent commodityPurchasedEvent)
-                    {
-                        handleCommodityPurchasedEvent(commodityPurchasedEvent);
-                    }
-                    else if (theEvent is CommodityRefinedEvent commodityRefinedEvent)
-                    {
-                        handleCommodityRefinedEvent(commodityRefinedEvent);
-                    }
-                    else if (theEvent is CommoditySoldEvent commoditySoldEvent)
-                    {
-                        handleCommoditySoldEvent(commoditySoldEvent);
-                    }
-                    else if (theEvent is CargoDepotEvent cargoDepotEvent)
-                    {
-                        handleCargoDepotEvent(cargoDepotEvent);
-                    }
-                    else if (theEvent is DiedEvent diedEvent)
-                    {
-                        handleDiedEvent(diedEvent);
-                    }
-                    else if (theEvent is EngineerContributedEvent engineerContributedEvent)
-                    {
-                        handleEngineerContributedEvent(engineerContributedEvent);
-                    }
-                    else if (theEvent is SearchAndRescueEvent searchAndRescueEvent)
-                    {
-                        handleSearchAndRescueEvent(searchAndRescueEvent);
-                    }
-                    else if (theEvent is MaterialInventoryEvent materialInventoryEvent)
-                    {
-                        handleMaterialInventoryEvent(materialInventoryEvent);
-                    }
-                    else if (theEvent is MaterialCollectedEvent materialCollectedEvent)
-                    {
-                        handleMaterialCollectedEvent(materialCollectedEvent);
-                    }
-                    else if (theEvent is MaterialDiscardedEvent materialDiscardedEvent)
-                    {
-                        handleMaterialDiscardedEvent(materialDiscardedEvent);
-                    }
-                    else if (theEvent is MaterialDonatedEvent materialDonatedEvent)
-                    {
-                        handleMaterialDonatedEvent(materialDonatedEvent);
-                    }
-                    else if (theEvent is MaterialTradedEvent materialTradedEvent)
-                    {
-                        handleMaterialTradedEvent(materialTradedEvent);
-                    }
-                    else if (theEvent is SynthesisedEvent synthesisedEvent)
-                    {
-                        handleSynthesisedEvent(synthesisedEvent);
-                    }
-                    else if (theEvent is ModificationCraftedEvent modificationCraftedEvent)
-                    {
-                        handleModificationCraftedEvent(modificationCraftedEvent);
-                    }
-                    else if (theEvent is TechnologyBrokerEvent technologyBrokerEvent)
-                    {
-                        handleTechnologyBrokerEvent(technologyBrokerEvent);
-                    }
-                    else if (theEvent is StoredModulesEvent storedModulesEvent)
-                    {
-                        handleStoredModulesEvent(storedModulesEvent);
-                    }
-                    else if (theEvent is ShipPurchasedEvent shipPurchasedEvent)
-                    {
-                        handleShipPurchasedEvent(shipPurchasedEvent);
-                    }
-                    else if (theEvent is ShipDeliveredEvent shipDeliveredEvent)
-                    {
-                        handleShipDeliveredEvent(shipDeliveredEvent);
-                    }
-                    else if (theEvent is ShipSoldEvent shipSoldEvent)
-                    {
-                        handleShipSoldEvent(shipSoldEvent);
-                    }
-                    else if (theEvent is ShipSoldOnRebuyEvent shipSoldOnRebuyEvent)
-                    {
-                        handleShipSoldOnRebuyEvent(shipSoldOnRebuyEvent);
-                    }
-                    else if (theEvent is ShipSwappedEvent shipSwappedEvent)
-                    {
-                        handleShipSwappedEvent(shipSwappedEvent);
-                    }
-                    else if (theEvent is ShipLoadoutEvent shipLoadoutEvent)
-                    {
-                        handleShipLoadoutEvent(shipLoadoutEvent);
-                    }
-                    else if (theEvent is ShipRenamedEvent shipRenamedEvent)
-                    {
-                        handleShipRenamedEvent(shipRenamedEvent);
-                    }
-                    else if (theEvent is ShipTransferInitiatedEvent shipTransferInitiatedEvent)
-                    {
-                        handleShipTransferInitiatedEvent(shipTransferInitiatedEvent);
-                    }
-                    else if (theEvent is DockedEvent dockedEvent)
-                    {
-                        handleDockedEvent(dockedEvent);
-                    }
-                    else if (theEvent is MissionAcceptedEvent missionAcceptedEvent)
-                    {
-                        handleMissionAcceptedEvent(missionAcceptedEvent);
-                    }
-                    else if (theEvent is MissionAbandonedEvent missionAbandonedEvent)
-                    {
-                        handleMissionAbandonedEvent(missionAbandonedEvent);
-                    }
-                    else if (theEvent is MissionCompletedEvent missionCompletedEvent)
-                    {
-                        handleMissionCompletedEvent(missionCompletedEvent);
-                    }
-                    else if (theEvent is MissionFailedEvent missionFailedEvent)
-                    {
-                        handleMissionFailedEvent(missionFailedEvent);
-                    }
-                    else if (theEvent is ShipInterdictedEvent shipInterdictedEvent)
-                    {
-                        handleShipInterdictedEvent(shipInterdictedEvent);
-                    }
-                    else if (theEvent is ShipInterdictionEvent shipInterdictionEvent)
-                    {
-                        handleShipInterdictionEvent(shipInterdictionEvent);
-                    }
-                    else if (theEvent is KilledEvent killedEvent)
-                    {
-                        handleKilledEvent(killedEvent);
-                    }
-                    else if (theEvent is CommunityGoalEvent communityGoalEvent)
-                    {
-                        handleCommunityGoalEvent(communityGoalEvent);
-                    }
+                    handleCommanderContinuedEvent(commanderContinuedEvent);
+                }
+                else if (theEvent is CommanderProgressEvent commanderProgressEvent)
+                {
+                    handleCommanderProgressEvent(commanderProgressEvent);
+                }
+                else if (theEvent is CommanderRatingsEvent commanderRatingsEvent)
+                {
+                    handleCommanderRatingsEvent(commanderRatingsEvent);
+                }
+                else if (theEvent is EngineerProgressedEvent engineerProgressedEvent)
+                {
+                    handleEngineerProgressedEvent(engineerProgressedEvent);
+                }
+                else if (theEvent is StatisticsEvent statisticsEvent)
+                {
+                    handleStatisticsEvent(statisticsEvent);
+                }
+                else if (theEvent is PowerplayEvent powerplayEvent)
+                {
+                    handlePowerplayEvent(powerplayEvent);
+                }
+                else if (theEvent is PowerLeftEvent powerLeftEvent)
+                {
+                    handlePowerLeftEvent(powerLeftEvent);
+                }
+                else if (theEvent is PowerJoinedEvent powerJoinedEvent)
+                {
+                    handlePowerJoinedEvent(powerJoinedEvent);
+                }
+                else if (theEvent is CommanderReputationEvent commanderReputationEvent)
+                {
+                    handleCommanderReputationEvent(commanderReputationEvent);
+                }
+                else if (theEvent is JumpedEvent jumpedEvent)
+                {
+                    handleJumpedEvent(jumpedEvent);
+                }
+                else if (theEvent is LocationEvent locationEvent)
+                {
+                    handleLocationEvent(locationEvent);
+                }
+                else if (theEvent is CargoEvent cargoEvent)
+                {
+                    handleCargoEvent(cargoEvent);
+                }
+                else if (theEvent is CarrierJumpedEvent carrierJumpedEvent)
+                {
+                    handleCarrierJumpedEvent(carrierJumpedEvent);
+                }
+                else if (theEvent is CommodityCollectedEvent commodityCollectedEvent)
+                {
+                    handleCommodityCollectedEvent(commodityCollectedEvent);
+                }
+                else if (theEvent is CommodityEjectedEvent commodityEjectedEvent)
+                {
+                    handleCommodityEjectedEvent(commodityEjectedEvent);
+                }
+                else if (theEvent is CommodityPurchasedEvent commodityPurchasedEvent)
+                {
+                    handleCommodityPurchasedEvent(commodityPurchasedEvent);
+                }
+                else if (theEvent is CommodityRefinedEvent commodityRefinedEvent)
+                {
+                    handleCommodityRefinedEvent(commodityRefinedEvent);
+                }
+                else if (theEvent is CommoditySoldEvent commoditySoldEvent)
+                {
+                    handleCommoditySoldEvent(commoditySoldEvent);
+                }
+                else if (theEvent is CargoDepotEvent cargoDepotEvent)
+                {
+                    handleCargoDepotEvent(cargoDepotEvent);
+                }
+                else if (theEvent is DiedEvent diedEvent)
+                {
+                    handleDiedEvent(diedEvent);
+                }
+                else if (theEvent is EngineerContributedEvent engineerContributedEvent)
+                {
+                    handleEngineerContributedEvent(engineerContributedEvent);
+                }
+                else if (theEvent is SearchAndRescueEvent searchAndRescueEvent)
+                {
+                    handleSearchAndRescueEvent(searchAndRescueEvent);
+                }
+                else if (theEvent is MaterialInventoryEvent materialInventoryEvent)
+                {
+                    handleMaterialInventoryEvent(materialInventoryEvent);
+                }
+                else if (theEvent is MaterialCollectedEvent materialCollectedEvent)
+                {
+                    handleMaterialCollectedEvent(materialCollectedEvent);
+                }
+                else if (theEvent is MaterialDiscardedEvent materialDiscardedEvent)
+                {
+                    handleMaterialDiscardedEvent(materialDiscardedEvent);
+                }
+                else if (theEvent is MaterialDonatedEvent materialDonatedEvent)
+                {
+                    handleMaterialDonatedEvent(materialDonatedEvent);
+                }
+                else if (theEvent is MaterialTradedEvent materialTradedEvent)
+                {
+                    handleMaterialTradedEvent(materialTradedEvent);
+                }
+                else if (theEvent is SynthesisedEvent synthesisedEvent)
+                {
+                    handleSynthesisedEvent(synthesisedEvent);
+                }
+                else if (theEvent is ModificationCraftedEvent modificationCraftedEvent)
+                {
+                    handleModificationCraftedEvent(modificationCraftedEvent);
+                }
+                else if (theEvent is TechnologyBrokerEvent technologyBrokerEvent)
+                {
+                    handleTechnologyBrokerEvent(technologyBrokerEvent);
+                }
+                else if (theEvent is StoredModulesEvent storedModulesEvent)
+                {
+                    handleStoredModulesEvent(storedModulesEvent);
+                }
+                else if (theEvent is ShipPurchasedEvent shipPurchasedEvent)
+                {
+                    handleShipPurchasedEvent(shipPurchasedEvent);
+                }
+                else if (theEvent is ShipDeliveredEvent shipDeliveredEvent)
+                {
+                    handleShipDeliveredEvent(shipDeliveredEvent);
+                }
+                else if (theEvent is ShipSoldEvent shipSoldEvent)
+                {
+                    handleShipSoldEvent(shipSoldEvent);
+                }
+                else if (theEvent is ShipSoldOnRebuyEvent shipSoldOnRebuyEvent)
+                {
+                    handleShipSoldOnRebuyEvent(shipSoldOnRebuyEvent);
+                }
+                else if (theEvent is ShipSwappedEvent shipSwappedEvent)
+                {
+                    handleShipSwappedEvent(shipSwappedEvent);
+                }
+                else if (theEvent is ShipLoadoutEvent shipLoadoutEvent)
+                {
+                    handleShipLoadoutEvent(shipLoadoutEvent);
+                }
+                else if (theEvent is ShipRenamedEvent shipRenamedEvent)
+                {
+                    handleShipRenamedEvent(shipRenamedEvent);
+                }
+                else if (theEvent is ShipTransferInitiatedEvent shipTransferInitiatedEvent)
+                {
+                    handleShipTransferInitiatedEvent(shipTransferInitiatedEvent);
+                }
+                else if (theEvent is DockedEvent dockedEvent)
+                {
+                    handleDockedEvent(dockedEvent);
+                }
+                else if (theEvent is MissionAcceptedEvent missionAcceptedEvent)
+                {
+                    handleMissionAcceptedEvent(missionAcceptedEvent);
+                }
+                else if (theEvent is MissionAbandonedEvent missionAbandonedEvent)
+                {
+                    handleMissionAbandonedEvent(missionAbandonedEvent);
+                }
+                else if (theEvent is MissionCompletedEvent missionCompletedEvent)
+                {
+                    handleMissionCompletedEvent(missionCompletedEvent);
+                }
+                else if (theEvent is MissionFailedEvent missionFailedEvent)
+                {
+                    handleMissionFailedEvent(missionFailedEvent);
+                }
+                else if (theEvent is ShipInterdictedEvent shipInterdictedEvent)
+                {
+                    handleShipInterdictedEvent(shipInterdictedEvent);
+                }
+                else if (theEvent is ShipInterdictionEvent shipInterdictionEvent)
+                {
+                    handleShipInterdictionEvent(shipInterdictionEvent);
+                }
+                else if (theEvent is KilledEvent killedEvent)
+                {
+                    handleKilledEvent(killedEvent);
+                }
+                else if (theEvent is CommunityGoalEvent communityGoalEvent)
+                {
+                    handleCommunityGoalEvent(communityGoalEvent);
                 }
             }
             catch (Exception ex)
@@ -342,6 +312,20 @@ namespace EddiInaraResponder
                 };
                 Logging.Error("Failed to handle event " + theEvent.type, data);
             }
+        }
+
+        private void handleCarrierJumpedEvent(CarrierJumpedEvent @event) 
+        {
+            Ship currentShip = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship Monitor")).GetCurrentShip();
+
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderTravelCarrierJump", new Dictionary<string, object>()
+            {
+                { "starsystemName", @event.systemname },
+                { "shipType", currentShip.model },
+                { "shipGameID", currentShip.LocalId }
+            }));
+            // Note: There is a "jumpDistance" input property for this event,
+            // but the current recommendation from the API documentation is to omit it.
         }
 
         private void handleCommunityGoalEvent(CommunityGoalEvent @event)
@@ -364,11 +348,11 @@ namespace EddiInaraResponder
                 {
                     cgEventData.Add("topRankSize", @event.topranksize);
                 }
-                InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommunityGoal", cgEventData));
+                inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommunityGoal", cgEventData));
 
                 if (@event.contribution[i] > 0)
                 {
-                    InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderCommunityGoalProgress", new Dictionary<string, object>()
+                    inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderCommunityGoalProgress", new Dictionary<string, object>()
                     {
                         { "communitygoalGameID", @event.cgid[i] },
                         { "contribution", @event.contribution[i] },
@@ -382,7 +366,7 @@ namespace EddiInaraResponder
 
         private void handleKilledEvent(KilledEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderCombatKill", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderCombatKill", new Dictionary<string, object>()
             {
                 { "starsystemName", EDDI.Instance.CurrentStarSystem.systemname },
                 { "opponentName", @event.victim }
@@ -393,7 +377,7 @@ namespace EddiInaraResponder
         {
             // If the player successfully performed an interdiction
             // opponentName: Name of the target (commander or NPC). If there is no 'Inderticted' property in the journal event, use just 'Power' or 'Faction' property instead. 
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderCombatInterdiction", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderCombatInterdiction", new Dictionary<string, object>()
             {
                 { "starsystemName", EDDI.Instance.CurrentStarSystem.systemname },
                 { "opponentName", @event.interdictee ?? @event.faction ?? @event.power }, // Ordered from more precise to less precise
@@ -408,7 +392,7 @@ namespace EddiInaraResponder
             if (@event.succeeded)
             {
                 // The player did not escape
-                InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderCombatInterdicted", new Dictionary<string, object>()
+                inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderCombatInterdicted", new Dictionary<string, object>()
                 {
                     { "starsystemName", EDDI.Instance.CurrentStarSystem.systemname },
                     { "opponentName", @event.interdictor },
@@ -419,7 +403,7 @@ namespace EddiInaraResponder
             else
             {
                 // The player escaped
-                InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderCombatInterdictionEscape", new Dictionary<string, object>()
+                inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderCombatInterdictionEscape", new Dictionary<string, object>()
                 {
                     { "starsystemName", EDDI.Instance.CurrentStarSystem.systemname },
                     { "opponentName", @event.interdictor },
@@ -430,7 +414,7 @@ namespace EddiInaraResponder
 
         private void handleMissionFailedEvent(MissionFailedEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderMissionFailed", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderMissionFailed", new Dictionary<string, object>()
             {
                 { "missionGameID", @event.missionid }
             }));
@@ -438,7 +422,7 @@ namespace EddiInaraResponder
 
         private void handleMissionAbandonedEvent(MissionAbandonedEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderMissionAbandoned", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderMissionAbandoned", new Dictionary<string, object>()
             {
                 { "missionGameID", @event.missionid }
             }));
@@ -507,7 +491,7 @@ namespace EddiInaraResponder
             {
                 eventData.Add("minorfactionNameTarget", @event.targetfaction);
             }
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderMission", eventData));
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderMission", eventData));
         }
 
         private void handleDockedEvent(DockedEvent @event)
@@ -516,7 +500,7 @@ namespace EddiInaraResponder
             if (@event.station != firstDockedLocation)
             {
                 Ship currentShip = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship Monitor")).GetCurrentShip();
-                InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderTravelDock", new Dictionary<string, object>()
+                inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderTravelDock", new Dictionary<string, object>()
                 {
                     { "starsystemName", @event.system },
                     { "stationName", @event.station },
@@ -526,12 +510,11 @@ namespace EddiInaraResponder
                 }));
             }
             firstDockedLocation = null;
-            InaraService.Instance.SendQueuedAPIEventsAsync();
         }
 
         private void handleShipTransferInitiatedEvent(ShipTransferInitiatedEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderShipTransfer", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderShipTransfer", new Dictionary<string, object>()
             {
                 { "shipType", @event.shipDefinition?.EDName ?? @event.ship },
                 { "shipGameID", @event.shipid },
@@ -555,7 +538,7 @@ namespace EddiInaraResponder
                 { "isHot", currentShip.hot },
                 { "isCurrentShip", true }
             };
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderShip", currentShipData));
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderShip", currentShipData));
         }
 
         private void handleShipLoadoutEvent(ShipLoadoutEvent @event)
@@ -574,7 +557,7 @@ namespace EddiInaraResponder
                 { "shipModulesValue", @event.modulesvalue },
                 { "shipRebuyCost", @event.rebuy }
             };
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderShip", currentShipData));
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderShip", currentShipData));
 
             List<Dictionary<string, object>> modulesData = new List<Dictionary<string, object>>();
             foreach (Hardpoint hardpoint in @event.hardpoints)
@@ -593,7 +576,7 @@ namespace EddiInaraResponder
                     modulesData.Add(moduleData);
                 }
             }
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderShipLoadout", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderShipLoadout", new Dictionary<string, object>()
             {
                 { "shipType", @event.shipDefinition?.EDName ?? @event.ship },
                 { "shipGameID", @event.shipid },
@@ -682,11 +665,11 @@ namespace EddiInaraResponder
                     { "stationName", EDDI.Instance.CurrentStation?.name },
                     { "marketID", EDDI.Instance.CurrentStation?.marketId }
                 };
-                InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderShip", storedShipData));
+                inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderShip", storedShipData));
             }
             else if (!string.IsNullOrEmpty(@event.soldship))
             {
-                InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderShip", new Dictionary<string, object>()
+                inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderShip", new Dictionary<string, object>()
                 {
                     { "shipType", @event.soldShipDefinition?.EDName ?? @event.soldship },
                     { "shipGameID", @event.storedshipid }
@@ -703,12 +686,12 @@ namespace EddiInaraResponder
                 { "isHot", currentShip.hot },
                 { "isCurrentShip", true }
             };
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderShip", currentShipData));
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderShip", currentShipData));
         }
 
         private void handleShipSoldOnRebuyEvent(ShipSoldOnRebuyEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderShip", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderShip", new Dictionary<string, object>()
             {
                 { "shipType", @event.shipDefinition?.EDName ?? @event.ship },
                 { "shipGameID", @event.shipid }
@@ -717,7 +700,7 @@ namespace EddiInaraResponder
 
         private void handleShipSoldEvent(ShipSoldEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderShip", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderShip", new Dictionary<string, object>()
             {
                 { "shipType", @event.shipDefinition?.EDName ?? @event.ship },
                 { "shipGameID", @event.shipid }
@@ -726,7 +709,7 @@ namespace EddiInaraResponder
 
         private void handleShipDeliveredEvent(ShipDeliveredEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderShip", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderShip", new Dictionary<string, object>()
             {
                 { "shipType", @event.shipDefinition?.EDName ?? @event.ship },
                 { "shipGameID", @event.shipid }
@@ -753,11 +736,11 @@ namespace EddiInaraResponder
                     { "stationName", EDDI.Instance.CurrentStation?.name },
                     { "marketID", EDDI.Instance.CurrentStation?.marketId }
                 };
-                InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderShip", storedShipData));
+                inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderShip", storedShipData));
             }
             else if (!string.IsNullOrEmpty(@event.soldship))
             {
-                InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderShip", new Dictionary<string, object>()
+                inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderShip", new Dictionary<string, object>()
                 {
                     { "shipType", @event.soldShipDefinition?.EDName },
                     { "shipGameID", @event.soldshipid }
@@ -795,7 +778,7 @@ namespace EddiInaraResponder
                 }
                 eventData.Add(moduleData);
             }
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderStorageModules", eventData));
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderStorageModules", eventData));
         }
 
         private void handleMaterialInventoryEvent(MaterialInventoryEvent @event)
@@ -809,7 +792,7 @@ namespace EddiInaraResponder
                     { "itemCount", materialAmount?.amount }
                 });
             }
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderInventoryMaterials", eventData));
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderInventoryMaterials", eventData));
         }
 
         private void handleModificationCraftedEvent(ModificationCraftedEvent @event)
@@ -818,7 +801,7 @@ namespace EddiInaraResponder
             {
                 foreach (MaterialAmount materialAmount in @event.materials)
                 {
-                    InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryMaterialsItem", new Dictionary<string, object>()
+                    inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryMaterialsItem", new Dictionary<string, object>()
                     {
                         { "itemName", materialAmount?.edname },
                         { "itemCount", materialAmount?.amount }
@@ -829,7 +812,7 @@ namespace EddiInaraResponder
             {
                 foreach (CommodityAmount commodityAmount in @event.commodities)
                 {
-                    InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryCargoItem", new Dictionary<string, object>()
+                    inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryCargoItem", new Dictionary<string, object>()
                     {
                         { "itemName", commodityAmount?.commodityDefinition?.edname },
                         { "itemCount", commodityAmount?.amount }
@@ -844,7 +827,7 @@ namespace EddiInaraResponder
             {
                 foreach (MaterialAmount materialAmount in @event.materials)
                 {
-                    InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryMaterialsItem", new Dictionary<string, object>()
+                    inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryMaterialsItem", new Dictionary<string, object>()
                     {
                         { "itemName", materialAmount?.edname },
                         { "itemCount", materialAmount?.amount }
@@ -855,7 +838,7 @@ namespace EddiInaraResponder
 
         private void handleMaterialDonatedEvent(MaterialDonatedEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryMaterialsItem", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryMaterialsItem", new Dictionary<string, object>()
             {
                 { "itemName", @event.edname },
                 { "itemCount", @event.amount }
@@ -864,7 +847,7 @@ namespace EddiInaraResponder
 
         private void handleMaterialDiscardedEvent(MaterialDiscardedEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryMaterialsItem", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryMaterialsItem", new Dictionary<string, object>()
             {
                 { "itemName", @event.edname },
                 { "itemCount", @event.amount }
@@ -873,12 +856,12 @@ namespace EddiInaraResponder
 
         private void handleMaterialTradedEvent(MaterialTradedEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryMaterialsItem", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryMaterialsItem", new Dictionary<string, object>()
             {
                 { "itemName", @event.paid_edname },
                 { "itemCount", @event.paid_quantity }
             }));
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderInventoryMaterialsItem", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderInventoryMaterialsItem", new Dictionary<string, object>()
             {
                 { "itemName", @event.received_edname },
                 { "itemCount", @event.received_quantity }
@@ -891,7 +874,7 @@ namespace EddiInaraResponder
             {
                 foreach (MaterialAmount materialAmount in @event.materials)
                 {
-                    InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryMaterialsItem", new Dictionary<string, object>()
+                    inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryMaterialsItem", new Dictionary<string, object>()
                     {
                         { "itemName", materialAmount?.edname },
                         { "itemCount", materialAmount?.amount }
@@ -902,7 +885,7 @@ namespace EddiInaraResponder
             {
                 foreach (CommodityAmount commodityAmount in @event.commodities)
                 {
-                    InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryCargoItem", new Dictionary<string, object>()
+                    inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryCargoItem", new Dictionary<string, object>()
                     {
                         { "itemName", commodityAmount?.commodityDefinition?.edname },
                         { "itemCount", commodityAmount?.amount }
@@ -913,7 +896,7 @@ namespace EddiInaraResponder
 
         private void handleMaterialCollectedEvent(MaterialCollectedEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderInventoryMaterialsItem", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderInventoryMaterialsItem", new Dictionary<string, object>()
             {
                 { "itemName", @event.edname },
                 { "itemCount", @event.amount }
@@ -931,12 +914,12 @@ namespace EddiInaraResponder
                     { "itemCount", cargoInfo.count }
                 });
             }
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderInventoryCargo", eventData));
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderInventoryCargo", eventData));
         }
 
         private void handleDiedEvent(DiedEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderInventoryCargo", new List<Dictionary<string, object>>()));
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderInventoryCargo", new List<Dictionary<string, object>>()));
             Dictionary<string, object> diedEventData = new Dictionary<string, object>()
             {
                 { "starsystemName", EDDI.Instance.CurrentStarSystem.systemname }
@@ -949,12 +932,12 @@ namespace EddiInaraResponder
             {
                 diedEventData.Add("opponentName", @event.commanders[0]);
             }
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderCombatDeath", diedEventData));
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderCombatDeath", diedEventData));
         }
 
         private void handleSearchAndRescueEvent(SearchAndRescueEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryCargoItem", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryCargoItem", new Dictionary<string, object>()
             {
                 { "itemName", @event.commodity?.invariantName },
                 { "itemCount", @event.amount }
@@ -965,7 +948,7 @@ namespace EddiInaraResponder
         {
             if (@event.contributiontype == "Commodity")
             {
-                InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryCargoItem", new Dictionary<string, object>()
+                inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryCargoItem", new Dictionary<string, object>()
                 {
                     { "itemName", @event.commodityAmount?.commodityDefinition?.edname },
                     { "itemCount", @event.amount }
@@ -973,7 +956,7 @@ namespace EddiInaraResponder
             }
             else if (@event.contributiontype == "Material")
             {
-                InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryMaterialsItem", new Dictionary<string, object>()
+                inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryMaterialsItem", new Dictionary<string, object>()
                 {
                     { "itemName", @event.materialAmount?.edname },
                     { "itemCount", @event.amount }
@@ -983,7 +966,7 @@ namespace EddiInaraResponder
 
         private void handleCommoditySoldEvent(CommoditySoldEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryCargoItem", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryCargoItem", new Dictionary<string, object>()
             {
                 { "itemName", @event.commodityDefinition?.edname },
                 { "itemCount", @event.amount },
@@ -993,7 +976,7 @@ namespace EddiInaraResponder
 
         private void handleCommodityEjectedEvent(CommodityEjectedEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryCargoItem", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryCargoItem", new Dictionary<string, object>()
             {
                 { "itemName", @event.commodityDefinition?.edname },
                 { "itemCount", @event.amount },
@@ -1005,7 +988,7 @@ namespace EddiInaraResponder
         {
             if (@event.updatetype == "Collect")
             {
-                InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderInventoryCargoItem", new Dictionary<string, object>()
+                inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderInventoryCargoItem", new Dictionary<string, object>()
                 {
                     { "itemName", @event.commodityDefinition?.edname },
                     { "itemCount", @event.amount },
@@ -1015,7 +998,7 @@ namespace EddiInaraResponder
             }
             else if (@event.updatetype == "Deliver")
             {
-                InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryCargoItem", new Dictionary<string, object>()
+                inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "delCommanderInventoryCargoItem", new Dictionary<string, object>()
                 {
                     { "itemName", @event.commodityDefinition?.edname },
                     { "itemCount", @event.amount },
@@ -1027,7 +1010,7 @@ namespace EddiInaraResponder
 
         private void handleCommodityRefinedEvent(CommodityRefinedEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderInventoryCargoItem", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderInventoryCargoItem", new Dictionary<string, object>()
             {
                 { "itemName", @event.commodityDefinition?.edname },
                 { "itemCount", 1 },
@@ -1037,7 +1020,7 @@ namespace EddiInaraResponder
 
         private void handleCommodityPurchasedEvent(CommodityPurchasedEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderInventoryCargoItem", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderInventoryCargoItem", new Dictionary<string, object>()
             {
                 { "itemName", @event.commodityDefinition?.edname },
                 { "itemCount", @event.amount },
@@ -1047,7 +1030,7 @@ namespace EddiInaraResponder
 
         private void handleCommodityCollectedEvent(CommodityCollectedEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderInventoryCargoItem", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderInventoryCargoItem", new Dictionary<string, object>()
             {
                 { "itemName", @event.commodityDefinition?.edname },
                 { "itemCount", 1 },
@@ -1061,9 +1044,9 @@ namespace EddiInaraResponder
             List<Dictionary<string, object>> minorFactionRepData = minorFactionReputations(@event.factions);
             if (minorFactionRepData.Count > 0)
             {
-                InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderReputationMinorFaction", minorFactionRepData));
+                inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderReputationMinorFaction", minorFactionRepData));
             }
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderTravelLocation", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderTravelLocation", new Dictionary<string, object>()
             {
                 { "starsystemName", @event.systemname },
                 { "stationName", @event.station },
@@ -1082,10 +1065,10 @@ namespace EddiInaraResponder
             List<Dictionary<string, object>> minorFactionRepData = minorFactionReputations(@event.factions);
             if (minorFactionRepData.Count > 0)
             {
-                InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderReputationMinorFaction", minorFactionRepData));
+                inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderReputationMinorFaction", minorFactionRepData));
             }
             Ship currentShip = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship Monitor")).GetCurrentShip();
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderTravelFSDJump", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderTravelFSDJump", new Dictionary<string, object>()
             {
                 { "starsystemName", @event.system },
                 { "jumpDistance", @event.distance },
@@ -1140,12 +1123,12 @@ namespace EddiInaraResponder
                     { "majorfactionReputation", @event.alliance / 100 }
                 }
             };
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderReputationMajorFaction", eventData));
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderReputationMajorFaction", eventData));
         }
 
         private void handlePowerJoinedEvent(PowerJoinedEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderRankPower", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderRankPower", new Dictionary<string, object>()
             {
                 { "powerName", @event.Power?.invariantName },
                 { "rankValue", 1 }
@@ -1154,7 +1137,7 @@ namespace EddiInaraResponder
 
         private void handlePowerLeftEvent(PowerLeftEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderRankPower", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderRankPower", new Dictionary<string, object>()
             {
                 { "powerName", @event.Power?.invariantName },
                 { "rankValue", 0 }
@@ -1163,7 +1146,7 @@ namespace EddiInaraResponder
 
         private void handlePowerplayEvent(PowerplayEvent @event)
         {
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderRankPower", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderRankPower", new Dictionary<string, object>()
             {
                 { "powerName", @event.Power?.invariantName },
                 { "rankValue", @event.rank }
@@ -1207,7 +1190,7 @@ namespace EddiInaraResponder
                     { "rankProgress", @event.cqc / 100 }
                 }
             };
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderRankPilot", eventData));
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderRankPilot", eventData));
         }
 
         private void handleCommanderRatingsEvent(CommanderRatingsEvent @event)
@@ -1247,7 +1230,7 @@ namespace EddiInaraResponder
                     { "rankValue", @event.cqc?.rank }
                 }
             };
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderRankPilot", eventData));
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderRankPilot", eventData));
         }
 
         private void handleEngineerProgressedEvent(EngineerProgressedEvent @event)
@@ -1266,13 +1249,13 @@ namespace EddiInaraResponder
 
                     eventData.Add(engineer);
                 }
-                InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderRankEngineer", eventData));
+                inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderRankEngineer", eventData));
             }
             else
             {
                 // This is a progress entry, containing data about a single engineer
                 Dictionary<string, object> eventData = parseEngineerInara(data);
-                InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderRankEngineer", eventData));
+                inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderRankEngineer", eventData));
             }
         }
 
@@ -1299,7 +1282,7 @@ namespace EddiInaraResponder
             IDictionary<string, object> data = Deserializtion.DeserializeData(@event.raw);
             data.Remove("timestamp");
             data.Remove("event");
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderGameStatistics", (Dictionary<string, object>)data));
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderGameStatistics", (Dictionary<string, object>)data));
         }
 
         private void handleCommanderContinuedEvent(CommanderContinuedEvent @event)
@@ -1311,7 +1294,7 @@ namespace EddiInaraResponder
             // spam player's credits log with unusable data and they won't be most likely very happy about it. 
             // It may be good to set credits just on the session start, session end and on the big changes 
             // or in hourly intervals.
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderCredits", new Dictionary<string, object>()
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderCredits", new Dictionary<string, object>()
             {
                 { "commanderCredits", @event.credits },
                 { "commanderLoan", @event.loan }
@@ -1320,27 +1303,23 @@ namespace EddiInaraResponder
 
         private void handleCommanderStartedEvent(CommanderStartedEvent @event)
         {
-            // Start or restart the Inara service
             InaraConfiguration inaraConfiguration = InaraConfiguration.FromFile();
-            inaraConfiguration.commanderName = @event.name;
-            inaraConfiguration.commanderFrontierID = @event.frontierID;
-            inaraConfiguration.ToFile();
-            if (inaraConfiguration.commanderFrontierID != InaraService.Instance.commanderFrontierID)
+            if (inaraConfiguration.commanderName != @event.name || inaraConfiguration.commanderFrontierID != @event.frontierID)
             {
-                InaraService.Start(EDDI.Instance.gameIsBeta, EDDI.Instance.EddiIsBeta());
+                inaraConfiguration.commanderName = @event.name;
+                inaraConfiguration.commanderFrontierID = @event.frontierID;
+                inaraConfiguration.ToFile();
             }
         }
 
         private void handleCommanderLoadingEvent(CommanderLoadingEvent @event)
         {
-            // Start or restart the Inara service
             InaraConfiguration inaraConfiguration = InaraConfiguration.FromFile();
-            inaraConfiguration.commanderName = @event.name;
-            inaraConfiguration.commanderFrontierID = @event.frontierID;
-            inaraConfiguration.ToFile();
-            if (inaraConfiguration.commanderFrontierID != InaraService.Instance.commanderFrontierID)
+            if (inaraConfiguration.commanderName != @event.name || inaraConfiguration.commanderFrontierID != @event.frontierID)
             {
-                InaraService.Start(EDDI.Instance.gameIsBeta, EDDI.Instance.EddiIsBeta());
+                inaraConfiguration.commanderName = @event.name;
+                inaraConfiguration.commanderFrontierID = @event.frontierID;
+                inaraConfiguration.ToFile();
             }
         }
 
@@ -1354,14 +1333,14 @@ namespace EddiInaraResponder
                 foreach (string systemName in @event.permitsawarded)
                 {
                     if (string.IsNullOrEmpty(systemName)) { continue; }
-                    InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderPermit", new Dictionary<string, object>() { { "starsystemName", systemName } }));
+                    inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderPermit", new Dictionary<string, object>() { { "starsystemName", systemName } }));
                 }
             }
             if (@event.materialsrewards?.Count > 0)
             {
                 foreach (MaterialAmount materialAmount in @event.materialsrewards)
                 {
-                    InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderInventoryMaterialsItem", new Dictionary<string, object>()
+                    inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderInventoryMaterialsItem", new Dictionary<string, object>()
                     {
                         { "itemName", materialAmount?.edname },
                         { "itemCount", materialAmount?.amount },
@@ -1374,7 +1353,7 @@ namespace EddiInaraResponder
             {
                 foreach (CommodityAmount commodityAmount in @event.commodityrewards)
                 {
-                    InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderInventoryCargoItem", new Dictionary<string, object>()
+                    inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderInventoryCargoItem", new Dictionary<string, object>()
                     {
                         { "itemName", commodityAmount?.commodityDefinition?.edname },
                         { "itemCount", commodityAmount?.amount },
@@ -1463,17 +1442,7 @@ namespace EddiInaraResponder
                 }
                 eventData.Add("minorfactionEffects", minorfactionEffects);
             }
-            InaraService.Instance.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderMissionCompleted", eventData));
-        }
-
-        private void SendQueuedAPIEventsAsync()
-        {
-            InaraService.Instance.SendQueuedAPIEventsAsync();
-        }
-
-        private void OnApplicationExit(object sender, EventArgs e)
-        {
-            SendQueuedAPIEventsAsync();
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderMissionCompleted", eventData));
         }
     }
 }

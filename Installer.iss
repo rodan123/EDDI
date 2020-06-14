@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "EDDI"
-#define MyAppVersion "3.5.3.b1"
+#define MyAppVersion "3.5.3.b3"
 #define MyAppPublisher "Elite Dangerous Community Developers (EDCD)"
 #define MyAppURL "https://github.com/EDCD/EDDI/"
 #define MyAppExeName "EDDI.exe"
@@ -20,7 +20,7 @@ AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 AppVerName={#MyAppName} {#MyAppVersion}
 AppVersion={#MyAppVersion}
-DefaultDirName={reg:HKCU\Software\VoiceAttack.com\VoiceAttack,InstallPath|{pf32}\VoiceAttack}\Apps\{#MyAppName}
+DefaultDirName={reg:HKCU\Software\VoiceAttack.com\VoiceAttack,InstallPath|{commonpf32}\VoiceAttack}\Apps\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableDirPage=no
 DisableWelcomePage=no
@@ -44,7 +44,8 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 [Files]
 Source: "EDDI.exe"; DestDir: "{app}"; Flags: ignoreversion
 
-Source: "x86\*.*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs replacesameversion
+Source: "x86\*.*"; DestDir: "{app}\x86"; Flags: ignoreversion recursesubdirs createallsubdirs replacesameversion
+Source: "x64\*.*"; DestDir: "{app}\x64"; Flags: ignoreversion recursesubdirs createallsubdirs replacesameversion
 Source: "*.dll"; DestDir: "{app}"; Flags: ignoreversion; Excludes: "Tests.dll"
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
@@ -68,6 +69,7 @@ Source: "System.Data.SQLite.dll.config"; DestDir: "{app}"; Flags: ignoreversion
 Type: files; Name: "{app}\Eddi.exe"
 Type: files; Name: "{app}\EDDI.ico"
 Type: files; Name: "{app}\Eddi*.dll"
+Type: files; Name: "{app}\SQLite.Interop.dll"
 Type: files; Name: "{app}\Newtonsoft.Json.xml"
 Type: files; Name: "{app}\CommonMark.xml"
 Type: files; Name: "{app}\Exceptionless.Wpf.xml"

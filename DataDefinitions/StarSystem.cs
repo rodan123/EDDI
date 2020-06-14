@@ -129,8 +129,8 @@ namespace EddiDataDefinitions
             bodies = newBodyBuilder.ToImmutable();
         }
 
-        /// <summary>True if the main star in the system is scoopable</summary>
-        public bool scoopable => bodies.Where(b => b.scoopable && b.distance == 0).Count() > 0;
+        /// <summary>True if any star in the system is scoopable</summary>
+        public bool scoopable => bodies.Where(b => b.scoopable).Count() > 0;
 
         /// <summary>The reserve level applicable to the system's rings</summary>
         public ReserveLevel Reserve { get; set; } = ReserveLevel.None;
@@ -292,17 +292,20 @@ namespace EddiDataDefinitions
             if (factionPresence.FactionState == null)
             {
                 // Convert legacy data
-                string factionState = (string)additionalJsonData?["state"];
-                if (factionState != null)
+                if (additionalJsonData.ContainsKey("state"))
                 {
-                    factionPresence.FactionState = FactionState.FromEDName(factionState) ?? FactionState.None;
+                    string factionState = (string)additionalJsonData?["state"];
+                    if (factionState != null)
+                    {
+                        factionPresence.FactionState = FactionState.FromEDName(factionState) ?? FactionState.None;
+                    }
                 }
             }
             else
             {
                 // get the canonical FactionState object for the given EDName
                 factionPresence.FactionState =
-                    FactionState.FromEDName(Faction.presences.FirstOrDefault(p => p.systemName == systemname)?.FactionState.edname ?? "None");
+                    FactionState.FromEDName(Faction.presences.FirstOrDefault(p => p.systemName == systemname)?.FactionState.edname) ?? FactionState.None;
             }
         }
 

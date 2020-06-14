@@ -87,7 +87,8 @@ EDDI makes a large number of values available to augment your existing scripts. 
   * {BOOL:Status altitude from average radius} true if the altitude is computed relative to the average radius (which is used at higher altitudes) rather than surface directly below the srv
 
 ## Ship Variables
-
+Note: "Tiny" hardpoints are utility slots.
+  * {TXT:Ship manufacturer}: (e.g. "Lakon", "Core Dynamics")
   * {TXT:Ship model}: the model of the ship (e.g. "Cobra Mk", "Fer-de-Lance")
   * {TXT:Ship model (spoken)}: the model of the ship as would be spoken (e.g. "Cobra Mark 4")
   * {TXT:Ship name}: the name of the ship
@@ -100,56 +101,63 @@ EDDI makes a large number of values available to augment your existing scripts. 
   * {TXT:Ship size}: the size of the ship (Small, Medium, or Large)
   * {DEC:Ship value}: the replacement cost of the ship plus modules
   * {TXT:Ship value (spoken)}: the replacement cost of the ship plus modules as would be spoken
+  * {DEC:Ship hull value}: the replacement cost of the ship's hull
+  * {TXT:Ship hull value (spoken)}: the replacement cost of the ship's hull as would be spoken
+  * {DEC:Ship modules value}: the replacement cost of the ship's modules
+  * {TXT:Ship modules value (spoken)}: the replacement cost of the ship's modules as would be spoken
+  * {DEC:Ship rebuy}: the insurance rebuy for the ship in credits
+  * {TXT:Ship rebuy (spoken)}: the insurance rebuy for the ship in credits as would be spoken
   * {INT:Ship cargo capacity}: the maximum cargo capacity of the ship as currently configured
   * {INT:Ship cargo carried}: the cargo currently being carried by the ship
   * {INT:Ship limpets carried}: the number of limpets currently being carried by the ship
-  * {DEC:Ship health}: the percentage health of the ship's hull
+  * {DEC:Ship health}: the last reported percentage health of the ship's hull
+  * {INT:Ship hot}: true if the ship is currently wanted
   * {TXT:Ship bulkheads}: the type of bulkheads fitted to the ship (e.g. "Military Grade Composite")
   * {INT:Ship bulkheads class}: the class of bulkheads fitted to the ship (e.g. 3)
   * {TXT:Ship bulkheads grade}: the grade of bulkheads fitted to the ship (e.g. "A")
-  * {DEC:Ship bulkheads health}: the percentage health of the bulkheads fitted to the ship
+  * {DEC:Ship bulkheads health}: the last reported percentage health of the bulkheads fitted to the ship
   * {DEC:Ship bulkheads cost}: the purchase cost of the bulkheads
   * {DEC:Ship bulkheads value}: the undiscounted cost of the bulkheads
   * {DEC:Ship bulkheads discount}: the percentage discount of the purchased bulkheads against the undiscounted cost
   * {TXT:Ship power plant}: the name of power plant fitted to the ship
   * {INT:Ship power plant class}: the class of bulkheads fitted to the ship (e.g. 3)
   * {TXT:Ship power plant grade}: the grade of bulkheads fitted to the ship (e.g. "A")
-  * {DEC:Ship power plant health}: the percentage health of the power plant fitted to the ship
+  * {DEC:Ship power plant health}: the last reported percentage health of the power plant fitted to the ship
   * {DEC:Ship power plant cost}: the purchase cost of the power plant
   * {DEC:Ship power plant value}: the undiscounted cost of the power plant
   * {DEC:Ship power plant discount}: the percentage discount of the purchased power plant against the undiscounted cost
   * {TXT:Ship thrusters}: the name of thrusters fitted to the ship
   * {INT:Ship thrusters class}: the class of thrusters fitted to the ship (e.g. 3)
   * {TXT:Ship thrusters grade}: the grade of thrusters fitted to the ship (e.g. "A")
-  * {DEC:Ship thrusters health}: the percentage health of the thrusters fitted to the ship
+  * {DEC:Ship thrusters health}: the last reported percentage health of the thrusters fitted to the ship
   * {DEC:Ship thrusters cost}: the purchase cost of the thrusters
   * {DEC:Ship thrusters value}: the undiscounted cost of the thrusters
   * {DEC:Ship thrusters discount}: the percentage discount of the purchased thrusters against the undiscounted cost
   * {TXT:Ship frame shift drive}: the name of frame shift drive fitted to the ship
   * {INT:Ship frame shift drive class}: the class of frame shift drive fitted to the ship (e.g. 3)
   * {TXT:Ship frame shift drive grade}: the grade of frame shift drive fitted to the ship (e.g. "A")
-  * {DEC:Ship frame shift drive health}: the percentage health of the frame shift drive fitted to the ship
+  * {DEC:Ship frame shift drive health}: the last reported percentage health of the frame shift drive fitted to the ship
   * {DEC:Ship frame shift drive cost}: the purchase cost of the frame shift drive
   * {DEC:Ship frame shift drive value}: the undiscounted cost of the frame shift drive
   * {DEC:Ship frame shift drive discount}: the percentage discount of the purchased frame shift drive against the undiscounted cost
   * {TXT:Ship life support}: the name of life support fitted to the ship (e.g. "6D")
   * {INT:Ship life support class}: the class of life support fitted to the ship (e.g. 3)
   * {TXT:Ship life support grade}: the grade of life support fitted to the ship (e.g. "A")
-  * {DEC:Ship life support health}: the percentage health of the life support fitted to the ship
+  * {DEC:Ship life support health}: the last reported percentage health of the life support fitted to the ship
   * {DEC:Ship life support cost}: the purchase cost of the life support
   * {DEC:Ship life support value}: the undiscounted cost of the life support
   * {DEC:Ship life support discount}: the percentage discount of the purchased life support against the undiscounted cost
   * {TXT:Ship power distributor}: the name of power distributor fitted to the ship
   * {INT:Ship power distributor class}: the class of power distributor fitted to the ship (e.g. 3)
   * {TXT:Ship power distributor drive grade}: the grade of power distributor fitted to the ship (e.g. "A")
-  * {DEC:Ship power distributor health}: the percentage health of the power distributor fitted to the ship
+  * {DEC:Ship power distributor health}: the last reported percentage health of the power distributor fitted to the ship
   * {DEC:Ship power distributor cost}: the purchase cost of the power distributor
   * {DEC:Ship power distributor value}: the undiscounted cost of the power distributor
   * {DEC:Ship power distributor discount}: the percentage discount of the purchased power distributor against the undiscounted cost
   * {TXT:Ship sensors}: the name of sensors fitted to the ship
   * {INT:Ship sensors class}: the class of sensors fitted to the ship (e.g. 3)
   * {TXT:Ship sensors drive grade}: the grade of sensors fitted to the ship (e.g. "A")
-  * {DEC:Ship sensors health}: the percentage health of the sensors fitted to the ship
+  * {DEC:Ship sensors health}: the last reported percentage health of the sensors fitted to the ship
   * {DEC:Ship sensors cost}: the purchase cost of the sensors
   * {DEC:Ship sensors value}: the undiscounted cost of the sensors
   * {DEC:Ship sensors discount}: the percentage discount of the purchased sensors against the undiscounted cost
@@ -165,19 +173,26 @@ EDDI makes a large number of values available to augment your existing scripts. 
   * {TXT:Ship tiny/small/medium/large/huge hardpoint *n* module}: the name of the module in this slot
   * {INT:Ship tiny/small/medium/large/huge hardpoint *n* module class}: the class of the module in this slot
   * {TXT:Ship tiny/small/medium/large/huge hardpoint *n* module grade}: the grade of the module in this slot
-  * {DEC:Ship tiny/small/medium/large/huge hardpoint *n* module health}: the percentage health of the module in this slot
+  * {DEC:Ship tiny/small/medium/large/huge hardpoint *n* module health}: the last reported percentage health of the module in this slot
   * {DEC:Ship tiny/small/medium/large/huge hardpoint *n* module cost}: the purchase cost of the module in this slot
   * {DEC:Ship tiny/small/medium/large/huge hardpoint *n* module value}: the undiscounted cost of the module in this slot
   * {DEC:Ship tiny/small/medium/large/huge hardpoint *n* module discount}: the percentage discount of the purchased module against the undiscounted cost
+  * {INT:Ship hardpoints} the total number of filled hardpoints slots (to use when looping through hardpoint data)
   * {INT:Ship Compartment *n* size}: the size of this slot
   * {BOOL:Ship Compartment *n* occupied}: true if there is a module in this slot, otherwise false
   * {TXT:Ship compartment *n* module}: the name of the module in this slot
   * {INT:Ship compartment *n* module class}: the class of the module in this slot
   * {TXT:Ship compartment *n* module grade}: the grade of the module in this slot
-  * {DEC:Ship compartment *n* module health}: the percentage health of the module in this slot
+  * {DEC:Ship compartment *n* module health}: the last reported percentage health of the module in this slot
   * {DEC:Ship compartment *n* module cost}: the purchase cost of the module in this slot
   * {DEC:Ship compartment *n* module value}: the undiscounted cost of the module in this slot
   * {DEC:Ship compartment *n* module station cost}: the purchase cost of the module at this station
+  * {INT:Ship compartments} the total number of filled compartment slots (to use when looping through compartment data)
+
+### Stored ship variables
+  * {TXT:Ship system}: the name of the star system where the ship is stored
+  * {TXT:Ship station}: the name of the station where the ship is stored
+  * {DEC:Ship distance}: the distance to the star system where the ship is stored
 
 ## Current System Variables
 
@@ -299,6 +314,8 @@ EDDI makes a large number of values available to augment your existing scripts. 
   * {TXT:Environment}: the environment the ship is in ("Docked", "Landed", "Normal space", "Supercruise" or "Witch space") 
   * {TXT:Vehicle}: the vehicle the commander is currently controlling ("Ship", "SRV" or "Fighter")
   * {BOOL:cAPI active}: true if the cAPI is currently active 
+  * {BOOL:icao active}: true if use of ICAO text replacements are currently enabled 
+  * {BOOL:ssml active}: true if ssml tags are currently enabled
   * {TXT:EDDI uri}: uri's for EDDB, EDShipyard, and EDSM are written here when the appropriate plugin command is invoked.
   * {BOOL:EDDI speaking}: true if EDDI is currently speaking
 
@@ -318,64 +335,158 @@ EDDI's VoiceAttack plugin allows you to access its features in your own profile.
 
 ![](../images/VoiceAttack-PluginView.jpg)
 
-## say
+Note: Though the examples in this section show variables being passed as parameters within the plugin interface, it is no longer necessary to do so. Rather, when the plugin is invoked then the plugin will search for variables matching the plugin context and set prior to invoking the plugin.
 
-This function uses EDDI's voice to read a script. It takes one mandatory and two optional parameters.
+## Speech functions
+
+### say
+
+This function uses EDDI's voice to read a script. It takes one mandatory and two optional variables as parameters.
+
 - 'Script' (text variable) is a mandatory parameter containing the script to be read. 
 - 'Priority' (integer variable) is an optional parameter defining the priority of the invoked speech (defaults to 3).
 - 'Voice' (text variable) is an optional parameter defining the name of the voice you want to use.  Note that when you set this variable it will continue to be used until you unset it, at which point EDDI will use the voice configured in its text-to-speech settings.
 
-To use this function in your own commands use the 'Execute an external plugin function' command with the plugin context set to 'say' and passing the parameters described above.
+To use this function in your own commands set the 'Script' variable and optionally the 'Priority' and 'Voice' variables, then use the 'Execute an external plugin function' command with the plugin context set to 'say'.
 
-## speech
+### speech
 
-This function uses EDDI's voice to read a Speech Responder script. It takes one mandatory and two optional parameters.
+This function uses EDDI's voice to read a Speech Responder script. It takes one mandatory and two optional variables as parameters.
+
 - 'Script' (text variable) is a mandatory parameter containing the name of the script to invoke. 
 - 'Priority' (integer variable) is an optional parameter defining the priority of the invoked speech (defaults to 3).
 - 'Voice' (text variable) is an optional parameter defining the name of the voice you want to use.  Note that when you set this variable it will continue to be used until you unset it, at which point EDDI will use the voice configured in its text-to-speech settings.
  
-To use this function in your own commands use the 'Execute an external plugin function' command with the plugin context set to 'say' and passing the parameters described above.
+To use this function in your own commands set the 'Script' variable and optionally the 'Priority' and 'Voice' variables, then use the 'Execute an external plugin function' command with the plugin context set to 'speech'.
 
-## shutup
+### transmit
+
+This function uses EDDI's voice to read a Speech Responder script with a radio effect. It takes one mandatory and two optional variables as parameters.
+
+- 'Script' (text variable) is a mandatory parameter containing the name of the script to invoke. 
+- 'Priority' (integer variable) is an optional parameter defining the priority of the invoked speech (defaults to 3).
+- 'Voice' (text variable) is an optional parameter defining the name of the voice you want to use.  Note that when you set this variable it will continue to be used until you unset it, at which point EDDI will use the voice configured in its text-to-speech settings.
+ 
+To use this function in your own commands set the 'Script' variable and optionally the 'Priority' and 'Voice' variables, then use the 'Execute an external plugin function' command with the plugin context set to 'transmit'.
+
+### shutup
 
 This function stops any active EDDI speech. There are no parameters.
 
 To use this function in your own commands use the 'Execute an external plugin function' command with the plugin context set to 'shutup'.
 
-## disablespeechresponder
+### disablespeechresponder
 
 This function tells the speech responder to not talk unless specifically asked for information. There are no parameters. This lasts until either VoiceAttack is restarted or an enablespeechresponder call is made.
 
 To use this function in your own commands use the 'Execute an external plugin function' command with the plugin context set to 'disablespeechresponder'.
 
-## enablespeechresponder
+### enablespeechresponder
 
 This function tells the speech responder to respond normally to events. There are no parameters.
 
 To use this function in your own commands use the 'Execute an external plugin function' command with the plugin context set to 'enablespeechresponder'.
 
-## setspeechresponderpersonality
+### setspeechresponderpersonality
 
-This function changes the speech responder's personality. It takes one mandatory parameter.
+This function changes the speech responder's personality. It takes one mandatory variable as a parameter.
+
 - 'Personality' (text variable) is a mandatory parameter containing the name of the personality to invoke.
 
 Note that unlike enablespeechresponder and disablespeechresponder any changes made here are persistent.
 
-To use this function in your own commands use the 'Execute an external plugin function' command with the plugin context set to 'setspeechresponderpersonality' and passing the 'Personality' parameter.
+To use this function in your own commands set the 'Personality' parameter then use the 'Execute an external plugin function' command with the plugin context set to 'setspeechresponderpersonality'.
 
-## setstate
+## Information functions
 
-This function pushes a state variable to EDDI's internal session state, allowing it to be shared with other responders. It takes two mandatory parameters.
+### coriolis, edshipyard, eddbsystem, or eddbstation
+
+Looks up the current ship, the current starsystem, or the current station (as applicable). A web uri is written to '\{TXT: EDDI uri\}' and, unless '\{BOOL:EDDI open uri in browser\}' has been set to false, the uri is opened in the default browser.
+
+### inara
+
+Looks up a named commander on the website Inara.cz. It takes one mandatory variable as a parameter.
+
+- 'Name' (text variable) is a mandatory parameter containing the name of the commander to look up on Inara.cz.
+
+A web uri is written to '\{TXT: EDDI uri\}' and, unless '\{BOOL:EDDI open uri in browser\}' has been set to false, the uri is opened in the default browser.
+
+To use this function in your own commands set the 'Name' parameter then use the 'Execute an external plugin function' command with the plugin context set to 'inara'.
+
+### jumpdetails
+
+This function will provide jump information based on your ship loadout and current fuel level. It takes one mandatory variable as a parameter.
+
+- 'Type variable' (text variable) is a mandatory parameter containing the type of the information to return.
+
+  * `next` range of next jump at current fuel mass and current laden mass
+  * `max` maximum jump range at minimum fuel mass and current laden mass
+  * `total` total range of multiple jumps from current fuel mass and current laden mass
+  * `full` total range of multiple jumps from maximum fuel mass and current laden mass
+
+When this function is used, the following variables will be updated and made available for use in VoiceAttack:
+
+- \{DEC:Ship jump detail distance\}
+- \{INT:Ship jump detail jumps\}
+
+To use this function in your own commands set the 'Type variable' parameter then use the 'Execute an external plugin function' command with the plugin context set to 'jumpdetails'.
+
+### route
+
+This function will produce a destination/route for valid mission destinations. It takes one mandatory and up to two optional variables as parameters.
+
+- 'Type variable' (text variable) is a mandatory parameter containing the type of update to execute.
+
+  * `cancel` Cancel the currently stored route.
+  * `encoded` Nearest encoded materials trader.
+  * `expiring` Destination of your next expiring mission.
+  * `facilitator` Nearest 'Legal Facilities' contact.
+  * `farthest` Mission destination farthest from your current location.
+  * `guardian` Nearest guardian technology broker.
+  * `human` Nearest human technology broker.
+  * `manufactured` Nearest manufactured materials trader.
+  * `most` Nearest system with the most missions.
+  * `nearest` Mission destination nearest to your current location.
+  * `next` Next destination in the currently stored route.
+  * `raw` Nearest raw materials trader.
+  * `route` 'Traveling Salesman' (RNNA) route for all active missions.
+  * `scoop` Nearest scoopable star system.
+  * `set` Set destination route to the last star system name returned from a `Route details` event. 
+  * `source` Destination to nearest mission 'cargo source'.
+  * `update` Update to the next mission route destination (use this once all missions in the current system are completed).
+
+- 'System variable' (text variable) is an optional parameter for the following route update types. 
+
+  * `most` If set, the resulting route shall be plotted relative to the specified star system rather than relative to the current star system.
+  * `route` If set, the resulting route shall be plotted relative to the specified star system rather than relative to the current star system.
+  * `set` If set, the resulting route shall proceed directly to the specified single star system rather than to the last star system identified in a route search.
+  * `source` If set, the resulting route shall be plotted relative to the specified star system rather than relative to the current star system.
+  * `update` If set, the specified star system shall be removed from the route rather than removing the prior mission route destination.
+
+- 'Station variable' (text variable) is an optional parameter for the following route update types
+
+  * `set` If set, the resulting route shall proceed directly to the specified single star system and station rather than to the last star system and station identified in a route search.
+
+To use this function in your own commands set the 'Type variable' parameter and when appropriate the `System variable` and 'Station variable' parameters then use the 'Execute an external plugin function' command with the plugin context set to 'route'. Upon success, a '((EDDI route details))' event is triggered, providing event data as described [in the appropriate wiki page](https://github.com/EDCD/EDDI/wiki/Route-details-event).
+
+Upon success of the query, a 'Route details' event is triggered with details from the destination and route.
+
+## Utility functions
+
+### setstate
+
+This function pushes a state variable to EDDI's internal session state, allowing it to be shared with other responders. It takes two mandatory variables as parameters.
+
 - 'State variable' (text variable) is a mandatory parameter containing the name of the VoiceAttack variable to store in EDDI.
 - The variable to store in EDDI (integer, boolean, decimal, or text variable), as referenced by the 'State variable' parameter.
 
-To use this function in your own commands use the 'Execute an external plugin function' command with the plugin context set to 'setstate' and passing the parameters described above. This function will read the text variable 'State variable' and store the VoiceAttack variable named in there as a state variable.  
+To use this function in your own commands set the variables described above then use the 'Execute an external plugin function' command with the plugin context set to 'setstate'. This function will read the text variable 'State variable' and store the VoiceAttack variable named in there as a state variable.  
 
 For example, if you wanted to store the VoiceAttack boolean variable "Verbose" as a state variable you would:
 
     * set the boolean variable "Verbose" to the desired value
     * set the text variable "State variable" to "Verbose"
-    * call EDDI with the context set to "setstate" and passing the text variable parameter "State variable"
+    * call EDDI with the context set to "setstate"
 
 ![](../images/VoiceAttack-PluginView-SetState.jpg)
 
@@ -387,11 +498,40 @@ To access the same variable from within EDDI's Speech Responder, you would call 
 
 Please note that state is transient, and is purposefully not persisted beyond the running instance of EDDI.  This means that every time you start VoiceAttack the state will be empty.  Also, because EDDI responders run asynchronously and concurrently there is no guarantee that, for example, the speech responder for an event will finish before the VoiceAttack responder for an event starts (or vice versa).
 
-## coriolis, edshipyard, eddbsystem, or eddbstation
-Looks up the current ship, the current starsystem, or the current station (as applicable). A web uri is written to {TXT: EDDI uri} and, unless {BOOL:EDDI open uri in browser} has been set to false, the uri is opened in the default browser.
+### configuration
 
-## inara
-Looks up a named commander on the website Inara.cz. It takes one mandatory parameter.
-- 'Name' (text variable) is a mandatory parameter containing the name of the commander to look up on Inara.cz.
+This function opens or restores EDDI's UI. There are no parameters.
 
-A web uri is written to {TXT: EDDI uri} and, unless {BOOL:EDDI open uri in browser} has been set to false, the uri is opened in the default browser.
+To use this function in your own commands use the 'Execute an external plugin function' command with the plugin context set to 'configuration'.
+
+### configurationminimize
+
+This function minimizes EDDI's UI. There are no parameters.
+
+To use this function in your own commands use the 'Execute an external plugin function' command with the plugin context set to 'configurationminimize'.
+
+### configurationmaximize
+
+This function maximizes EDDI's UI. There are no parameters.
+
+To use this function in your own commands use the 'Execute an external plugin function' command with the plugin context set to 'configurationmaximize'.
+
+### configurationrestore
+
+This function restores EDDI's UI to a normal window. There are no parameters.
+
+To use this function in your own commands use the 'Execute an external plugin function' command with the plugin context set to 'configurationrestore'.
+
+### configurationclose
+
+This function closes EDDI's UI. There are no parameters.
+
+To use this function in your own commands use the 'Execute an external plugin function' command with the plugin context set to 'configurationclose'.
+
+### system comment
+
+Sets a comment on the current star system on the website EDSM.net. You must have entered your EDSM credentials in EDDI's EDSM responder for this to work. It takes one mandatory variable as a parameter.
+
+- 'EDDI system comment' (text variable) is a mandatory parameter containing the comment to add to the current star system on EDSM.net.
+
+To use this function in your own commands set the 'EDDI system comment' parameter then use the 'Execute an external plugin function' command with the plugin context set to 'system comment'.

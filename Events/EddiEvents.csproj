@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>EddiEvents</RootNamespace>
     <AssemblyName>EddiEvents</AssemblyName>
-    <TargetFrameworkVersion>v4.7.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
   </PropertyGroup>
@@ -65,7 +65,15 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AsteroidProspectedEvent.cs" />
+    <Compile Include="AsteroidCrackedEvent.cs" />
+    <Compile Include="CarrierJumpCancelledEvent.cs" />
+    <Compile Include="CarrierJumpRequestEvent.cs" />
+    <Compile Include="CarrierPadsLockedEvent.cs" />
+    <Compile Include="CarrierJumpEngagedEvent.cs" />
+    <Compile Include="CarrierCooldownEvent.cs" />
     <Compile Include="CommanderReputationEvent.cs" />
+    <Compile Include="CarrierJumpedEvent.cs" />
     <Compile Include="PowerplayEvent.cs" />
     <Compile Include="CommanderLoadingEvent.cs" />
     <Compile Include="RingMappedEvent.cs" />

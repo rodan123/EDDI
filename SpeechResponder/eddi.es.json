@@ -10,6 +10,24 @@
       "name": "AFMU repairs",
       "description": "Activado al reparar módulos utilizando la Unidad de automantenimiento (AFMU)"
     },
+    "Asteroid cracked": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": null,
+      "default": true,
+      "name": "Asteroid cracked",
+      "description": "Triggered when you break up a 'Motherlode' asteroid for mining"
+    },
+    "Asteroid prospected": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": "{set minimumPercent to 10} {_ The minimum percentage surface mineral concentration to report _}\r\n{set spokenCores to [\r\n    \"Alexandrite\": false,\r\n    \"Benitoite\": false,\r\n    \"Grandidierite\": false,\r\n    \"Low Temperature Diamond\": true,\r\n    \"Monazite\": false,\r\n    \"Musgravite\": false,\r\n    \"Rhodplumsite\": false,\r\n    \"Serendibite\": false,\r\n    \"Void Opals\": true,\r\n]}\r\n{set spokenMinerals to [\r\n    \"Bauxite\": false,\r\n    \"Bertrandite\": false,\r\n    \"Bromellite\": false,\r\n    \"Cobalt\": false,\r\n    \"Coltan\": false,\r\n    \"Cryolite\": false,\r\n    \"Gallite\": false,\r\n    \"Gold\": false,\r\n    \"Goslarite\": false,\r\n    \"Hydrogen Peroxide\": false,\r\n    \"Indite\": false,\r\n    \"Jadeite\": false,\r\n    \"Lepidolite\": false,\r\n    \"Lithium Hydroxide\": false,\r\n    \"Liquid oxygen\": false,\r\n    \"Low Temperature Diamonds\": true,\r\n    \"Methane Clathrate\": false,\r\n    \"Methanol Monohydrate\": false,\r\n    \"Moissanite\": false,\r\n    \"Osmium\": false,\r\n    \"Painite\": true,\r\n    \"Platinum\": false,\r\n    \"Palladium\": false,\r\n    \"Praseodymium\": false,\r\n    \"Pyrophyllite\": false,\r\n    \"Rutile\": false,\r\n    \"Samarium\": false,\r\n    \"Silver\": false,\r\n    \"Taaffeite\": false,\r\n    \"Thorium\": false,\r\n    \"Tritium\": true,\r\n    \"Uraninite\": false,\r\n    \"Water\": false,\r\n]}\r\n\r\n{if len(event.motherlode) > 0 && spokenCores[event.motherlode]:\r\n   Motherlode detected: {event.motherlode}.\r\n}\r\n\r\n{set minerals to []}\r\n{for mineral in event.commodities:\r\n    {if mineral.percentage > minimumPercent && spokenMinerals[mineral.commodity]:\r\n        {set mineral_desc to: \r\n            {round(mineral.percentage)} percent {mineral.commodity}\r\n        }\r\n        {set minerals to cat(minerals, [mineral_desc])}\r\n    }\r\n}\r\n{if len(minerals) > 0:\r\n    Asteroid contains {List(minerals)}\r\n    {if event.materialcontent = \"High\":\r\n        and a high concentration of engineering materials\r\n    }.\r\n    {if event.remaining < 100:\r\n        It is {100 - event.remaining} percent depleted.\r\n    }\r\n}",
+      "default": true,
+      "name": "Asteroid prospected",
+      "description": "Triggered when using a prospecting drone"
+    },
     "Blueprint make report": {
       "enabled": true,
       "priority": 3,
@@ -185,6 +203,60 @@
       "script": "{_ Cargo wingupdate }\r\n{_ Triggered when a wing-mate collects or delivers cargo for a wing mission }\r\n\r\n\r\n{if event.updatetype = \"Collect\":\r\n    Your wing mate has collected {event.amount} tonne{if event.amount != 1:s}\r\n    {if event.commodity != \"Unknown\": of {event.commodity}} from the mission depot.\r\n|elif event.updatetype = \"Deliver\":\r\n    Your wing mate has delivered {event.amount} tonne{if event.amount != 1:s} \r\n    {if event.commodity != \"Unknown\": of {event.commodity}} to the mission depot.\r\n}\r\n\r\n{Pause(500)}\r\n{set remaining to event.totaltodeliver - event.delivered}\r\n{if remaining = 0:\r\n    Wing mission requirements are now completed.\r\n|elif event.updatetype = \"Deliver\":\r\n    Wing mission is now {round(event.delivered / event.totaltodeliver * 100, 0)} percent complete.\r\n}\r\n",
       "name": "Cargo wingupdate",
       "description": "Triggered when a wing-mate collects or delivers cargo for a wing mission"
+    },
+    "Carrier cooldown": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": "Fleet carrier cooldown completed.",
+      "default": true,
+      "name": "Carrier cooldown",
+      "description": "Triggered when you were docked at a fleet carrier during a jump and it completes its cooldown"
+    },
+    "Carrier jump cancelled": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": "Fleet carrier jump cancelled.",
+      "default": true,
+      "name": "Carrier jump cancelled",
+      "description": "Triggered when you cancel a scheduled fleet carrier jump"
+    },
+    "Carrier jump engaged": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": "{_ Context }\r\n{SetState('eddi_context_last_subject', 'carrier jump')}\r\n{SetState('eddi_context_last_action', 'start')}\r\n{SetState('eddi_context_system_name', event.system)}\r\n{SetState('eddi_context_system_system', event.system)}\r\n{SetState('eddi_context_system_lastvisit', system.lastVisitSeconds)}\r\n\r\n{if environment = \"Docked\":\r\n\r\n    {_ Zero the 'remaining jump' context to only use values following this event _}\r\n    {SetState('eddi_context_remaining_jumps', 0)}\r\n\r\n    {set reportsystem to SystemDetails(event.systemname)}\r\n\r\n    {OneOf(\"Jump in progress\",\"Entering portal\")} to the {P(reportsystem.systemname)} system\r\n        {if len(event.shortname) > 0:\r\n        {set reportBody to BodyDetails(event.bodyname, event.systemname)} \r\n        near\r\n        {if len(reportBody.bodytype) > 0: {reportBody.bodytype} |else: body}\r\n        {P(event.shortname)}\r\n    }.\r\n\r\n    {if reportsystem.systemname = homesystem.systemname:\r\n        Welcome home, {F(\"Honorific\")}\r\n    |else:       \r\n        {if lastsystem.allegiance && lastsystem.allegiance != \"None\" && lastsystem.allegiance != \"Independent\" && (!reportsystem.allegiance || reportsystem.allegiance = \"None\" || reportsystem.allegiance = \"Independent\"):\r\n            You {OneOf(\"are leaving\", \"have left\", \"are no longer in\")} {lastsystem.allegiance} space.\r\n        |elif lastsystem.allegiance && lastsystem.allegiance != reportsystem.allegiance && system.allegiance && system.allegiance != \"None\":\r\n            You {OneOf(\"are now in\", \"have entered\", \"are entering\")} {reportsystem.allegiance} space.\r\n            {if cmdr.title != \"Commander\":\r\n                Welcome back {F(\"Honorific\")}.\r\n            }\r\n        }\r\n\r\n        {if reportsystem.visits = 0:\r\n            This is your first visit to this system.\r\n        |elif reportsystem.visits = 1:\r\n            This is your second visit to this system.\r\n        |elif reportsystem.visits = 2:\r\n            {Occasionally(2, \"This is your third visit to this system.\")}\r\n        |elif reportsystem.visits = 3:\r\n            {Occasionally(2, \"This is your fourth visit to this system.\")}\r\n        |else:\r\n            {Occasionally(3, \"You have visited this system {reportsystem.visits} times.\")}\r\n        }\r\n\r\n        {if reportsystem.population && reportsystem.population > 0:\r\n            {if SecondsSince(reportsystem.lastVisitSeconds) > 3600:\r\n                {F(\"System report\")}\r\n            }\r\n        |else:\r\n            {OneOf(\"This system is not populated\",\"There is no human presence here\", \"Humans have yet to colonise this system\")}.\r\n        }\r\n\r\n        {if reportsystem.distancefromhome:\r\n            {set ReportDistanceFromHome() to:\r\n                {return cat(\r\n                \tOneOf(\"You are\", \"Current location is\", \"You are now\"), \" \",\r\n\t                Humanise(reportsystem.distancefromhome), \" lightyears from \",\r\n\t                OneOf(\"home\", \"{P(homesystem.name)}\"), \".\"\r\n\t            )}\r\n            }\r\n            {Occasionally(7, ReportDistanceFromHome())}\r\n        }\r\n\r\n        {if reportsystem.comment:\r\n            You made a {OneOf(\"note\", \"comment\", \"remark\")} {OneOf(\"about\", \"for\", \"on\")} this system.  It {OneOf(\"is as follows\", \"says\", \"reads\", \"is\")} {reportsystem.comment}.\r\n        }\r\n    }\r\n|else:\r\n    Fleet carrier arriving at the {P(event.systemname)} system\r\n    {if len(event.shortname) > 0:\r\n        {set reportBody to BodyDetails(event.bodyname, event.systemname)} \r\n        near\r\n        {if len(reportBody.bodytype) > 0: {reportBody.bodytype} |else: body}\r\n        {P(event.shortname)}\r\n    }.\r\n}",
+      "default": true,
+      "name": "Carrier jump engaged",
+      "description": "Triggered when your fleet carrier performs a jump"
+    },
+    "Carrier jump request": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": "Fleet carrier jump scheduled. Course laid in for the {P(event.systemname)} star system\r\n{if len(event.shortname) > 0:\r\n    {set reportBody to BodyDetails(event.bodyname, event.systemname)} \r\n    , arriving near\r\n    {if len(reportBody.bodytype) > 0: {reportBody.bodytype} |else: body}\r\n    {P(event.shortname)}\r\n}.",
+      "default": true,
+      "name": "Carrier jump request",
+      "description": "Triggered when you request that your fleet carrier performs a jump"
+    },
+    "Carrier jumped": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": "{_ Carrier jumped }\r\n{_ Triggered when you are docked at a fleet carrier as it completes a jump }\r\n\r\n{_ Context }\r\n{SetState('eddi_context_last_subject', 'carrier jump')}\r\n{SetState('eddi_context_last_action', 'complete')}\r\n{SetState('eddi_context_system_name', event.systemname)}\r\n{SetState('eddi_context_system_system', event.systemname)}\r\n{SetState('eddi_context_wanted_list', \"\")}\r\n\r\nFleet carrier {P(event.carriername)} has arrived at the {P(event.systemname)} system\r\n{if event.bodyname && len(event.bodyname) > 0:\r\n    , near the {event.bodytype} {P(event.bodyname)}\r\n}.\r\n{Pause(1000)}\r\n\r\n{_ Update mission data if we have arrived at our mission destination. _}\r\n{if destinationsystem && destinationsystem.name != \"\":\r\n    {RouteDetails(\"update\")}\r\n}\r\n\r\n{_ Report faction states only if it's been more than an hour (3600 seconds) since our last visit. _}\r\n{if SecondsSince(state.eddi_context_system_lastvisit) / 3600 > 1:\r\n    {set state_report to F(\"System state report\")}\r\n}\r\n\r\n{set system_missions to F(\"Mission check system\")}\r\n{set system_crimes to F(\"Crime check system\")}\r\n\r\n{if state_report || system_missions || (system_crimes && find(system_crimes, \"Warning\") < 0):\r\n    {Pause(500)}\r\n    Information:\r\n}\r\n\r\n{if state_report:\r\n    {Pause(500)}\r\n    {state_report}\r\n}\r\n{if system_missions:\r\n    {Pause(500)}\r\n    {system_missions}\r\n}\r\n{if system_crimes:\r\n    {Pause(500)}\r\n    {system_crimes}\r\n}\r\n",
+      "default": true,
+      "name": "Carrier jumped",
+      "description": "Triggered when you are docked at a fleet carrier as it completes a jump"
+    },
+    "Carrier pads locked": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": "Landing pads locked. Final jump preparations initiated.",
+      "default": true,
+      "name": "Carrier pads locked",
+      "description": "Triggered when your fleet carrier locks landing pads prior to a jump"
     },
     "Cleared save": {
       "enabled": true,
@@ -698,6 +770,15 @@
       "name": "Fine paid",
       "description": "Se activa cuando se paga una multa"
     },
+    "Flight assist": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": null,
+      "default": true,
+      "name": "Flight assist",
+      "description": "Se activa cuando se activa la asistencia de vuelo"
+    },
     "FinesBounties_Add": {
       "enabled": true,
       "priority": 3,
@@ -865,6 +946,15 @@
       "script": "{_ Context }\r\n{SetState('eddi_context_last_subject', 'fsd')}\r\n{SetState('eddi_context_last_action', 'glide')}\r\n{SetState('eddi_context_system_name', event.system)}\r\n{SetState('eddi_context_body_name', event.body)}\r\n{SetState('eddi_context_body_system', event.system)}\r\n\r\n{if event.gliding:\r\n{Occasionally(2, \"modo\")} planeo\r\n{OneOf(\"activado.\", \"iniciado.\")}\r\n\r\n{Pause(1000)}\r\n{set body to BodyDetails(event.body, event.system)}\r\n{if !body.name || body.name = \"\" || !body.gravity:\r\nDatos de aproximación planetaria no disponibles.\r\n|else:\r\n{if body.landable:\r\n{set gravity to round(body.gravity,2)}\r\n{if gravity > 4:\r\n¡Peligro! {P(body.name)} es un mundo de gravedad extremadamente alta, con {gravity} G.\r\n|elif gravity > 2:\r\n¡Atención!! {P(body.name)} es un mundo de gravedad elevada, con {gravity} G.\r\n|elif gravity > 0.5:\r\n¡Precaución! {P(body.name)} es un mundo de gravedad media, con {gravity} G.\r\n|else:\r\n{P(body.name)} es un mundo de baja gravedad, con {gravity} G.\r\n}\r\n}\r\n}\r\n|else:\r\n}",
       "name": "Glide",
       "description": "Triggered when your ship enters or exits glide"
+    },
+    "Hardpoints": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": null,
+      "default": true,
+      "name": "Hardpoints",
+      "description": "Triggered when you deploy or retract your hardpoints"
     },
     "Heat damage": {
       "enabled": true,

@@ -140,6 +140,14 @@ namespace EddiShipMonitor
             {
                 handleCommanderContinuedEvent((CommanderContinuedEvent)@event);
             }
+            else if (@event is LocationEvent)
+            {
+                handleLocationEvent((LocationEvent)@event);
+            }
+            else if (@event is JumpedEvent)
+            {
+                handleJumpedEvent((JumpedEvent)@event);
+            }
             else if (@event is ShipPurchasedEvent)
             {
                 handleShipPurchasedEvent((ShipPurchasedEvent)@event);
@@ -304,6 +312,36 @@ namespace EddiShipMonitor
             }
         }
 
+        private void handleLocationEvent(LocationEvent @event)
+        {
+            if (@event.timestamp > updatedAt)
+            {
+                foreach (Ship shipInYard in shipyard)
+                {
+                    // Ignore current ship, since (obviously) it's not stored
+                    if (shipInYard.LocalId == currentShipId) { continue; }
+                    // Otherwise, update the distance to that ship
+                    shipInYard.distance = shipInYard.Distance(@event.x, @event.y, @event.z);
+                }
+                if (!@event.fromLoad) { writeShips(); }
+            }
+        }
+
+        private void handleJumpedEvent(JumpedEvent @event)
+        {
+            if (@event.timestamp > updatedAt)
+            {
+                foreach (Ship shipInYard in shipyard)
+                {
+                    // Ignore current ship, since (obviously) it's not stored
+                    if (shipInYard.LocalId == currentShipId) { continue; }
+                    // Otherwise, update the distance to that ship
+                    shipInYard.distance = shipInYard.Distance(@event.x, @event.y, @event.z);
+                }
+                if (!@event.fromLoad) { writeShips(); }
+            }
+        }
+
         private void handleShipPurchasedEvent(ShipPurchasedEvent @event)
         {
             if (@event.timestamp > updatedAt)
@@ -319,6 +357,10 @@ namespace EddiShipMonitor
                         // Set location of stored ship to the current system
                         storedShip.starsystem = EDDI.Instance?.CurrentStarSystem?.systemname;
                         storedShip.station = EDDI.Instance?.CurrentStation?.name;
+                        storedShip.x = EDDI.Instance?.CurrentStarSystem?.x;
+                        storedShip.y = EDDI.Instance?.CurrentStarSystem?.y;
+                        storedShip.z = EDDI.Instance?.CurrentStarSystem?.z;
+                        storedShip.distance = 0;
                     }
                 }
                 else if (@event.soldshipid != null)
@@ -350,6 +392,9 @@ namespace EddiShipMonitor
                 // Save swapped ship size for minor faction station update
                 LandingPadSize swappedShipSize = GetCurrentShip()?.size;
 
+                // Set ship hull and module health with a profile refresh before we write the stored ship.
+                EDDI.Instance?.refreshProfile();
+                
                 // Update our current ship
                 SetCurrentShip(@event.shipid, @event.ship);
 
@@ -359,9 +404,13 @@ namespace EddiShipMonitor
                     Ship storedShip = GetShip(@event.storedshipid);
                     if (storedShip != null)
                     {
-                        // Set location of stored ship to the current sstem
+                        // Set location of stored ship to the current system
                         storedShip.starsystem = EDDI.Instance?.CurrentStarSystem?.systemname;
                         storedShip.station = EDDI.Instance?.CurrentStation?.name;
+                        storedShip.x = EDDI.Instance?.CurrentStarSystem?.x;
+                        storedShip.y = EDDI.Instance?.CurrentStarSystem?.y;
+                        storedShip.z = EDDI.Instance?.CurrentStarSystem?.z;
+                        storedShip.distance = 0;
                     }
                 }
                 else if (@event.soldshipid != null)
@@ -462,9 +511,12 @@ namespace EddiShipMonitor
             {
                 ship.value = (long)@event.value;
             }
+            ship.hullvalue = @event.hullvalue;
+            ship.modulesvalue = @event.modulesvalue;
             ship.rebuy = @event.rebuy;
             ship.unladenmass = @event.unladenmass;
             ship.maxjumprange = @event.maxjumprange;
+            ship.health = @event.hullhealth;
 
             // Set the standard modules
             Compartment compartment = @event.compartments.FirstOrDefault(c => c.name == "Armour");
@@ -589,6 +641,10 @@ namespace EddiShipMonitor
                             shipInYard.starsystem = shipInEvent.starsystem;
                             shipInYard.marketid = shipInEvent.marketid;
                             shipInYard.station = shipInEvent.station;
+                            shipInYard.x = shipInEvent.x;
+                            shipInYard.y = shipInEvent.y;
+                            shipInYard.z = shipInEvent.z;
+                            shipInYard.distance = shipInEvent.distance;
                             shipInYard.transferprice = shipInEvent.transferprice;
                             shipInYard.transfertime = shipInEvent.transfertime;
                         }
@@ -671,10 +727,6 @@ namespace EddiShipMonitor
                     else if (modulename == "CargoHatch" && ship.cargohatch != null)
                     {
                         ship.cargohatch.health = 1;
-                    }
-                    else if (modulename == "DataLinkScanner" && ship.datalinkscanner != null)
-                    {
-                        ship.datalinkscanner.health = 1;
                     }
                     else if (modulename.Contains("Hardpoint"))
                     {
@@ -1057,9 +1109,9 @@ namespace EddiShipMonitor
                         ship = profileCurrentShip;
                         AddShip(ship);
                     }
-                    // Update launch bays and FSD optimum mass from profile
                     else
                     {
+                        // Update launch bays from profile
                         if (profileCurrentShip?.launchbays?.Any() ?? false)
                         {
                             ship.launchbays = profileCurrentShip.launchbays;
@@ -1068,7 +1120,42 @@ namespace EddiShipMonitor
                         {
                             ship.launchbays.Clear();
                         }
+                        // Update FSD optimum mass from profile
                         ship.optimalmass = profileCurrentShip.optimalmass;
+                        // Update ship hull health from profile
+                        ship.health = profileCurrentShip.health;
+                        // Update ship module health from profile
+                        ship.bulkheads.health = profileCurrentShip.bulkheads.health;
+                        ship.powerplant.health = profileCurrentShip.powerplant.health;
+                        ship.thrusters.health = profileCurrentShip.thrusters.health;
+                        ship.powerdistributor.health = profileCurrentShip.powerdistributor.health;
+                        ship.frameshiftdrive.health = profileCurrentShip.frameshiftdrive.health;
+                        ship.lifesupport.health = profileCurrentShip.lifesupport.health;
+                        ship.sensors.health = profileCurrentShip.sensors.health;
+                        ship.fueltank.health = profileCurrentShip.fueltank.health;
+                        ship.cargohatch.health = profileCurrentShip.cargohatch.health;
+                        foreach (var profileHardpoint in profileCurrentShip.hardpoints)
+                        {
+                            foreach (var shipHardpoint in ship.hardpoints)
+                            {
+                                if (profileHardpoint.module != null && profileHardpoint.module.invariantName == shipHardpoint.module.invariantName)
+                                {
+                                    shipHardpoint.module = shipHardpoint.module ?? new Module();
+                                    shipHardpoint.module.health = profileHardpoint.module.health;
+                                }
+                            }
+                        }
+                        foreach (var profileCompartment in profileCurrentShip.compartments)
+                        {
+                            foreach (var shipCompartment in ship.compartments)
+                            {
+                                if (profileCompartment.module != null && profileCompartment.module.invariantName == shipCompartment.module.invariantName)
+                                {
+                                    shipCompartment.module = shipCompartment.module ?? new Module();
+                                    shipCompartment.module.health = profileCompartment.module.health;
+                                }
+                            }
+                        }
                     }
                     Logging.Debug("Ship is: " + JsonConvert.SerializeObject(ship));
                 }
@@ -1301,6 +1388,10 @@ namespace EddiShipMonitor
                     // Location for the current ship is always null, as it's with us
                     ship.starsystem = null;
                     ship.station = null;
+                    ship.x = null;
+                    ship.y = null;
+                    ship.z = null;
+                    ship.distance = null;
                     EDDI.Instance.CurrentShip = ship;
                 }
             }
