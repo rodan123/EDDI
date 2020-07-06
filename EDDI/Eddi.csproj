@@ -133,6 +133,7 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="EddiUpgrader.cs" />
     <Compile Include="MarketInfoReader.cs" />
     <Compile Include="OutfittingInfoReader.cs" />
     <Compile Include="Settings.cs" />
@@ -280,6 +281,9 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <SplashScreen Include="..\graphics\logo-with-alpha.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

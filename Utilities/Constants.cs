@@ -10,7 +10,7 @@ namespace Utilities
     {
         public const string EDDI_NAME = "EDDI";
         public const string EDDI_URL_PROTOCOL = "eddi";
-        public static Version EDDI_VERSION = new Version(3, 5, 3, Version.TestPhase.b, 3);
+        public static Version EDDI_VERSION = new Version(3, 7, 0, Version.TestPhase.final, 0);
         public const string EDDI_SERVER_URL = "https://edcd.github.io/EDDP/";
         public static readonly string EDDI_SYSTEM_MUTEX_NAME = $"{EDDI_SERVER_URL}/{EDDI_NAME}/{Environment.GetEnvironmentVariable("UserName")}";
 
@@ -70,7 +70,8 @@ namespace Utilities
 
         // Fleet Carrier Constants
         public const int carrierPreJumpSeconds = 960; // 16 minutes to spool up before jumping (minus the absolute value of the difference from 10 seconds after the minute)
-        public const int carrierPostJumpSeconds = 300; // 5 minutes cool down
+        public const int carrierJumpSeconds = 72; // 72 seconds from when the jump is engaged to when it completes.
+        public const int carrierPostJumpSeconds = 290; // 4 minutes 50 seconds cool down
         public const int carrierLandingPadLockdownSeconds = 180; // Landing pads are locked down 3 minutes prior to jumping
     }
 

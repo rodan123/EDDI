@@ -1,4 +1,4 @@
-﻿using Eddi;
+﻿using EddiCore;
 using EddiDataDefinitions;
 using EddiStatusMonitor;
 using Microsoft.VisualStudio.TestTools.UnitTesting;

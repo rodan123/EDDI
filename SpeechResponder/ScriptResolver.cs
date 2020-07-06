@@ -1,4 +1,5 @@
-﻿using Cottle.Builtins;
+﻿using Cottle;
+using Cottle.Builtins;
 using Cottle.Documents;
 using Cottle.Functions;
 using Cottle.Settings;
@@ -8,6 +9,7 @@ using Eddi;
 using EddiBgsService;
 using EddiCargoMonitor;
 using EddiCompanionAppService;
+using EddiCore;
 using EddiCrimeMonitor;
 using EddiDataDefinitions;
 using EddiDataProviderService;
@@ -58,13 +60,14 @@ namespace EddiSpeechResponder
         }
 
         /// <summary> From a custom dictionary of variable values in the default store </summary>
-        public string resolveFromName(string name, Dictionary<string, Cottle.Value> vars, bool master = true)
+        public string resolveFromName(string name, Dictionary<string, Cottle.Value> vars, bool isTopLevelScript)
         {
-            return resolveFromName(name, buildStore(vars), master);
+            BuiltinStore store = buildStore(vars);
+            return resolveFromName(name, store, isTopLevelScript);
         }
 
         /// <summary> From a custom store </summary>
-        public string resolveFromName(string name, BuiltinStore store, bool master = true)
+        public string resolveFromName(string name, BuiltinStore store, bool isTopLevelScript)
         {
             Logging.Debug("Resolving script " + name);
             scripts.TryGetValue(name, out Script script);
@@ -80,29 +83,25 @@ namespace EddiSpeechResponder
                 return null;
             }
 
-            return resolveFromValue(script.Value, store, master, script);
+            return resolveFromValue(script.Value, store, isTopLevelScript, script);
         }
 
         /// <summary> From the default dictionary of variable values in the default store </summary>
-        public string resolveFromValue(string scriptValue, bool master = true)
+        public string resolveFromValue(string scriptValue, bool isTopLevelScript)
         {
-            return resolveFromValue(scriptValue, createVariables(), master);
-        }
-
-        /// <summary> From a custom dictionary of variable values in the default store </summary>
-        public string resolveFromValue(string scriptValue, Dictionary<string, Cottle.Value> vars, bool master = true)
-        {
-            return resolveFromValue(scriptValue, buildStore(vars), master);
+            Dictionary<string, Value> vars = createVariables();
+            BuiltinStore store = buildStore(vars);
+            return resolveFromValue(scriptValue, store, isTopLevelScript);
         }
 
         /// <summary> From a custom store </summary>
-        public string resolveFromValue(string script, BuiltinStore store, bool master = true, Script scriptObject = null)
+        public string resolveFromValue(string script, BuiltinStore store, bool isTopLevelScript, Script scriptObject = null)
         {
             try
             {
-                // Before we start, we remove the context for master scripts.
+                // Before we start, we remove the context for isTopLevelScript scripts.
                 // This means that scripts without context still work as expected
-                if (master)
+                if (isTopLevelScript)
                 {
                     EDDI.Instance.State["eddi_context_last_subject"] = null;
                     EDDI.Instance.State["eddi_context_last_action"] = null;
@@ -115,7 +114,7 @@ namespace EddiSpeechResponder
                 Logging.Debug("Turned script " + script + " in to speech " + result);
                 result = result.Trim() == "" ? null : result.Trim();
 
-                if (master && result != null)
+                if (isTopLevelScript && result != null)
                 {
                     string stored = result;
                     // Remove any leading pause
@@ -155,6 +154,11 @@ namespace EddiSpeechResponder
 
                 Logging.Warn($"Failed to resolve {scriptName} at line {e.Line}. {e}");
                 return $"There is a problem with {scriptName} at line {e.Line}. {errorTranslation(e.Message)}";
+            }
+            catch (Exception e)
+            {
+                Logging.Warn(e.Message, e);
+                return $"Error with {scriptObject?.Name ?? "this"} script: {e.Message}";
             }
         }
 
@@ -299,52 +303,7 @@ namespace EddiSpeechResponder
             store["P"] = new NativeFunction((values) =>
             {
                 string val = values[0].AsString;
-                string translation = val;
-                if (translation == val)
-                {
-                    translation = Translations.StellarClass(val);
-                }
-                if (translation == val)
-                {
-                    translation = Translations.PlanetClass(val);
-                }
-                if (translation == val)
-                {
-                    translation = Translations.Body(val, useICAO);
-                }
-                if (translation == val)
-                {
-                    translation = Translations.StarSystem(val, useICAO);
-                }
-                if (translation == val)
-                {
-                    translation = Translations.Station(val);
-                }
-                if (translation == val)
-                {
-                    translation = Translations.Faction(val);
-                }
-                if (translation == val)
-                {
-                    translation = Translations.Power(val);
-                }
-                if (translation == val)
-                {
-                    Ship ship = ShipDefinitions.FromModel(val);
-                    if (ship != null && ship.EDID > 0)
-                    {
-                        translation = ship.SpokenModel();
-                    }
-                }
-                if (translation == val)
-                {
-                    Ship ship = ShipDefinitions.FromEDModel(val);
-                    if (ship != null && ship.EDID > 0)
-                    {
-                        translation = ship.SpokenModel();
-                    }
-                }
-                return translation;
+                return Translations.GetTranslation(val, useICAO);
             }, 1);
 
             // Boolean constants
@@ -496,7 +455,7 @@ namespace EddiSpeechResponder
                 if (values.Count == 1)
                 {
                     return new ScriptResolver(scripts).resolveFromValue(@"<transmit>" + values[0].AsString + "</transmit>", store, false);
-                } 
+                }
                 return "The Transmit function is used improperly. Please review the documentation for correct usage.";
             }, 1);
 
@@ -615,17 +574,17 @@ namespace EddiSpeechResponder
                     {
                         // Obtain the first three characters
                         string chars = new Regex("[^a-zA-Z0-9]").Replace(EDDI.Instance.Cmdr.name, "").ToUpperInvariant().Substring(0, 3);
-                        result = ship.SpokenManufacturer() + " " + Translations.ICAO(chars);
+                        result = ship.phoneticmanufacturer + " " + Translations.ICAO(chars);
                     }
                     else
                     {
-                        if (ship.SpokenManufacturer() == null)
+                        if (string.IsNullOrEmpty(ship.phoneticmanufacturer))
                         {
                             result = "unidentified ship";
                         }
                         else
                         {
-                            result = "unidentified " + ship.SpokenManufacturer() + " " + ship.SpokenModel();
+                            result = "unidentified " + ship.phoneticmanufacturer + " " + ship.phoneticmodel;
                         }
                     }
                 }
@@ -1266,7 +1225,7 @@ namespace EddiSpeechResponder
 
             store["RefreshProfile"] = new NativeFunction((values) =>
             {
-                bool stationRefresh = (values.Count == 0 ? false : values[0].AsBoolean);
+                bool stationRefresh = (values.Count != 0 && values[0].AsBoolean);
                 EDDI.Instance.refreshProfile(stationRefresh);
                 return "";
             }, 0, 1);
@@ -1333,7 +1292,7 @@ namespace EddiSpeechResponder
         private static Ship findShip(int? localId, string model)
         {
             ShipMonitor shipMonitor = (ShipMonitor)EDDI.Instance.ObtainMonitor("Ship monitor");
-            Ship ship = null;
+            Ship ship;
             if (localId == null)
             {
                 // No local ID so take the current ship

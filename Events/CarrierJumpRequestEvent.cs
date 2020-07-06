@@ -29,7 +29,9 @@ namespace EddiEvents
 
         public string bodyname { get; private set; }
 
-        public string shortname => (systemname == null || bodyname == systemname) ? bodyname : bodyname.Replace(systemname, "").Trim();
+        public string shortname => (string.IsNullOrEmpty(systemname) || string.IsNullOrEmpty(bodyname) || bodyname == systemname)
+            ? bodyname
+            : bodyname.Replace(systemname, "").Trim();
 
         // These properties are not intended to be user facing
         public long? systemAddress { get; private set; }

@@ -1,4 +1,4 @@
-﻿using Eddi;
+﻿using EddiCore;
 using System;
 using System.Globalization;
 using System.Text.RegularExpressions;

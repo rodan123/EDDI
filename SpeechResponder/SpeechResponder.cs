@@ -1,4 +1,4 @@
-﻿using Eddi;
+﻿using EddiCore;
 using EddiDataDefinitions;
 using EddiEvents;
 using EddiShipMonitor;
@@ -126,7 +126,7 @@ namespace EddiSpeechResponder
             subtitles = configuration.Subtitles;
             subtitlesOnly = configuration.SubtitlesOnly;
             Logging.Debug($"Reloaded {ResponderName()}");
-    }
+        }
 
         public void Handle(Event @event)
         {
@@ -181,9 +181,9 @@ namespace EddiSpeechResponder
             bool sayOutLoud = true;
             if (EDDI.Instance.State.TryGetValue("speechresponder_quiet", out object tmp))
             {
-                if (tmp is bool)
+                if (tmp is bool b)
                 {
-                    sayOutLoud = !(bool)tmp;
+                    sayOutLoud = !b;
                 }
             }
             return sayOutLoud;
@@ -199,7 +199,7 @@ namespace EddiSpeechResponder
         public void Say(ScriptResolver resolver, Ship ship, string scriptName, Event theEvent = null, int? priority = null, string voice = null, bool sayOutLoud = true, bool invokedFromVA = false)
         {
             Dictionary<string, Cottle.Value> dict = resolver.createVariables(theEvent);
-            string speech = resolver.resolveFromName(scriptName, dict);
+            string speech = resolver.resolveFromName(scriptName, dict, true);
             if (speech != null)
             {
                 if (subtitles)
@@ -217,7 +217,7 @@ namespace EddiSpeechResponder
                 }
             }
         }
-        
+
         public UserControl ConfigurationTabItem()
         {
             return new ConfigurationWindow();

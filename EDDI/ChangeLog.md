@@ -2,6 +2,47 @@
 
 Full details of the variables available for each noted event, and VoiceAttack integrations, are available in the individual [event pages](https://github.com/EDCD/EDDI/wiki/Events).
 
+### 3.7.0
+  * Promote 3.7.0-rc1 to final
+  * Fixed a bug that could cause the `Ship loadout` event not to fire if piloting an Eagle with a module slotted in the military slot
+  * Added an alpha channel to the splash screen
+
+### 3.7.0-rc1
+  * Core
+    * EDDI standalone now displays a splash screen while bringing up the full UI, to give users immediate feedback that it is launching.
+    * `Carrier cooldown` event is now sent to the carrier's owner even if they were not aboard for the jump.
+    * Corrected the timing of the `Carrier cooldown` event.
+    * `Carrier pads locked` and `Carrier jump engaged` events are now correctly cancelled if the carrier's jump is cancelled.
+
+### 3.5.3-b7
+  * Speech responder
+    * Fixed text-to-speech errors introduced in b5 and b6 by reverting the Cottle text rendering package to the old version..
+
+### 3.5.3-b6
+  * Frontier API
+    * Fixed missing client ID in 3.5.3-b5
+  * Speech responder
+    * ~~Fixed Speech Responder always reporting that script errors are at line zero.~~
+    * Fixed a typo in the `Mission check galaxy` script.
+
+### 3.5.3-b5
+  * Core
+    * ~~Updated Rollbar telemetry service to reduce web traffic when idle and to add some additional context from preceeding eddi.log entries.~~
+    * Various bug fixes, including fixing a bug that could cause the UI to become de-coupled from the true speech configuration. 
+  * Speech responder
+    * ~~Updated Cottle text rendering package to the latest version.~~
+
+### 3.5.3-b4
+  * Core
+    * Implemented new `Asteroid cracked` and `Asteroid prospected` events. 
+    * Nanomedicines are now designated as a rare commodity.
+    * Disregard bogus "Galactic Mean Price" from Fleet carriers.
+    * Reduced filesystem polling when Elite is not active.
+    * Defended against some corner-case IO exceptions.
+  * Speech Responder
+    * When the update server is unreachable, the voice message now says that "EDDI" rather than "I" could not reach it.
+    * Fixed some edge cases around ship model pronounciation, notably Roman numerals.
+
 ### 3.5.3-b3
   * Cargo Monitor
     * Fixed a bug where the `need` property of mission-related cargo did not properly update for `Collect` mission types.

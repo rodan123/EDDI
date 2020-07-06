@@ -1,4 +1,4 @@
-﻿using Eddi;
+﻿using EddiCore;
 using EddiCrimeMonitor;
 using EddiDataDefinitions;
 using EddiEvents;

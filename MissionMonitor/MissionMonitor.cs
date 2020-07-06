@@ -1,8 +1,9 @@
 using Eddi;
+using EddiCore;
 using EddiDataDefinitions;
 using EddiDataProviderService;
-using EddiStarMapService;
 using EddiEvents;
+using EddiStarMapService;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;

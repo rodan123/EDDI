@@ -67,7 +67,7 @@ namespace EddiSpeechService
             const int standardGain = 10;
             int radioGain = radio ? 7 : 0;
             source = source.AppendSource(x => new DmoCompressorEffect(x) { Gain = (effectsLevel / 15) + radioGain + standardGain });
-            
+
             return source;
         }
 
@@ -88,15 +88,15 @@ namespace EddiSpeechService
             int echoDelay = 50; // Default
             if (ship != null)
             {
-                if (ship.size == LandingPadSize.Small)
+                if (ship.Size == LandingPadSize.Small)
                 {
                     echoDelay = 50;
                 }
-                else if (ship.size == LandingPadSize.Medium)
+                else if (ship.Size == LandingPadSize.Medium)
                 {
                     echoDelay = 100;
                 }
-                else if (ship.size == LandingPadSize.Large)
+                else if (ship.Size == LandingPadSize.Large)
                 {
                     echoDelay = 200;
                 }

@@ -9,6 +9,57 @@ namespace EddiSpeechService
     /// <summary>Translations for Elite items for text-to-speech</summary>
     public class Translations
     {
+        public static string GetTranslation(string val, bool useICAO = false)
+        {
+            // Translations from fixed dictionaries
+            string translation = val;
+            if (translation == val)
+            {
+                translation = Power(val);
+            }
+            if (translation == val)
+            {
+                translation = StellarClass(val);
+            }
+            if (translation == val)
+            {
+                translation = PlanetClass(val);
+            }
+            if (translation == val)
+            {
+                Ship ship = ShipDefinitions.FromModel(val);
+                if (ship != null && ship.EDID > 0)
+                {
+                    translation = ship.SpokenModel();
+                }
+            }
+            if (translation == val)
+            {
+                string phoneticManufacturer = ShipDefinitions.SpokenManufacturer(val);
+                if (phoneticManufacturer != null)
+                {
+                    translation = phoneticManufacturer;
+                }
+            }
+            if (translation == val)
+            {
+                translation = Body(val, useICAO);
+            }
+            if (translation == val)
+            {
+                translation = StarSystem(val, useICAO);
+            }
+            if (translation == val)
+            {
+                translation = Station(val);
+            }
+            if (translation == val)
+            {
+                translation = Faction(val);
+            }
+            return translation.Trim();
+        }
+
         /// <summary>Fix up power names</summary>
         public static string Power(string power)
         {
@@ -222,7 +273,7 @@ namespace EddiSpeechService
         private static readonly Regex PLANET = new Regex(@"^[A-Za-z]$");
         private static readonly Regex SUBSTARS = new Regex(@"^A[BCDE]?[CDE]?[DE]?[E]?|B[CDE]?[DE]?[E]?|C[DE]?[E]?|D[E]?$");
         private static readonly Regex BODY = new Regex(@"^(.*?) ([A-E]+ ){0,2}(Belt(?:\s|$)|Cluster(?:\s|$)|Ring|\d{1,2}(?:\s|$)|[A-Za-z](?:\s|$)){1,12}$", RegexOptions.IgnoreCase);
-        
+
         /// <summary>Fix up faction names</summary>
         public static string Faction(string faction)
         {
@@ -251,7 +302,7 @@ namespace EddiSpeechService
         }
 
         /// <summary>Fix up body names</summary>
-        public static string Body(string body, bool useICAO = false)
+        private static string Body(string body, bool useICAO = false)
         {
             if (body == null)
             {
@@ -289,7 +340,7 @@ namespace EddiSpeechService
                             // The part is a number; turn it in to ICAO if required
                             results.Add(useICAO ? ICAO(part, true) : part);
                         }
-                        else if (PLANET.IsMatch(part) || lastPart == "Cluster" || nextPart == "Ring" || nextPart == "Belt" )
+                        else if (PLANET.IsMatch(part) || lastPart == "Cluster" || nextPart == "Ring" || nextPart == "Belt")
                         {
                             // The part represents a body, possibly part of the name of a moon, ring, (stellar) belt, or belt cluster; 
                             // e.g. "Pru Aescs NC-M d7-192 A A Belt", "Prai Flyou JQ-F b30-3 B Belt Cluster 9", "Oopailks NV-X c17-1 AB 6 A Ring"
@@ -359,9 +410,9 @@ namespace EddiSpeechService
             }
 
             // Common star catalogues
-            if (starSystem.StartsWith("HIP "))
+            if (starSystem.StartsWith("HIP"))
             {
-                starSystem = starSystem.Replace("HIP ", "Hip ");
+                starSystem = starSystem.Replace("HIP", "Hip");
             }
             else if (starSystem.StartsWith("L ")
                 || starSystem.StartsWith("LFT ")
@@ -427,7 +478,7 @@ namespace EddiSpeechService
             else if (starSystem.StartsWith("2MASS ")
                 || starSystem.StartsWith("AC ")
                 || starSystem.StartsWith("AG") // Note no space
-                || starSystem.StartsWith("BD")
+                || starSystem.StartsWith("BD") // Note no space
                 || starSystem.StartsWith("CFBDSIR ")
                 || starSystem.StartsWith("CXOONC ")
                 || starSystem.StartsWith("CXOU ")
@@ -481,7 +532,7 @@ namespace EddiSpeechService
         }
 
         /// <summary>Fix up station related pronunciations </summary>
-        public static string Station(string station)
+        private static string Station(string station)
         {
             // Specific fixing of station model pronunciations
             if (STATION_MODEL_FIXES.ContainsKey(station))

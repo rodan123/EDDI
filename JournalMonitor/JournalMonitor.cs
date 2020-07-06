@@ -1,5 +1,5 @@
-﻿using Eddi;
-using EddiCargoMonitor;
+﻿using EddiCargoMonitor;
+using EddiCore;
 using EddiCrimeMonitor;
 using EddiDataDefinitions;
 using EddiDataProviderService;
@@ -52,7 +52,7 @@ namespace EddiJournalMonitor
                         do
                         {
                             await Task.Delay(1500);
-                            timeout =+ 1;
+                            timeout = +1;
                         }
                         while (EDDI.Instance.CurrentStarSystem.bodies.Count == 0 && timeout < 3);
                         callback(@event);
@@ -184,7 +184,7 @@ namespace EddiJournalMonitor
                                     decimal? latitude = JsonParsing.getOptionalDecimal(data, "Latitude");
                                     decimal? longitude = JsonParsing.getOptionalDecimal(data, "Longitude");
                                     bool playercontrolled = JsonParsing.getOptionalBool(data, "PlayerControlled") ?? true;
-                                    
+
                                     // The nearest destination may be a specific destination name or a generic signal source.
                                     string nearestdestination = JsonParsing.getString(data, "NearestDestination");
                                     SignalSource nearestDestination = SignalSource.FromEDName(nearestdestination) ?? new SignalSource();
@@ -556,7 +556,7 @@ namespace EddiJournalMonitor
                                             if (modified)
                                             {
                                                 engineeringData.TryGetValue("Modifiers", out object modifiersVal);
-                                                List<object> modifiersData = (List<object>) modifiersVal;
+                                                List<object> modifiersData = (List<object>)modifiersVal;
                                                 foreach (Dictionary<string, object> modifier in modifiersData)
                                                 {
                                                     try
@@ -3156,7 +3156,7 @@ namespace EddiJournalMonitor
                                     {
                                         // Item might be all, wear, hull, paint, or the name of a module
                                         string item = JsonParsing.getString(data, "Item");
-                                        
+
                                         // We have a single "item"
                                         if (!string.IsNullOrEmpty(item))
                                         {
@@ -3819,11 +3819,16 @@ namespace EddiJournalMonitor
                                     events.Add(new CarrierJumpedEvent(timestamp, systemName, systemAddress, x, y, z, bodyName, bodyId, bodyType, systemfaction, factions, conflicts, systemEconomy, systemEconomy2, systemSecurity, systemPopulation, powerplayPower, powerplayState, docked, carrierName, carrierType, carrierId, stationFaction, stationServices, stationEconomies) { raw = line, fromLoad = fromLogLoad });
 
                                     // Generate secondary event when the carrier jump cooldown completes
+                                    if (carrierJumpCancellationTokenSources.TryGetValue(carrierId, out var carrierJumpCancellationTS))
+                                    {
+                                        // Cancel any pending cooldown event (to prevent doubling events if the commander is the fleet carrier owner)
+                                        carrierJumpCancellationTS.Cancel();
+                                    }
                                     if (!fromLogLoad)
                                     {
                                         Task.Run(async () =>
                                         {
-                                            int timeMs = Constants.carrierPostJumpSeconds * 1000;
+                                            int timeMs = (Constants.carrierPostJumpSeconds - Constants.carrierJumpSeconds) * 1000; // Cooldown timer starts when the carrier jump is engaged, not when the jump ends
                                             await Task.Delay(timeMs);
                                             EDDI.Instance.enqueueEvent(new CarrierCooldownEvent(timestamp.AddMilliseconds(timeMs), systemName, systemAddress, bodyName, bodyId, bodyType, carrierName, carrierType, carrierId) { fromLoad = fromLogLoad });
                                         }).ConfigureAwait(false);
@@ -3839,14 +3844,19 @@ namespace EddiJournalMonitor
                                     string bodyName = JsonParsing.getString(data, "Body");
                                     long bodyId = JsonParsing.getLong(data, "BodyID");
 
+                                    // There is a bug in the journal output where "Body" can be missing but "BodyID" can be present. Try to Work around that here.
+                                    if (string.IsNullOrEmpty(bodyName) && !string.IsNullOrEmpty(systemName))
+                                    {
+                                        StarSystem starSystem = StarSystemSqLiteRepository.Instance.GetOrFetchStarSystem(systemName);
+                                        bodyName = starSystem?.bodies?.FirstOrDefault(b => b?.bodyId == bodyId)?.bodyname;
+                                    }
+
                                     events.Add(new CarrierJumpRequestEvent(timestamp, systemName, systemAddress, bodyName, bodyId, carrierId) { raw = line, fromLoad = fromLogLoad });
 
                                     // Cancel any pending carrier jump related events
                                     if (carrierJumpCancellationTokenSources.TryGetValue(carrierId, out var carrierJumpCancellationTS))
                                     {
-                                        carrierJumpCancellationTokenSources.Remove(carrierId);
                                         carrierJumpCancellationTS.Cancel();
-                                        carrierJumpCancellationTS.Dispose();
                                     }
 
                                     if (!fromLogLoad)
@@ -3861,22 +3871,48 @@ namespace EddiJournalMonitor
                                         // Jumps seems to always be scheduled for 16 minutes after the request, minus the absolute value of the difference from 10 seconds after the minute
                                         // (i.e. between 15 minutes and 15 minutes 50 seconds after the request)
                                         int varSeconds = Math.Abs(10 - timestamp.Second);
+                                        var tasks = new List<Task>();
 
-                                        Task.Run(async () =>
+                                        tasks.Add(Task.Run(async () =>
                                         {
                                             int timeMs = (Constants.carrierPreJumpSeconds - varSeconds - Constants.carrierLandingPadLockdownSeconds) * 1000;
-                                            await Task.Delay(timeMs);
+                                            await Task.Delay(timeMs, carrierJumpCancellationTS.Token);
                                             EDDI.Instance.enqueueEvent(new CarrierPadsLockedEvent(timestamp.AddMilliseconds(timeMs), carrierId) { fromLoad = fromLogLoad });
-                                        }, carrierJumpCancellationTS.Token).ConfigureAwait(false);
+                                        }, carrierJumpCancellationTS.Token));
 
-                                        Task.Run(async () =>
+                                        tasks.Add(Task.Run(async () =>
                                         {
                                             int timeMs = (Constants.carrierPreJumpSeconds - varSeconds) * 1000;
-                                            await Task.Delay(timeMs);
+                                            await Task.Delay(timeMs, carrierJumpCancellationTS.Token);
                                             string originStarSystem = EDDI.Instance.CurrentStarSystem?.systemname;
                                             long? originSystemAddress = EDDI.Instance.CurrentStarSystem?.systemAddress;
                                             EDDI.Instance.enqueueEvent(new CarrierJumpEngagedEvent(timestamp.AddMilliseconds(timeMs), systemName, systemAddress, originStarSystem, originSystemAddress, bodyName, bodyId, carrierId) { fromLoad = fromLogLoad });
-                                        }, carrierJumpCancellationTS.Token).ConfigureAwait(false);
+                                        }, carrierJumpCancellationTS.Token));
+
+                                        tasks.Add(Task.Run(async () =>
+                                        {
+                                            // This event will be canceled and replaced by an updated `CarrierCooldownEvent` if the owner is aboard the fleet carrier and sees the `CarrierJumpedEvent`.
+                                            int timeMs = (Constants.carrierPreJumpSeconds - varSeconds + Constants.carrierPostJumpSeconds) * 1000; // Cooldown timer starts when the carrier jump is engaged, not when the jump ends
+                                            await Task.Delay(timeMs, carrierJumpCancellationTS.Token);
+                                            EDDI.Instance.enqueueEvent(new CarrierCooldownEvent(timestamp.AddMilliseconds(timeMs), systemName, systemAddress, bodyName, bodyId, null, null, null, carrierId) { fromLoad = fromLogLoad });
+                                        }, carrierJumpCancellationTS.Token));
+
+                                        Task.Run(async () =>
+                                        {
+                                            try
+                                            {
+                                                await Task.WhenAll(tasks.ToArray()).ConfigureAwait(false);
+                                            }
+                                            catch (OperationCanceledException)
+                                            {
+                                                // Tasks were cancelled. Nothing to do here.
+                                            }
+                                            finally
+                                            {
+                                                carrierJumpCancellationTokenSources.Remove(carrierId);
+                                                carrierJumpCancellationTS.Dispose();
+                                            }
+                                        });
                                     }
                                 }
                                 handled = true;
@@ -3887,9 +3923,7 @@ namespace EddiJournalMonitor
                                     // Cancel any pending carrier jump related events
                                     if (carrierJumpCancellationTokenSources.TryGetValue(carrierId, out var carrierJumpCancellationTS))
                                     {
-                                        carrierJumpCancellationTokenSources.Remove(carrierId);
                                         carrierJumpCancellationTS.Cancel();
-                                        carrierJumpCancellationTS.Dispose();
                                     }
                                     events.Add(new CarrierJumpCancelledEvent(timestamp, carrierId) { raw = line, fromLoad = fromLogLoad });
                                 }
@@ -3899,7 +3933,7 @@ namespace EddiJournalMonitor
                                 {
                                     string bodyName = JsonParsing.getString(data, "Body");
                                     events.Add(new AsteroidCrackedEvent(timestamp, bodyName) { raw = line, fromLoad = fromLogLoad });
-                                }       
+                                }
                                 handled = true;
                                 break;
                             case "ProspectedAsteroid":
@@ -3909,7 +3943,7 @@ namespace EddiJournalMonitor
                                     if (val is List<object> listVal)
                                     {
                                         foreach (var commodityVal in listVal)
-                                        {   
+                                        {
                                             if (commodityVal is Dictionary<string, object> commodityData)
                                             {
                                                 string commodityEdName = JsonParsing.getString(commodityData, "Name");
@@ -3930,14 +3964,14 @@ namespace EddiJournalMonitor
 
                                     // If a motherlode commodity is present
                                     CommodityDefinition motherlodeCommodityDefinition = null;
-                                    string motherlodeEDName = JsonParsing.getString(data, "MotherlodeMaterial"); 
+                                    string motherlodeEDName = JsonParsing.getString(data, "MotherlodeMaterial");
                                     if (!string.IsNullOrEmpty(motherlodeEDName))
                                     {
                                         motherlodeCommodityDefinition = CommodityDefinition.FromEDName(motherlodeEDName);
                                     }
 
                                     events.Add(new AsteroidProspectedEvent(timestamp, commodities, materialContent, remaining, motherlodeCommodityDefinition) { raw = line, fromLoad = fromLogLoad });
-                                }   
+                                }
                                 handled = true;
                                 break;
                             case "CarrierBuy":
@@ -4388,7 +4422,7 @@ namespace EddiJournalMonitor
 
         public void Stop()
         {
-            foreach (var carrierJumpCancellationTS in carrierJumpCancellationTokenSources.Values) { carrierJumpCancellationTS.Dispose(); }
+            foreach (var carrierJumpCancellationTS in carrierJumpCancellationTokenSources.Values) { carrierJumpCancellationTS.Cancel(); }
             stop();
         }
 
@@ -4415,7 +4449,7 @@ namespace EddiJournalMonitor
         internal class NativeMethods
         {
             [DllImport("Shell32.dll")]
-            internal static extern int SHGetKnownFolderPath([MarshalAs(UnmanagedType.LPStruct)]Guid rfid, uint dwFlags, IntPtr hToken, out IntPtr ppszPath);
+            internal static extern int SHGetKnownFolderPath([MarshalAs(UnmanagedType.LPStruct)] Guid rfid, uint dwFlags, IntPtr hToken, out IntPtr ppszPath);
         }
 
         public void PreHandle(Event @event)
@@ -4495,9 +4529,16 @@ namespace EddiJournalMonitor
             }
             else if (slot.Contains("Military"))
             {
-                compartment.size = (int)ShipDefinitions.FromEDModel(ship)?.militarysize;
+                var slotSize = ShipDefinitions.FromEDModel(ship)?.militarysize;
+                if (slotSize is null)
+                {
+                    // We didn't expect to have a military slot on this ship.
+                    var data = new Dictionary<string, object>() { { "ShipEDName", ship }, { "Slot", slot }, { "Exception", new ArgumentException() } };
+                    Logging.Error($"Unexpected military slot found in ship edName {ship}.", data);
+                    return compartment;
+                }
+                compartment.size = (int)slotSize;
             }
-
             return compartment;
         }
 

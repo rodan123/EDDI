@@ -6,7 +6,7 @@ using System.ComponentModel;
 using System.IO;
 using Utilities;
 
-namespace Eddi
+namespace EddiCore
 {
     /// <summary>Configuration for EDDI</summary>
     public class EDDIConfiguration : INotifyPropertyChanged
@@ -174,9 +174,6 @@ namespace Eddi
         [JsonIgnore]
         private string dataPath;
 
-        [JsonIgnore]
-        static readonly object fileLock = new object();
-
         public EDDIConfiguration()
         {
             Debug = false;
@@ -248,10 +245,7 @@ namespace Eddi
             }
 
             string json = JsonConvert.SerializeObject(this, Formatting.Indented);
-            lock (fileLock)
-            {
-                Files.Write(filename, json);
-            }
+            Files.Write(filename, json);
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

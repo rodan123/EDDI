@@ -1,4 +1,4 @@
-﻿using Eddi;
+﻿using EddiCore;
 using EddiDataDefinitions;
 using EddiDataProviderService;
 using EddiEvents;
@@ -47,7 +47,7 @@ namespace EDDNResponder
         };
 
         // We will strip these personal keys (plus any localized properties) before sending data to EDDN
-        private static readonly string[] personalKeys = 
+        private static readonly string[] personalKeys =
         {
             "ActiveFine",
             "CockpitBreach",

@@ -3,9 +3,8 @@ using RestSharp;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Threading.Tasks;
 using Utilities;
 
@@ -157,7 +156,8 @@ namespace EddiInaraService
             Dictionary<string, object> data = new Dictionary<string, object>()
             {
                 { "InaraAPIEvent", indexedEvents.Find(e => e.eventCustomID == inaraResponse.eventCustomID) },
-                { "InaraResponse", inaraResponse }
+                { "InaraResponse", inaraResponse },
+                { "Stacktrace", new StackTrace() }
             };
             try
             {
@@ -215,21 +215,21 @@ namespace EddiInaraService
 
         private bool checkAPIcredentialsOk(InaraConfiguration inaraConfiguration)
         {
-            if (!inaraConfiguration.isAPIkeyValid) 
-            { 
-                Logging.Warn("Background sync skipped: API key is invalid."); 
-                invalidAPIkey?.Invoke(inaraConfiguration, new EventArgs()); 
-                return false; 
+            if (!inaraConfiguration.isAPIkeyValid)
+            {
+                Logging.Warn("Background sync skipped: API key is invalid.");
+                invalidAPIkey?.Invoke(inaraConfiguration, new EventArgs());
+                return false;
             }
-            if (string.IsNullOrEmpty(inaraConfiguration.apiKey)) 
-            { 
-                Logging.Info("Background sync skipped: API key not set."); 
-                return false; 
+            if (string.IsNullOrEmpty(inaraConfiguration.apiKey))
+            {
+                Logging.Info("Background sync skipped: API key not set.");
+                return false;
             }
-            if (string.IsNullOrEmpty(inaraConfiguration.commanderName)) 
-            { 
-                Logging.Debug("Background sync skipped: Commander name not set."); 
-                return false; 
+            if (string.IsNullOrEmpty(inaraConfiguration.commanderName))
+            {
+                Logging.Debug("Background sync skipped: Commander name not set.");
+                return false;
             }
             return true;
         }
@@ -272,7 +272,7 @@ namespace EddiInaraService
             foreach (var inaraAPIEvent in inaraAPIEvents)
             {
                 // Do not re-enqueue 'get' Inara API events
-                if (inaraAPIEvent.eventName.StartsWith("get")) {continue; }
+                if (inaraAPIEvent.eventName.StartsWith("get")) { continue; }
                 // Clear any ID / index value assigned to the data
                 inaraAPIEvent.eventCustomID = null;
                 EnqueueAPIEvent(inaraAPIEvent);

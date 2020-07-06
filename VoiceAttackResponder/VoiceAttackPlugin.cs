@@ -1,5 +1,6 @@
 ﻿using Eddi;
 using EddiCargoMonitor;
+using EddiCore;
 using EddiCrimeMonitor;
 using EddiDataDefinitions;
 using EddiDataProviderService;
@@ -150,23 +151,23 @@ namespace EddiVoiceAttackResponder
                 }
 
                 // Display instance information if available
-                if (EDDI.Instance.UpgradeRequired)
+                if (EddiUpgrader.UpgradeRequired)
                 {
                     vaProxy.WriteToLog("Please shut down VoiceAttack and run EDDI standalone to upgrade", "red");
                     string msg = Properties.VoiceAttack.run_eddi_standalone;
                     SpeechService.Instance.Say(((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship monitor")).GetCurrentShip(), msg, 0);
                 }
-                else if (EDDI.Instance.UpgradeAvailable)
+                else if (EddiUpgrader.UpgradeAvailable)
                 {
                     vaProxy.WriteToLog("Please shut down VoiceAttack and run EDDI standalone to upgrade", "orange");
                     string msg = Properties.VoiceAttack.run_eddi_standalone;
                     SpeechService.Instance.Say(((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship monitor")).GetCurrentShip(), msg, 0);
                 }
 
-                if (EDDI.Instance.Motd != null)
+                if (EddiUpgrader.Motd != null)
                 {
-                    vaProxy.WriteToLog("Message from EDDI: " + EDDI.Instance.Motd, "black");
-                    string msg = String.Format(Eddi.Properties.EddiResources.msg_from_eddi, EDDI.Instance.Motd);
+                    vaProxy.WriteToLog("Message from EDDI: " + EddiUpgrader.Motd, "black");
+                    string msg = String.Format(Eddi.Properties.EddiResources.msg_from_eddi, EddiUpgrader.Motd);
                     SpeechService.Instance.Say(((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship monitor")).GetCurrentShip(), msg, 0);
                 }
 
@@ -293,7 +294,7 @@ namespace EddiVoiceAttackResponder
         public static void VA_Exit1(dynamic vaProxy)
         {
             Logging.Info("EDDI VoiceAttack plugin exiting");
-            
+
             // Stop the updater thread.
             updaterThread?.Abort();
 
@@ -315,7 +316,7 @@ namespace EddiVoiceAttackResponder
             }
         }
 
-        private static void OnExit(object sender, ExitEventArgs e) 
+        private static void OnExit(object sender, ExitEventArgs e)
         {
             if (!App.eddiMutex.SafeWaitHandle.IsClosed)
             {
@@ -452,8 +453,8 @@ namespace EddiVoiceAttackResponder
         {
             string config = (string)vaProxy.Context;
 
-            if (Application.Current?.Dispatcher != null 
-                && (bool)Application.Current?.Dispatcher?.Invoke(() => Application.Current.MainWindow == null) 
+            if (Application.Current?.Dispatcher != null
+                && (bool)Application.Current?.Dispatcher?.Invoke(() => Application.Current.MainWindow == null)
                 && config != "configuration")
             {
                 vaProxy.WriteToLog("The EDDI configuration window is not open.", "orange");
@@ -476,8 +477,8 @@ namespace EddiVoiceAttackResponder
                                 }
                                 else
                                 {
-                                        // Tell the configuration UI to restore its window if minimized
-                                        setWindowState(ref App.vaProxy, WindowState.Minimized, true, false);
+                                    // Tell the configuration UI to restore its window if minimized
+                                    setWindowState(ref App.vaProxy, WindowState.Minimized, true, false);
                                     App.vaProxy.WriteToLog("The EDDI configuration window is already open.", "orange");
                                 }
                             }
@@ -900,7 +901,7 @@ namespace EddiVoiceAttackResponder
             }
 
             // Step 3 - pass it through the script resolver
-            res = new ScriptResolver(null).resolveFromValue(res);
+            res = new ScriptResolver(null).resolveFromValue(res, true);
 
             return res ?? "";
         }

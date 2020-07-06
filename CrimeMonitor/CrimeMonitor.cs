@@ -1,5 +1,6 @@
 ﻿using Eddi;
 using EddiBgsService;
+using EddiCore;
 using EddiDataDefinitions;
 using EddiDataProviderService;
 using EddiEvents;
@@ -16,7 +17,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Threading;
-using EddiStarMapService;
 using Utilities;
 
 namespace EddiCrimeMonitor
@@ -248,8 +248,8 @@ namespace EddiCrimeMonitor
                     target.Power = @event.Power ?? Power.None;
 
                     // Prioritize power allegiance (when present) over faction
-                    target.Allegiance = @event.Power != Power.None 
-                        ? @event.Power?.Allegiance 
+                    target.Allegiance = @event.Power != Power.None
+                        ? @event.Power?.Allegiance
                         : faction?.Allegiance;
 
                     target.LegalStatus = @event.LegalStatus;
@@ -1025,7 +1025,7 @@ namespace EddiCrimeMonitor
             {
                 // Filter stations within the faction system which meet the station type prioritization,
                 // max distance from the main star, game version, and landing pad size requirements
-                LandingPadSize padSize = EDDI.Instance?.CurrentShip?.size ?? LandingPadSize.Large;
+                LandingPadSize padSize = EDDI.Instance?.CurrentShip?.Size ?? LandingPadSize.Large;
                 List<Station> factionStations = !prioritizeOrbitalStations && EDDI.Instance.inHorizons ? factionStarSystem.stations : factionStarSystem.orbitalstations
                     .Where(s => s.stationservices.Count > 0).ToList();
                 factionStations = factionStations.Where(s => s.distancefromstar <= maxStationDistanceFromStarLs).ToList();

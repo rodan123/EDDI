@@ -1,5 +1,5 @@
-﻿using Eddi;
-using EddiCargoMonitor;
+﻿using EddiCargoMonitor;
+using EddiCore;
 using EddiDataDefinitions;
 using EddiEvents;
 using EddiInaraService;
@@ -47,7 +47,7 @@ namespace EddiInaraResponder
             return true;
         }
 
-        private void OnInvalidAPIkey(object sender, EventArgs e) 
+        private void OnInvalidAPIkey(object sender, EventArgs e)
         {
             // Alert the user that there is a problem with the Inara API key
             Logging.Info("API key is invalid: Please open the Inara Responder and update the API key.");
@@ -314,16 +314,19 @@ namespace EddiInaraResponder
             }
         }
 
-        private void handleCarrierJumpedEvent(CarrierJumpedEvent @event) 
+        private void handleCarrierJumpedEvent(CarrierJumpedEvent @event)
         {
-            Ship currentShip = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship Monitor")).GetCurrentShip();
-
-            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderTravelCarrierJump", new Dictionary<string, object>()
+            var eventData = new Dictionary<string, object>()
             {
                 { "starsystemName", @event.systemname },
-                { "shipType", currentShip.model },
-                { "shipGameID", currentShip.LocalId }
-            }));
+            };
+            Ship currentShip = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship Monitor")).GetCurrentShip();
+            if (!string.IsNullOrEmpty(currentShip?.model))
+            {
+                eventData.Add("shipType", currentShip.model);
+                eventData.Add("shipGameID", currentShip.LocalId);
+            }
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderTravelCarrierJump", eventData));
             // Note: There is a "jumpDistance" input property for this event,
             // but the current recommendation from the API documentation is to omit it.
         }
@@ -499,15 +502,19 @@ namespace EddiInaraResponder
             // Don't add this at the session start after Location, per guidance from Inara. 
             if (@event.station != firstDockedLocation)
             {
-                Ship currentShip = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship Monitor")).GetCurrentShip();
-                inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderTravelDock", new Dictionary<string, object>()
+                var eventData = new Dictionary<string, object>()
                 {
                     { "starsystemName", @event.system },
                     { "stationName", @event.station },
-                    { "marketID", @event.marketId },
-                    { "shipType", currentShip.EDName },
-                    { "shipGameID", currentShip.LocalId }
-                }));
+                    { "marketID", @event.marketId }
+                };
+                Ship currentShip = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship Monitor")).GetCurrentShip();
+                if (!string.IsNullOrEmpty(currentShip?.model))
+                {
+                    eventData.Add("shipType", currentShip.model);
+                    eventData.Add("shipGameID", currentShip.LocalId);
+                }
+                inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderTravelDock", eventData));
             }
             firstDockedLocation = null;
         }
@@ -1067,14 +1074,18 @@ namespace EddiInaraResponder
             {
                 inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderReputationMinorFaction", minorFactionRepData));
             }
+            var eventData = new Dictionary<string, object>()
+                {
+                    { "starsystemName", @event.system },
+                    { "jumpDistance", @event.distance }
+                };
             Ship currentShip = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship Monitor")).GetCurrentShip();
-            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderTravelFSDJump", new Dictionary<string, object>()
+            if (!string.IsNullOrEmpty(currentShip?.model))
             {
-                { "starsystemName", @event.system },
-                { "jumpDistance", @event.distance },
-                { "shipType", currentShip.EDName },
-                { "shipGameID", currentShip.LocalId }
-            }));
+                eventData.Add("shipType", currentShip.model);
+                eventData.Add("shipGameID", currentShip.LocalId);
+            }
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderTravelFSDJump", eventData));
         }
 
         private static List<Dictionary<string, object>> minorFactionReputations(List<Faction> factions)
