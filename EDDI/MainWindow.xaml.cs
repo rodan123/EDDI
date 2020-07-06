@@ -1,4 +1,5 @@
 ﻿using EddiCompanionAppService;
+using EddiCore;
 using EddiDataDefinitions;
 using EddiDataProviderService;
 using EddiSpeechService;
@@ -154,10 +155,14 @@ namespace Eddi
 
         private bool runBetaCheck = false;
 
-        private static readonly object logLock = new object();
-
         public MainWindow()
         {
+            if (!App.FromVA)
+            {
+                SplashScreen splashScreen = new SplashScreen("logo-with-alpha.png");
+                splashScreen.Show(true);
+            }
+
             InitializeComponent();
             DataContext = EDDI.Instance;
 
@@ -237,7 +242,7 @@ namespace Eddi
 
             LoadAndSortTabs(eddiConfiguration);
 
-                RestoreWindowState();
+            RestoreWindowState();
             EDDI.Instance.Start();
         }
 
@@ -868,7 +873,7 @@ namespace Eddi
             if (runBetaCheck)
             {
                 // Because we have changed to wanting beta upgrades we need to re-check upgrade information
-                EDDI.Instance.CheckUpgrade();
+                EddiUpgrader.CheckUpgrade();
                 setStatusInfo();
             }
             else
@@ -885,7 +890,7 @@ namespace Eddi
             if (runBetaCheck)
             {
                 // Because we have changed to not wanting beta upgrades we need to re-check upgrade information
-                EDDI.Instance.CheckUpgrade();
+                EddiUpgrader.CheckUpgrade();
                 setStatusInfo();
             }
             else
@@ -898,7 +903,7 @@ namespace Eddi
         {
             // The calling thread for this method may not have direct access to the MainWindow dispatcher so we invoke the dispatcher here.
             System.Windows.Application.Current?.MainWindow?.Dispatcher?.Invoke(setStatusInfo);
-            
+
             if (oldState == CompanionAppService.State.AwaitingCallback &&
                 newState == CompanionAppService.State.Authorized)
             {
@@ -918,9 +923,9 @@ namespace Eddi
             versionText.Text = Constants.EDDI_VERSION.ToString();
             Title = "EDDI v." + Constants.EDDI_VERSION;
 
-            if (EDDI.Instance.UpgradeVersion != null)
+            if (EddiUpgrader.UpgradeVersion != null)
             {
-                statusText.Text = String.Format(Properties.EddiResources.update_message, EDDI.Instance.UpgradeVersion);
+                statusText.Text = String.Format(Properties.EddiResources.update_message, EddiUpgrader.UpgradeVersion);
                 // Do not show upgrade button if EDDI is started from VA
                 upgradeButton.Visibility = App.FromVA ? Visibility.Collapsed : Visibility.Visible;
             }
@@ -988,7 +993,7 @@ namespace Eddi
             }
             else
             {
-                // Logout from the companion app and start again
+                // Logout from the companion EddiApplication and start again
                 CompanionAppService.Instance.Logout();
                 SpeechService.Instance.Say(null, Properties.EddiResources.frontier_api_reset, 0);
                 if (App.FromVA)
@@ -1009,27 +1014,42 @@ namespace Eddi
 
         private void ttsVoiceDropDownUpdated(object sender, SelectionChangedEventArgs e)
         {
-            ttsUpdated();
+            if (sender is FrameworkElement frameworkElement && frameworkElement.IsLoaded)
+            {
+                ttsUpdated();
+            }
         }
 
         private void ttsEffectsLevelUpdated(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            ttsUpdated();
+            if (sender is FrameworkElement frameworkElement && frameworkElement.IsLoaded)
+            {
+                ttsUpdated();
+            }
         }
 
         private void ttsDistortionLevelUpdated(object sender, RoutedEventArgs e)
         {
-            ttsUpdated();
+            if (sender is FrameworkElement frameworkElement && frameworkElement.IsLoaded)
+            {
+                ttsUpdated();
+            }
         }
 
         private void ttsRateUpdated(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            ttsUpdated();
+            if (sender is FrameworkElement frameworkElement && frameworkElement.IsLoaded)
+            {
+                ttsUpdated();
+            }
         }
 
         private void ttsVolumeUpdated(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            ttsUpdated();
+            if (sender is FrameworkElement frameworkElement && frameworkElement.IsLoaded)
+            {
+                ttsUpdated();
+            }
         }
 
         private void ttsTestVoiceButtonClicked(object sender, RoutedEventArgs e)
@@ -1073,8 +1093,8 @@ namespace Eddi
                 DisableSsml = disableSsmlCheckbox.IsChecked.Value,
                 EnableIcao = enableIcaoCheckbox.IsChecked.Value
             };
+            SpeechService.Instance.Configuration = speechConfiguration;
             speechConfiguration.ToFile();
-            SpeechService.Instance.ReloadConfiguration();
         }
 
         // Called from the VoiceAttack plugin if the "Configure EDDI" voice command has
@@ -1184,10 +1204,7 @@ namespace Eddi
         {
             if (File.Exists(fromLogPath))
             {
-                lock (logLock)
-                {
-                    File.WriteAllText(toTruncatedLogPath, File.ReadAllText(fromLogPath));
-                }
+                Files.Write(toTruncatedLogPath, Files.Read(fromLogPath));
 
                 // Truncate log files more than the specified size MB in size
                 const long maxLogSizeBytes = 5 * 1024 * 1024; // 5 MB (before zipping)
@@ -1227,7 +1244,7 @@ namespace Eddi
 
         private void upgradeClicked(object sender, RoutedEventArgs e)
         {
-            EDDI.Instance.Upgrade();
+            EddiUpgrader.Upgrade();
         }
 
         private void EDDIClicked(object sender, RoutedEventArgs e)

@@ -1,8 +1,7 @@
-﻿using Eddi;
-using EddiCargoMonitor;
+﻿using EddiCargoMonitor;
 using EddiCompanionAppService;
+using EddiCore;
 using EddiDataDefinitions;
-using EddiDataProviderService;
 using EddiEvents;
 using EddiShipMonitor;
 using EddiSpeechService;
@@ -238,7 +237,7 @@ namespace EddiVoiceAttackResponder
         /// <summary>Set all values</summary>
         public static void setStandardValues(ref dynamic vaProxy)
         {
-            // Update our nullable primary objects only if they don't match the state of the EDDI instance.	
+            // Update our nullable primary objects only if they don't match the state of the EDDI instance.    
             // (For objects that are always constructed, we prefer using event handlers).
             try
             {
@@ -415,7 +414,7 @@ namespace EddiVoiceAttackResponder
                 Logging.Error("Failed to set commander values", ex);
             }
 
-            // On every event...	
+            // On every event...    
             // Set miscellaneous values
             try
             {
@@ -573,7 +572,7 @@ namespace EddiVoiceAttackResponder
                     vaProxy.SetText(prefix + " ident", ship.ident);
                     vaProxy.SetText(prefix + " ident (spoken)", Translations.ICAO(ship.ident, false));
                     vaProxy.SetText(prefix + " role", ship.Role?.localizedName);
-                    vaProxy.SetText(prefix + " size", ship.size?.localizedName);
+                    vaProxy.SetText(prefix + " size", ship.Size?.localizedName);
                     vaProxy.SetDecimal(prefix + " value", ship.value);
                     vaProxy.SetText(prefix + " value (spoken)", Translations.Humanize(ship.value));
                     vaProxy.SetDecimal(prefix + " hull value", ship.hullvalue);

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using EddiCore;
+using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.Threading;
@@ -31,6 +32,14 @@ namespace Eddi
             Logging.incrementLogs(); // Increment to a new log file.
             StartRollbar(); // do immediately to initialize error reporting
             ApplyAnyOverrideCulture(); // this must be done before any UI is generated
+
+            // Start by fetching information from the update server, and handling appropriately
+            EddiUpgrader.CheckUpgrade();
+            if (EddiUpgrader.UpgradeRequired)
+            {
+                // We are too old to continue; initialize in a "safe mode". 
+                EDDI.Init(true);
+            }
 
             if (FromVA)
             {
@@ -113,7 +122,7 @@ namespace Eddi
             // Catch and send unhandled exceptions from Windows forms
             System.Windows.Forms.Application.ThreadException += (sender, args) =>
             {
-                Exception exception = args.Exception as Exception;
+                Exception exception = args.Exception;
                 _Rollbar.ExceptionHandler(exception);
                 ReloadAndRecover(exception);
             };
@@ -127,7 +136,7 @@ namespace Eddi
             // Catch and send unhandled exceptions from the task scheduler
             TaskScheduler.UnobservedTaskException += (sender, args) =>
             {
-                Exception exception = args.Exception as Exception;
+                Exception exception = args.Exception;
                 _Rollbar.ExceptionHandler(exception);
                 ReloadAndRecover(exception);
             };

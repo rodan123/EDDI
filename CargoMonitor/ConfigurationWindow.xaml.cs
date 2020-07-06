@@ -1,4 +1,4 @@
-﻿using Eddi;
+﻿using EddiCore;
 using System.Windows.Controls;
 using System.Windows.Data;
 

@@ -1,4 +1,4 @@
-﻿using Eddi;
+﻿using EddiCore;
 using EddiDataDefinitions;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;

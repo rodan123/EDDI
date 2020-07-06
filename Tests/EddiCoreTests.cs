@@ -1,4 +1,4 @@
-﻿using Eddi;
+﻿using EddiCore;
 using EddiDataDefinitions;
 using EddiEvents;
 using EddiJournalMonitor;
@@ -92,7 +92,7 @@ namespace UnitTests
             Assert.IsNotNull(@event);
             Assert.IsInstanceOfType(@event, typeof(JumpedEvent));
 
-            PrivateObject privateObject = new PrivateObject(Eddi.EDDI.Instance);
+            PrivateObject privateObject = new PrivateObject(EDDI.Instance);
             var result = (bool)privateObject.Invoke("eventJumped", new object[] { @event });
             Assert.IsTrue(result);
         }
@@ -107,7 +107,7 @@ namespace UnitTests
             Assert.IsNotNull(@event);
             Assert.IsInstanceOfType(@event, typeof(LocationEvent));
 
-            PrivateObject privateObject = new PrivateObject(Eddi.EDDI.Instance);
+            PrivateObject privateObject = new PrivateObject(EDDI.Instance);
             var result = (bool)privateObject.Invoke("eventLocation", new object[] { @event });
             Assert.IsTrue(result);
         }
@@ -122,7 +122,7 @@ namespace UnitTests
             Assert.IsNotNull(@event);
             Assert.IsInstanceOfType(@event, typeof(BodyScannedEvent));
 
-            PrivateObject privateObject = new PrivateObject(Eddi.EDDI.Instance);
+            PrivateObject privateObject = new PrivateObject(EDDI.Instance);
             privateObject.Invoke("updateCurrentSystem", new object[] { "Grea Bloae HH-T d4-44" });
             Assert.AreEqual("Grea Bloae HH-T d4-44", EDDI.Instance.CurrentStarSystem?.systemname);
 
@@ -147,7 +147,7 @@ namespace UnitTests
             Assert.IsNotNull(@event);
             Assert.IsInstanceOfType(@event, typeof(BodyScannedEvent));
 
-            PrivateObject privateObject = new PrivateObject(Eddi.EDDI.Instance);
+            PrivateObject privateObject = new PrivateObject(EDDI.Instance);
             privateObject.Invoke("updateCurrentSystem", new object[] { "Grea Bloae HH-T d4-44" });
             Assert.AreEqual("Grea Bloae HH-T d4-44", EDDI.Instance.CurrentStarSystem?.systemname);
 
@@ -179,7 +179,7 @@ namespace UnitTests
             Assert.IsNotNull(@event);
             Assert.IsInstanceOfType(@event, typeof(EnteredNormalSpaceEvent));
 
-            PrivateObject privateObject = new PrivateObject(Eddi.EDDI.Instance);
+            PrivateObject privateObject = new PrivateObject(EDDI.Instance);
             privateObject.Invoke("updateCurrentStellarBody", new object[] { @event.bodyname, @event.systemname, @event.systemAddress });
             Assert.AreEqual("HIP 17704 4", EDDI.Instance.CurrentStellarBody?.bodyname);
         }
@@ -194,7 +194,7 @@ namespace UnitTests
             RingMappedEvent @event = (RingMappedEvent)events[0];
             Assert.IsNotNull(@event);
 
-            PrivateObject privateObject = new PrivateObject(Eddi.EDDI.Instance);
+            PrivateObject privateObject = new PrivateObject(EDDI.Instance);
             privateObject.Invoke("updateCurrentSystem", new object[] { "BD-01 2784" });
             privateObject.Invoke("eventRingMapped", new object[] { @event });
             Assert.AreEqual("BD-01 2784 10", EDDI.Instance.CurrentStellarBody?.bodyname);

@@ -1,4 +1,4 @@
-﻿using Eddi;
+﻿using EddiCore;
 using EddiNavigationService;
 using System;
 using System.Globalization;

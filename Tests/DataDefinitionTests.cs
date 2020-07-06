@@ -1,7 +1,7 @@
-using System;
 using EddiDataDefinitions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Tests.Properties;
@@ -375,7 +375,7 @@ namespace UnitTests
             DateTime journalDateTime = DateTime.UtcNow.AddHours(1);
 
             Commander test1 = Commander.FromFrontierApiCmdr(commander, frontierApiCommander, apiDateTime, journalDateTime, out bool cmdr1Matches);
-            
+
             Assert.IsTrue(cmdr1Matches);
             Assert.AreEqual("Marty McFly", test1.name);
             Assert.AreEqual("Serf", test1.title);
@@ -452,6 +452,14 @@ namespace UnitTests
             Assert.IsTrue(system1.Equals(system3));
             Assert.IsTrue(system1.DeepEquals(system3));
             Assert.IsFalse(DeserializeJsonResource<StarSystem>(Resources.sqlStarSystem1).Equals(system3));
+        }
+
+        [TestMethod]
+        public void TestCommodityMarketQuoteFromCAPIjson()
+        {
+            string line = @" {""id"":128066403,""categoryname"":""NonMarketable"",""name"":""Drones"",""stock"":9999999,""buyPrice"":101,""sellPrice"":101,""demand"":9999999,""legality"":"""",""meanPrice"":101,""demandBracket"":2,""stockBracket"":2,""locName"":""Limpet""} ";
+            var jObject = JObject.Parse(line);
+            var result = CommodityMarketQuote.FromCapiJson(jObject);
         }
     }
 }

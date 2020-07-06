@@ -1,7 +1,7 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.IO;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 
 namespace EddiSpeechResponder.Service
 {
@@ -43,7 +43,7 @@ namespace EddiSpeechResponder.Service
         }
 
         /// <summary>
-        ///		Will be called when ether the name of the script has changed or the script edit window was opened
+        ///        Will be called when ether the name of the script has changed or the script edit window was opened
         /// </summary>
         public void BeginScriptRecovery()
         {
@@ -81,11 +81,11 @@ namespace EddiSpeechResponder.Service
                 try
                 {
                     await Task.Delay(TimeSpan.FromSeconds(3));
-                    SaveRecoveryScript(window.ScriptValue, 
-                        window.ScriptName, 
-                        window.ScriptDescription, 
-                        window.Responder, 
-                        window.Priority, 
+                    SaveRecoveryScript(window.ScriptValue,
+                        window.ScriptName,
+                        window.ScriptDescription,
+                        window.Responder,
+                        window.Priority,
                         window.ScriptDefaultValue);
                 }
                 finally
@@ -96,13 +96,13 @@ namespace EddiSpeechResponder.Service
         }
 
         /// <summary>
-        ///		Should be called periodically and saves the script into the temp file
+        ///        Should be called periodically and saves the script into the temp file
         /// </summary>
         public void SaveRecoveryScript(string scriptValue,
             string scriptName,
             string scriptDescription,
-            bool isResponder, 
-            int priority, 
+            bool isResponder,
+            int priority,
             string defaultScript)
         {
             lock (_lockRoot)
@@ -114,7 +114,7 @@ namespace EddiSpeechResponder.Service
         }
 
         /// <summary>
-        ///		The script editor was closed and the temp file is no long needed
+        ///        The script editor was closed and the temp file is no long needed
         /// </summary>
         public void StopScriptRecovery()
         {

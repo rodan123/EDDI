@@ -3,7 +3,7 @@ using System;
 using System.IO;
 using Utilities;
 
-namespace Eddi
+namespace EddiCore
 {
     /// <summary>Configuration for Elite</summary>
     public class EliteConfiguration
@@ -16,9 +16,6 @@ namespace Eddi
 
         [JsonIgnore]
         private string dataPath;
-
-        [JsonIgnore]
-        static readonly object fileLock = new object();
 
         public EliteConfiguration()
         {
@@ -75,10 +72,7 @@ namespace Eddi
             }
 
             string json = JsonConvert.SerializeObject(this, Formatting.Indented);
-            lock (fileLock)
-            {
-                Files.Write(filename, json);
-            }
+            Files.Write(filename, json);
         }
     }
 }

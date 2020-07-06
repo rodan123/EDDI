@@ -1,4 +1,4 @@
-﻿using Eddi;
+﻿using EddiCore;
 using EddiDataDefinitions;
 using EddiEvents;
 using Newtonsoft.Json.Linq;
@@ -22,6 +22,10 @@ namespace EddiStatusMonitor
         private string Directory = GetSavedGamesDir();
         public Status currentStatus { get; private set; } = new Status();
         public Status lastStatus { get; private set; } = new Status();
+
+        // Declare our constants
+        private const int pollingIntervalActiveMs = 500;
+        private const int pollingIntervalRelaxedMs = 5000;
 
         // Miscellaneous tracking
         private bool gliding;
@@ -80,7 +84,6 @@ namespace EddiStatusMonitor
             running = true;
 
             // Start off by moving to the end of the file
-            string lastStatus = string.Empty;
             FileInfo fileInfo = null;
             try
             {
@@ -90,56 +93,34 @@ namespace EddiStatusMonitor
             {
                 Logging.Error("Directory " + Directory + " not supported: ", nsex);
             }
-            if (fileInfo.Exists)
+            if (fileInfo != null)
             {
                 try
                 {
                     using (FileStream fs = new FileStream(fileInfo.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                     using (StreamReader reader = new StreamReader(fs, Encoding.UTF8))
                     {
-                        lastStatus = reader.ReadLine() ?? string.Empty;
+                        string lastStatusJson = reader.ReadLine() ?? string.Empty;
 
                         // Main loop
                         while (running)
                         {
-                            if (fileInfo == null)
+                            if (Processes.IsEliteRunning())
                             {
-                                // Status.json could not be found. Sleep until a Status.json file is found.
-                                Logging.Info("Error locating Elite Dangerous Status.json. Status monitor is not active. Have you installed and run Elite Dangerous previously? ");
-                                while (fileInfo == null)
+                                if (!fileInfo.Exists)
                                 {
-                                    Thread.Sleep(5000);
-                                    fileInfo = Files.FileInfo(Directory, "Status.json");
+                                    WaitForStatusFile(ref fileInfo);
                                 }
-                                Logging.Info("Elite Dangerous Status.json found. Status monitor activated.");
-                                return;
+                                else
+                                {
+                                    lastStatusJson = ReadStatus(lastStatusJson, fs, reader);
+                                }
+                                Thread.Sleep(pollingIntervalActiveMs);
                             }
                             else
                             {
-                                string thisStatus = string.Empty;
-                                try
-                                {
-                                    fs.Seek(0, SeekOrigin.Begin);
-                                    thisStatus = reader.ReadLine() ?? string.Empty;
-                                }
-                                catch (Exception)
-                                {
-                                    // file open elsewhere or being written, just wait for the next pass
-                                }
-                                if (lastStatus != thisStatus && !string.IsNullOrWhiteSpace(thisStatus))
-                                {
-                                    Status status = ParseStatusEntry(thisStatus);
-
-                                    // Spin off a thread to pass status entry updates in the background
-                                    Thread updateThread = new Thread(() => handleStatus(status))
-                                    {
-                                        IsBackground = true
-                                    };
-                                    updateThread.Start();
-                                }
-                                lastStatus = thisStatus;
+                                Thread.Sleep(pollingIntervalRelaxedMs);
                             }
-                            Thread.Sleep(500);
                         }
                     }
                 }
@@ -148,6 +129,45 @@ namespace EddiStatusMonitor
                     // file open elsewhere or being written, just wait for the next pass
                 }
             }
+        }
+
+        private void WaitForStatusFile(ref FileInfo fileInfo)
+        {
+            // Status.json could not be found. Sleep until a Status.json file is found.
+            Logging.Info("Error locating Elite Dangerous Status.json. Status monitor is not active. Have you installed and run Elite Dangerous previously? ");
+            while (!fileInfo.Exists)
+            {
+                Thread.Sleep(pollingIntervalRelaxedMs);
+                fileInfo = Files.FileInfo(Directory, "Status.json");
+            }
+            Logging.Info("Elite Dangerous Status.json found. Status monitor activated.");
+        }
+
+        private string ReadStatus(string lastStatusJson, FileStream fs, StreamReader reader)
+        {
+            string thisStatusJson = string.Empty;
+            try
+            {
+                fs.Seek(0, SeekOrigin.Begin);
+                thisStatusJson = reader.ReadLine() ?? string.Empty;
+            }
+            catch (Exception)
+            {
+                // file open elsewhere or being written, just wait for the next pass
+            }
+            if (lastStatusJson != thisStatusJson && !string.IsNullOrWhiteSpace(thisStatusJson))
+            {
+                Status status = ParseStatusEntry(thisStatusJson);
+
+                // Spin off a thread to pass status entry updates in the background
+                Thread updateThread = new Thread(() => handleStatus(status))
+                {
+                    IsBackground = true
+                };
+                updateThread.Start();
+            }
+            lastStatusJson = thisStatusJson;
+            return lastStatusJson;
         }
 
         public void Stop()
@@ -434,7 +454,7 @@ namespace EddiStatusMonitor
                     if (!gliding && lastEnteredNormalSpaceEvent != null)
                     {
                         // We're not already gliding and we have data from a prior `EnteredNormalSpace` event
-                        if (currentStatus.fsd_status == "ready" 
+                        if (currentStatus.fsd_status == "ready"
                             && currentStatus.slope >= -60 && currentStatus.slope <= -5
                             && currentStatus.altitude < 100000
                             && currentStatus.altitude < lastStatus.altitude)
@@ -457,9 +477,9 @@ namespace EddiStatusMonitor
             }
         }
 
-        private void OnStatus(EventHandler statusUpdatedEvent, Status currentStatus)
+        private void OnStatus(EventHandler statusUpdatedEvent, Status status)
         {
-            statusUpdatedEvent?.Invoke(currentStatus, EventArgs.Empty);
+            statusUpdatedEvent?.Invoke(status, EventArgs.Empty);
         }
 
         private static string GetSavedGamesDir()
@@ -478,7 +498,7 @@ namespace EddiStatusMonitor
         internal class NativeMethods
         {
             [DllImport("Shell32.dll")]
-            internal static extern int SHGetKnownFolderPath([MarshalAs(UnmanagedType.LPStruct)]Guid rfid, uint dwFlags, IntPtr hToken, out IntPtr ppszPath);
+            internal static extern int SHGetKnownFolderPath([MarshalAs(UnmanagedType.LPStruct)] Guid rfid, uint dwFlags, IntPtr hToken, out IntPtr ppszPath);
         }
 
         public void PreHandle(Event @event)
