@@ -363,7 +363,7 @@ namespace EddiSpeechService
                     }
                     Logging.Debug("Configuration is " + Configuration == null ? "<null>" : JsonConvert.SerializeObject(Configuration));
                     synth.Rate = Configuration.Rate;
-                    synth.Volume = (int)Math.Round(Configuration.Volume *(transmitVolume/100));
+                    synth.Volume = (int)Math.Round(Configuration.Volume * (transmitVolume/100));
 
                     synth.SetOutputToWaveStream(stream);
 
