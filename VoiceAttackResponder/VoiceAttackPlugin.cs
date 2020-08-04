@@ -675,7 +675,7 @@ namespace EddiVoiceAttackResponder
 
                 string voice = vaProxy.GetText("Voice");
 
-                int? volume = vaProxy.GetInt("Volume") ?? 100;
+                int? volume = vaProxy.GetInt("Volume") ?? 0;
 
                 string speech = SpeechFromScript(script);
 
@@ -702,7 +702,7 @@ namespace EddiVoiceAttackResponder
 
                 string voice = vaProxy.GetText("Voice");
 
-                int? volume = vaProxy.GetInt("Volume") ?? 100;
+                int? volume = vaProxy.GetInt("Volume") ?? 0;
 
                 string speech = SpeechFromScript(script);
 

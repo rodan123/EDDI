@@ -7,6 +7,7 @@ namespace EddiSpeechService
         public string message { get; private set; }
         public Ship ship { get; private set; }
         public int priority { get; private set; }
+        public int volume { get; private set; }
         public string voice { get; private set; }
         public bool radio { get; private set; }
         public string eventType { get; private set; }
@@ -18,11 +19,12 @@ namespace EddiSpeechService
         public int distortionLevel { get; set; }
         public int compressionLevel { get; set; }
 
-        public EddiSpeech(string message, Ship ship = null, int priority = 3, string voice = null, bool radio = false, string eventType = null)
+        public EddiSpeech(string message, Ship ship = null, int priority = 3, string voice = null, bool radio = false, string eventType = null, int volume = 0)
         {
             this.message = message;
             this.ship = ship;
             this.priority = priority;
+            this.volume = volume;
             this.voice = voice;
             this.radio = radio;
             this.eventType = eventType;

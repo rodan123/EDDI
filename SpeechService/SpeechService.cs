@@ -38,8 +38,7 @@ namespace EddiSpeechService
             }
         }
         private int activeSpeechPriority;
-        private decimal transmitVolume;
-
+        
         private static readonly object synthLock = new object();
         public SpeechSynthesizer synth { get; private set; } = new SpeechSynthesizer();
 
@@ -104,7 +103,7 @@ namespace EddiSpeechService
             }
         }
 
-        public void Say(Ship ship, string message, int priority = 3, string voice = null, bool radio = false, string eventType = null, bool invokedFromVA = false, int volume = 100)
+        public void Say(Ship ship, string message, int priority = 3, string voice = null, bool radio = false, string eventType = null, bool invokedFromVA = false, int volume = 0)
         {
             if (message == null)
             {
@@ -117,20 +116,13 @@ namespace EddiSpeechService
                 ship = ShipDefinitions.FromModel("Sidewinder");
             }
 
-            // Adjust playback volume
-            if (volume <= 100)
-            { 
-                transmitVolume = volume;
-            }
-            else
-            {
-                transmitVolume = 100;
-            }
+            //Check for out of range volume override values 
+            if (volume < 0 || volume > 100) { volume = 0; }
 
             Thread speechQueueHandler = new Thread(() =>
             {
                 // Queue the current speech
-                EddiSpeech queuingSpeech = new EddiSpeech(message, ship, priority, voice, radio, eventType);
+                EddiSpeech queuingSpeech = new EddiSpeech(message, ship, priority, voice, radio, eventType, volume);
                 speechQueue.Enqueue(queuingSpeech);
 
                 // Check the first item in the speech queue
@@ -166,10 +158,10 @@ namespace EddiSpeechService
 
         public void Speak(EddiSpeech speech)
         {
-            Instance.Speak(speech.message, speech.voice, speech.echoDelay, speech.distortionLevel, speech.chorusLevel, speech.reverbLevel, speech.compressionLevel, speech.radio, speech.priority);
+            Instance.Speak(speech.message, speech.voice, speech.echoDelay, speech.distortionLevel, speech.chorusLevel, speech.reverbLevel, speech.compressionLevel, speech.radio, speech.priority, speech.volume);
         }
 
-        public void Speak(string speech, string voice, int echoDelay, int distortionLevel, int chorusLevel, int reverbLevel, int compressLevel, bool radio = false, int priority = 3)
+        public void Speak(string speech, string voice, int echoDelay, int distortionLevel, int chorusLevel, int reverbLevel, int compressLevel, bool radio = false, int priority = 3, int volume = 0)
         {
             if (speech == null || speech.Trim() == "") { return; }
 
@@ -213,7 +205,7 @@ namespace EddiSpeechService
                     statement = statement.Replace("</transmit>", "");
                 }
 
-                using (MemoryStream stream = getSpeechStream(voice, statement))
+                using (MemoryStream stream = getSpeechStream(voice, statement, volume))
                 {
                     if (stream == null)
                     {
@@ -312,17 +304,17 @@ namespace EddiSpeechService
         }
 
         // Obtain the speech memory stream
-        private MemoryStream getSpeechStream(string voice, string speech)
+        private MemoryStream getSpeechStream(string voice, string speech, int volume)
         {
             try
             {
                 MemoryStream stream = new MemoryStream();
-                speak(stream, voice, speech);
+                speak(stream, voice, speech, volume);
 
                 if (stream.Length == 0)
                 {
                     // Try again, with speech devoid of SSML
-                    speak(stream, voice, Regex.Replace(speech, "<.*?>", string.Empty));
+                    speak(stream, voice, Regex.Replace(speech, "<.*?>", string.Empty), volume);
                 }
                 return stream;
             }
@@ -334,7 +326,7 @@ namespace EddiSpeechService
         }
 
         // Speak using the Windows SAPI speech synthesizer
-        private void speak(MemoryStream stream, string voice, string speech)
+        private void speak(MemoryStream stream, string voice, string speech, int volume)
         {
             lock (synthLock)
             {
@@ -363,7 +355,15 @@ namespace EddiSpeechService
                     }
                     Logging.Debug("Configuration is " + Configuration == null ? "<null>" : JsonConvert.SerializeObject(Configuration));
                     synth.Rate = Configuration.Rate;
-                    synth.Volume = (int)Math.Round(Configuration.Volume * (transmitVolume/100));
+                    Logging.Info("Volume: " + volume + " Config: " + Configuration.Volume);
+                    if (volume > 0)
+                    {
+                        synth.Volume = volume;
+                    }
+                    else
+                    {
+                        synth.Volume = Configuration.Volume;
+                    }
 
                     synth.SetOutputToWaveStream(stream);
 
