@@ -355,7 +355,7 @@ namespace EddiSpeechService
                     }
                     Logging.Debug("Configuration is " + Configuration == null ? "<null>" : JsonConvert.SerializeObject(Configuration));
                     synth.Rate = Configuration.Rate;
-                    Logging.Info("Volume: " + volume + " Config: " + Configuration.Volume);
+                    //Logging.Info("Volume: " + volume + " Config: " + Configuration.Volume);
                     if (volume > 0)
                     {
                         synth.Volume = volume;
