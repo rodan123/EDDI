@@ -313,6 +313,15 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Salvageable Wreckage.
+        /// </summary>
+        public static string MULTIPLAYER_SCENARIO81_TITLE {
+            get {
+                return ResourceManager.GetString("MULTIPLAYER_SCENARIO81_TITLE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Unregistered Comms Beacon.
         /// </summary>
         public static string NumberStation {
@@ -358,6 +367,15 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Other Surface Signal.
+        /// </summary>
+        public static string SAA_SignalType_Other {
+            get {
+                return ResourceManager.GetString("SAA_SignalType_Other", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Thargoid Surface Signal.
         /// </summary>
         public static string SAA_SignalType_Thargoid {
@@ -372,6 +390,15 @@ namespace EddiDataDefinitions.Properties {
         public static string Settlement_Unflattened_Unknown {
             get {
                 return ResourceManager.GetString("Settlement_Unflattened_Unknown", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Crashed Thargoid ship.
+        /// </summary>
+        public static string Settlement_Unflattened_WreckedUnknown {
+            get {
+                return ResourceManager.GetString("Settlement_Unflattened_WreckedUnknown", resourceCulture);
             }
         }
         
@@ -412,7 +439,7 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Convoy Dispersal Pattern Detected.
+        ///   Looks up a localized string similar to Convoy Dispersal Pattern.
         /// </summary>
         public static string USS_Type_Convoy {
             get {

@@ -159,7 +159,21 @@ namespace EddiMissionMonitor
                             // Generate 'Expired' and 'Warning' events when conditions met
                             if (mission.expiry < DateTime.UtcNow)
                             {
-                                EDDI.Instance.enqueueEvent(new MissionExpiredEvent(DateTime.UtcNow, mission.missionid, mission.name));
+                                if (mission.communal)
+                                {
+                                    if (mission.reward is null)
+                                    {
+                                        RemoveMission(mission);
+                                    }
+                                    else 
+                                    { 
+                                        mission.statusDef = MissionStatus.FromEDName("Claim"); 
+                                    }
+                                }
+                                else 
+                                { 
+                                    EDDI.Instance.enqueueEvent(new MissionExpiredEvent(DateTime.UtcNow, mission.missionid, mission.name)); 
+                                }
                             }
                             else if (mission.expiry < DateTime.UtcNow.AddMinutes(missionWarning ?? Constants.missionWarningDefault))
                             {
@@ -205,15 +219,18 @@ namespace EddiMissionMonitor
 
         public void PostHandle(Event @event)
         {
+            // Use the post-handler to remove missions from the missions list only after we have reacted to them.
             if (@event is MissionAbandonedEvent)
             {
-                //
-                handleMissionAbandonedEvent((MissionAbandonedEvent)@event);
+                postHandleMissionAbandonedEvent((MissionAbandonedEvent)@event);
+            }
+            else if (@event is MissionCompletedEvent)
+            {
+                postHandleMissionCompletedEvent((MissionCompletedEvent)@event);
             }
             else if (@event is MissionFailedEvent)
             {
-                //
-                handleMissionFailedEvent((MissionFailedEvent)@event);
+                postHandleMissionFailedEvent((MissionFailedEvent)@event);
             }
         }
 
@@ -224,48 +241,50 @@ namespace EddiMissionMonitor
             // Handle the events that we care about
             if (@event is DataScannedEvent)
             {
-                //
                 handleDataScannedEvent((DataScannedEvent)@event);
             }
             else if (@event is PassengersEvent)
             {
-                //
                 handlePassengersEvent((PassengersEvent)@event);
             }
             else if (@event is MissionsEvent)
             {
-                //
                 handleMissionsEvent((MissionsEvent)@event);
             }
             else if (@event is CommunityGoalEvent)
             {
-                //
                 handleCommunityGoalEvent((CommunityGoalEvent)@event);
             }
             else if (@event is CargoDepotEvent)
             {
-                //
                 handleCargoDepotEvent((CargoDepotEvent)@event);
             }
             else if (@event is MissionAcceptedEvent)
             {
-                //
                 handleMissionAcceptedEvent((MissionAcceptedEvent)@event);
-            }
-            else if (@event is MissionCompletedEvent)
-            {
-                //
-                handleMissionCompletedEvent((MissionCompletedEvent)@event);
-            }
-            else if (@event is MissionExpiredEvent)
-            {
-                //
-                handleMissionExpiredEvent((MissionExpiredEvent)@event);
             }
             else if (@event is MissionRedirectedEvent)
             {
-                //
                 handleMissionRedirectedEvent((MissionRedirectedEvent)@event);
+            }
+            else if (@event is MissionExpiredEvent)
+            {
+                handleMissionExpiredEvent((MissionExpiredEvent)@event);
+            }
+
+            // Change the mission status here, remove the missions after the events resolve using the post-handler
+            if (@event is MissionAbandonedEvent)
+            {
+                handleMissionAbandonedEvent((MissionAbandonedEvent)@event);
+            }
+            else if (@event is MissionCompletedEvent)
+            {
+                handleMissionCompletedEvent((MissionCompletedEvent)@event);
+            }
+
+            else if (@event is MissionFailedEvent)
+            {
+                handleMissionFailedEvent((MissionFailedEvent)@event);
             }
         }
 
@@ -304,7 +323,7 @@ namespace EddiMissionMonitor
                                         // Set destination system to next in chain & trigger a 'Mission redirected' event
                                         string destinationsystem = mission.destinationsystems?
                                             .FirstOrDefault(s => s.visited == false).name;
-                                        EDDI.Instance.enqueueEvent(new MissionRedirectedEvent(DateTime.Now, mission.missionid, mission.name, null, null, destinationsystem, EDDI.Instance?.CurrentStarSystem?.systemname));
+                                        EDDI.Instance.enqueueEvent(new MissionRedirectedEvent(DateTime.UtcNow, mission.missionid, mission.name, null, null, destinationsystem, EDDI.Instance?.CurrentStarSystem?.systemname));
                                     }
                                     update = true;
                                 }
@@ -346,7 +365,7 @@ namespace EddiMissionMonitor
                     {
                         case "Active":
                             {
-                                if (missionEntry.statusEDName == "Failed")
+                                if (missionEntry.statusEDName == "Failed" || missionEntry.statusEDName == "Claim")
                                 {
                                     if (mission.expiry > missionEntry.expiry)
                                     {
@@ -466,26 +485,39 @@ namespace EddiMissionMonitor
 
         public void _handleCommunityGoalEvent(CommunityGoalEvent @event)
         {
-            Mission mission = new Mission();
             for (int i = 0; i < @event.cgid.Count(); i++)
             {
-                mission = missions.FirstOrDefault(m => m.missionid == @event.cgid[i]);
+                Mission mission = missions.FirstOrDefault(m => m.missionid == @event.cgid[i]);
                 if (mission == null)
                 {
-                    MissionStatus status = MissionStatus.FromEDName("Active");
-                    mission = new Mission(@event.cgid[i], "MISSION_CommunityGoal", DateTime.Now.AddSeconds(@event.expiry[i]), status)
+                    mission = new Mission(@event.cgid[i], "MISSION_CommunityGoal", @event.expiryDateTime[i], MissionStatus.FromEDName("Active"))
                     {
                         localisedname = @event.name[i],
-                        originstation = @event.station[i]
+                        originsystem = @event.system[i],
+                        originstation = @event.station[i],
+                        reward = @event.tierreward[i]
                     };
-
+                    missions.Add(mission);
                 }
                 else
                 {
-                    if (mission.expiry == null)
+                    mission.localisedname = @event.name[i];
+                    mission.originsystem = @event.system[i];
+                    mission.originstation = @event.station[i];
+                    mission.destinationsystem = @event.system[i];
+                    mission.destinationstation = @event.station[i];
+                    mission.reward = @event.tierreward[i];
+                    mission.expiry = @event.expiryDateTime[i];
+                    if (@event.iscomplete[i])
                     {
-                        mission.expiry = DateTime.Now.AddSeconds(@event.expiry[i]);
-                        mission.originstation = @event.station[i];
+                        if (@event.tierreward[i] > 0)
+                        {
+                            mission.statusDef = MissionStatus.FromEDName("Claim");
+                        }
+                        else
+                        {
+                            RemoveMissionWithMissionId(mission.missionid);
+                        }
                     }
                 }
             }
@@ -580,20 +612,32 @@ namespace EddiMissionMonitor
                 }
             }
         }
+        
+        public void handleMissionAbandonedEvent(MissionAbandonedEvent @event)
+        {
+            if (@event.missionid != null)
+            {
+                Mission mission = missions.FirstOrDefault(m => m.missionid == @event.missionid);
+                if (mission != null)
+                {
+                    mission.statusDef = MissionStatus.FromEDName("Failed");
+                }
+            }
+        }
 
-        private void handleMissionAbandonedEvent(MissionAbandonedEvent @event)
+        private void postHandleMissionAbandonedEvent(MissionAbandonedEvent @event)
         {
             if (@event.timestamp > updateDat)
             {
                 updateDat = @event.timestamp;
-                if (_handleMissionAbandonedEvent(@event))
+                if (_postHandleMissionAbandonedEvent(@event))
                 {
                     writeMissions();
                 }
             }
         }
 
-        public bool _handleMissionAbandonedEvent(MissionAbandonedEvent @event)
+        public bool _postHandleMissionAbandonedEvent(MissionAbandonedEvent @event)
         {
             bool update = false;
             if (@event.missionid != null)
@@ -725,19 +769,31 @@ namespace EddiMissionMonitor
             return update;
         }
 
-        private void handleMissionCompletedEvent(MissionCompletedEvent @event)
+        public void handleMissionCompletedEvent(MissionCompletedEvent @event)
+        {
+            if (@event.missionid != null)
+            {
+                Mission mission = missions.FirstOrDefault(m => m.missionid == @event.missionid);
+                if (mission != null)
+                {
+                    mission.statusDef = MissionStatus.FromEDName("Complete");
+                }
+            }
+        }
+
+        private void postHandleMissionCompletedEvent(MissionCompletedEvent @event)
         {
             if (@event.timestamp > updateDat)
             {
                 updateDat = @event.timestamp;
-                if (_handleMissionCompletedEvent(@event))
+                if (_postHandleMissionCompletedEvent(@event))
                 {
                     writeMissions();
                 }
             }
         }
 
-        public bool _handleMissionCompletedEvent(MissionCompletedEvent @event)
+        public bool _postHandleMissionCompletedEvent(MissionCompletedEvent @event)
         {
             bool update = false;
             if (@event.missionid != null)
@@ -777,19 +833,31 @@ namespace EddiMissionMonitor
             return update;
         }
 
-        private void handleMissionFailedEvent(MissionFailedEvent @event)
+        public void handleMissionFailedEvent(MissionFailedEvent @event)
+        {
+            if (@event.missionid != null)
+            {
+                Mission mission = missions.FirstOrDefault(m => m.missionid == @event.missionid);
+                if (mission != null)
+                {
+                    mission.statusDef = MissionStatus.FromEDName("Failed");
+                }
+            }
+        }
+
+        private void postHandleMissionFailedEvent(MissionFailedEvent @event)
         {
             if (@event.timestamp > updateDat)
             {
                 updateDat = @event.timestamp;
-                if (_handleMissionFailedEvent(@event))
+                if (_postHandleMissionFailedEvent(@event))
                 {
                     writeMissions();
                 }
             }
         }
 
-        public bool _handleMissionFailedEvent(MissionFailedEvent @event)
+        public bool _postHandleMissionFailedEvent(MissionFailedEvent @event)
         {
             bool update = false;
             if (@event.missionid != null)
@@ -965,7 +1033,7 @@ namespace EddiMissionMonitor
             string destination = EDDI.Instance?.DestinationStarSystem?.systemname;
             UpdateDestinationData(null, null, 0);
 
-            EDDI.Instance.enqueueEvent(new RouteDetailsEvent(DateTime.Now, "cancel", destination, null, null, 0, 0, 0, null));
+            EDDI.Instance.enqueueEvent(new RouteDetailsEvent(DateTime.UtcNow, "cancel", destination, null, null, 0, 0, 0, null));
         }
 
         public string GetMissionsRoute(string homeSystem = null)
@@ -1052,7 +1120,7 @@ namespace EddiMissionMonitor
                     Logging.Debug("Unable to meet missions route calculation criteria");
                 }
             }
-            EDDI.Instance.enqueueEvent(new RouteDetailsEvent(DateTime.Now, "route", nextSystem, null, missionsRouteList, routeCount, nextDistance, missionsRouteDistance, missionids));
+            EDDI.Instance.enqueueEvent(new RouteDetailsEvent(DateTime.UtcNow, "route", nextSystem, null, missionsRouteList, routeCount, nextDistance, missionsRouteDistance, missionids));
             return nextSystem;
         }
 
@@ -1190,7 +1258,7 @@ namespace EddiMissionMonitor
                 // Set destination variables
                 UpdateDestinationData(nextSystem, null, nextDistance);
             }
-            EDDI.Instance.enqueueEvent(new RouteDetailsEvent(DateTime.Now, "set", nextSystem, null, missionsRouteList, count, nextDistance, missionsRouteDistance, missionids));
+            EDDI.Instance.enqueueEvent(new RouteDetailsEvent(DateTime.UtcNow, "set", nextSystem, null, missionsRouteList, count, nextDistance, missionsRouteDistance, missionids));
             return nextSystem;
         }
 
@@ -1233,7 +1301,7 @@ namespace EddiMissionMonitor
                     UpdateDestinationData(nextSystem, null, nextDistance);
                 }
             }
-            EDDI.Instance.enqueueEvent(new RouteDetailsEvent(DateTime.Now, "update", nextSystem, null, missionsRouteList, route.Count, nextDistance, missionsRouteDistance, missionids));
+            EDDI.Instance.enqueueEvent(new RouteDetailsEvent(DateTime.UtcNow, "update", nextSystem, null, missionsRouteList, route.Count, nextDistance, missionsRouteDistance, missionids));
             return nextSystem;
         }
 
@@ -1410,7 +1478,7 @@ namespace EddiMissionMonitor
                     case "massacrethargoid":
                     case "massacrewing":
                         {
-                            if (mission.statusEDName != "Claim")
+                            if (mission.statusEDName != "Claim" && mission.expiry <= DateTime.UtcNow)
                             {
                                 mission.statusDef = MissionStatus.FromEDName("Claim");
                                 return true;

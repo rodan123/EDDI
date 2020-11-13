@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Tests.Properties;
+using Utilities;
 
 namespace UnitTests
 {
@@ -122,15 +123,8 @@ namespace UnitTests
         {
             // Test legacy data from api.eddp.co
             StarSystem system = DeserializeJsonResource<StarSystem>(Resources.sqlStarSystem1);
-
             Assert.AreEqual("Nijland Terminal", system.stations[0].name);
-            Assert.IsNull(system.stations[0].EDDBID);
             Assert.AreEqual("Pinzon Hub", system.stations[1].name);
-            Assert.IsNull(system.stations[1].EDDBID);
-
-            system = LegacyEddpService.SetLegacyData(system);
-            Assert.AreEqual(32548, system.stations[0].EDDBID);
-            Assert.AreEqual(58341, system.stations[1].EDDBID);
         }
 
         [TestMethod]
@@ -153,7 +147,6 @@ namespace UnitTests
             StarSystem starSystem = dataProviderService.GetSystemData("Sol");
 
             Assert.AreEqual("Sol", starSystem.systemname);
-            Assert.AreEqual(17072, starSystem.EDDBID);
             Assert.AreEqual(0M, starSystem.x);
             Assert.AreEqual(0M, starSystem.y);
             Assert.AreEqual(0M, starSystem.z);
@@ -204,7 +197,7 @@ namespace UnitTests
             Assert.AreEqual(20, result.totalbodies);
             Assert.AreEqual(8557, result.bodies?.FirstOrDefault(b => b?.bodyId == 0)?.EDSMID);
             Assert.AreEqual(17, result.visits);
-            Assert.AreEqual("2017-12-11T06:17:06", result.lastvisit?.ToString("s"));
+            Assert.AreEqual("2017-12-11T06:17:06Z", Dates.FromDateTimeToString(result.lastvisit));
         }
     }
 }

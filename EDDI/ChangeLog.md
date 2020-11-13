@@ -2,6 +2,70 @@
 
 Full details of the variables available for each noted event, and VoiceAttack integrations, are available in the individual [event pages](https://github.com/EDCD/EDDI/wiki/Events).
 
+### 3.7.2-b1
+  * Cargo monitor
+    * Cargo value (per unit) is now calculated as a weighted average of acquisition costs (rather than using the galactic average price).
+
+### 3.7.1
+  * Core
+    Fixed an exception when calculating distances if the second system were null (for example if a home star system were not set).
+  * Mission monitor
+    * Fixed a bug that could cause certain types of missions to flip from "Active" to "Claim" when logging into the game.
+    * Fixed a bug that caused the station to not be recorded correctly for community goal missions.
+  * Speech responder
+    * Scripts
+      * Updated the `Location` script to fix reporting station crimes and missions when it should be instead reporting system crimes and missions.
+  * VoiceAttack responder
+    * Updated EDDI.vap to correct an issue with landing pads not being reported correctly when queried.
+
+### 3.7.1-b1
+  * Core
+    * If you cancel a jump in your fleet carrier, a one minute cooldown is initiated. A `Carrier cooldown` event is now triggered to signal that this cooldown is complete.
+    * Integrated monitors can no longer be disabled. The EDDP and Galnet monitors operate independently and can still be disabled.
+    * Rollbar telemetry service can now optionally be disabled by editing configuration file at %appdata%/EDDI/eddi.json.
+    * Various bug and stability fixes.
+  * EDDN Responder
+    * Fixed a bug that could cause the incorrect commodity symbols to be forwarded to EDDN.
+  * EDSM Responder
+    * Fixed an issue with queued messages not being sent when the EDSM Responder was stopped.
+  * Inara Responder
+    * Fixed an issue with queued messages not being sent when the Inara Responder was stopped.
+  * Speech responder
+    * Test scripts can now be canceled by clicking on the "Test" button a second time while test speech is in progress.
+    * Variables
+      * Added `factions` (faction objects) to the documented properties for the `system` object.
+      * Added `imports` (array of Commodity objects) to the `station` object
+      * Added `exports` (array of Commodity objects) to the `station` object
+      * Added `prohibited` (array of Commodity objects, requires Frontier API access) to the `station object`
+      * Added `planetarystations` and `orbitalstations` to the `system` object
+      * Added `carriersignalsources` to the `system` object
+      * Added `solarday` and `solarsurfacevelocity` to the `body` object. 
+      * The `alreadymapped` and `alreadydiscovered` properties of the `body` object are now nullable - a null value indicates that the exploration status is not yet known. 
+    * Scripts
+      * Updated the `Asteroid prospected` script to fix a typo.
+      * Updated the `Bond redeemed` script to better utilize the `Humanise()` function.
+      * Updated the `Bounty incurred` script to better utilize the `Humanise()` function.
+      * Updated the `Bounty redeemed` script to better utilize the `Humanise()` function.
+      * Updated the `Cargo report` event and script to use commodity objects for the station prohibited list.
+      * Updated the `Commodity purchased` script to better utilize the `Humanise()` function.
+      * Updated the `Commodity sale check` script to better utilize the `Humanise()` function.
+      * Updated the `Commodity sold` script to better utilize the `Humanise()` function.
+      * Updated the `Crime check station` script to resolve an occasional grammar issue.
+      * Updated the `Data voucher awarded` script to better utilize the `Humanise()` function.
+      * Updated the `Discovery scan script` script improve grammar around recommending a single body to be scanned.
+      * Updated the `Market information` event and script to restore purchase, sales, and swapout checks when appropriate
+      * Updated the `Mission check galaxy` script to fix a typo.
+      * Updated the `Module purchased` script to better utilize the `Humanise()` function.
+      * Updated the `Module retrieved` script to better utilize the `Humanise()` function.
+      * Updated the `Module sold` script to better utilize the `Humanise()` function.
+      * Updated the `Module sold from storage` script to better utilize the `Humanise()` function.
+      * Updated the `Module stored` script to better utilize the `Humanise()` function.
+      * Updated the `Module transfer` script to better utilize the `Humanise()` function.
+      * Updated the `Ship repaired` event and script to remove hard-coded english strings, standardize handling across stations and fleet carriers, and simplify redundant variables.
+      * Updated the `Ship transfer initiated` script to better utilize the `Humanise()` function.
+      * Updated the `Signal detected` event and script to include a new `unique` property and fix a typo
+      * Updated the `System report` script to separate carriers from stations
+
 ### 3.7.0
   * Promote 3.7.0-rc1 to final
   * Fixed a bug that could cause the `Ship loadout` event not to fire if piloting an Eagle with a module slotted in the military slot

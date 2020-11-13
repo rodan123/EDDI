@@ -48,11 +48,11 @@ namespace EddiJournalMonitor
                 {
                     Task.Run(async () =>
                     {
-                        int timeout;
+                        int timeout = 0;
                         do
                         {
                             await Task.Delay(1500);
-                            timeout = +1;
+                            timeout++;
                         }
                         while (EDDI.Instance.CurrentStarSystem.bodies.Count == 0 && timeout < 3);
                         callback(@event);
@@ -595,19 +595,19 @@ namespace EddiJournalMonitor
                                                 {
                                                     hardpoint.size = 0;
                                                 }
-                                                else if (hardpoint.name.StartsWith("Small"))
+                                                else if (hardpoint.name.StartsWith("Small", StringComparison.InvariantCultureIgnoreCase))
                                                 {
                                                     hardpoint.size = 1;
                                                 }
-                                                else if (hardpoint.name.StartsWith("Medium"))
+                                                else if (hardpoint.name.StartsWith("Medium", StringComparison.InvariantCultureIgnoreCase))
                                                 {
                                                     hardpoint.size = 2;
                                                 }
-                                                else if (hardpoint.name.StartsWith("Large"))
+                                                else if (hardpoint.name.StartsWith("Large", StringComparison.InvariantCultureIgnoreCase))
                                                 {
                                                     hardpoint.size = 3;
                                                 }
-                                                else if (hardpoint.name.StartsWith("Huge"))
+                                                else if (hardpoint.name.StartsWith("Huge", StringComparison.InvariantCultureIgnoreCase))
                                                 {
                                                     hardpoint.size = 4;
                                                 }
@@ -637,52 +637,52 @@ namespace EddiJournalMonitor
                                                     hardpoints.Add(hardpoint);
                                                 }
                                             }
-                                            else if (slot == "PaintJob")
+                                            else if (slot.Equals("PaintJob", StringComparison.InvariantCultureIgnoreCase))
                                             {
                                                 // This is a paintjob
                                                 paintjob = item;
                                             }
-                                            else if (slot == "PlanetaryApproachSuite")
+                                            else if (slot.Equals("PlanetaryApproachSuite", StringComparison.InvariantCultureIgnoreCase))
                                             {
                                                 // Ignore planetary approach suite for now
                                             }
-                                            else if (slot.StartsWith("Bobble"))
+                                            else if (slot.StartsWith("Bobble", StringComparison.InvariantCultureIgnoreCase))
                                             {
                                                 // Ignore bobbles
                                             }
-                                            else if (slot.StartsWith("Decal"))
+                                            else if (slot.StartsWith("Decal", StringComparison.InvariantCultureIgnoreCase))
                                             {
                                                 // Ignore decals
                                             }
-                                            else if (slot.Contains("String_Lights"))
+                                            else if (slot.StartsWith("String_Lights", StringComparison.InvariantCultureIgnoreCase))
                                             {
                                                 // Ignore string lights
                                             }
-                                            else if (slot == "WeaponColour")
+                                            else if (slot.Equals("WeaponColour", StringComparison.InvariantCultureIgnoreCase))
                                             {
                                                 // Ignore weapon colour
                                             }
-                                            else if (slot == "EngineColour")
+                                            else if (slot.Equals("EngineColour", StringComparison.InvariantCultureIgnoreCase))
                                             {
                                                 // Ignore engine colour
                                             }
-                                            else if (slot.StartsWith("ShipKit"))
+                                            else if (slot.StartsWith("ShipKit", StringComparison.InvariantCultureIgnoreCase))
                                             {
                                                 // Ignore ship kits
                                             }
-                                            else if (slot.StartsWith("ShipName") || slot.StartsWith("ShipID"))
+                                            else if (slot.StartsWith("ShipName", StringComparison.InvariantCultureIgnoreCase) || slot.StartsWith("ShipID", StringComparison.InvariantCultureIgnoreCase))
                                             {
                                                 // Ignore nameplates
                                             }
-                                            else if (slot == "VesselVoice")
+                                            else if (slot.Equals("VesselVoice", StringComparison.InvariantCultureIgnoreCase))
                                             {
                                                 // Ignore the chosen voice
                                             }
-                                            else if (slot == "DataLinkScanner")
+                                            else if (slot.Equals("DataLinkScanner", StringComparison.InvariantCultureIgnoreCase))
                                             {
                                                 // Ignore the data link scanner
                                             }
-                                            else if (slot == "CodexScanner")
+                                            else if (slot.Equals("CodexScanner", StringComparison.InvariantCultureIgnoreCase))
                                             {
                                                 // Ignore the codex scanner
                                             }
@@ -716,7 +716,7 @@ namespace EddiJournalMonitor
                                                 }
 
                                                 // Get the optimal mass for the Frame Shift Drive
-                                                if (slot == "FrameShiftDrive")
+                                                if (slot.Equals("FrameShiftDrive", StringComparison.InvariantCultureIgnoreCase))
                                                 {
                                                     string fsd = module.@class + module.grade;
                                                     Constants.baseOptimalMass.TryGetValue(fsd, out optimalMass);
@@ -724,7 +724,7 @@ namespace EddiJournalMonitor
                                                     {
                                                         foreach (EngineeringModifier modifier in modifiers)
                                                         {
-                                                            if (modifier.EDName == "FSDOptimalMass")
+                                                            if (modifier.EDName.Equals("FSDOptimalMass", StringComparison.InvariantCultureIgnoreCase))
                                                             {
                                                                 optimalMass = (decimal)modifier.currentValue;
                                                             }
@@ -837,8 +837,8 @@ namespace EddiJournalMonitor
                                     }
 
                                     // Scan status
-                                    bool alreadydiscovered = JsonParsing.getOptionalBool(data, "WasDiscovered") ?? true;
-                                    bool alreadymapped = JsonParsing.getOptionalBool(data, "WasMapped") ?? false;
+                                    bool? alreadydiscovered = JsonParsing.getOptionalBool(data, "WasDiscovered");
+                                    bool? alreadymapped = JsonParsing.getOptionalBool(data, "WasMapped");
 
                                     // Rings
                                     data.TryGetValue("Rings", out object val);
@@ -1007,7 +1007,14 @@ namespace EddiJournalMonitor
                                     long marketId = JsonParsing.getLong(data, "MarketID");
                                     string station = JsonParsing.getString(data, "StationName");
                                     string system = JsonParsing.getString(data, "StarSystem");
-                                    events.Add(new ShipyardEvent(timestamp, marketId, station, system) { raw = line, fromLoad = fromLogLoad });
+                                    var info = ShipyardInfo.FromFile();
+                                    if (info.PriceList != null && info.MarketID == marketId
+                                        && info.StarSystem == system
+                                        && info.StationName == station
+                                        && info.Horizons == EDDI.Instance.inHorizons)
+                                    {
+                                        events.Add(new ShipyardEvent(timestamp, marketId, station, system, info) { raw = line, fromLoad = fromLogLoad });
+                                    }
                                 }
                                 handled = true;
                                 break;
@@ -1516,7 +1523,14 @@ namespace EddiJournalMonitor
                                     long marketId = JsonParsing.getLong(data, "MarketID");
                                     string station = JsonParsing.getString(data, "StationName");
                                     string system = JsonParsing.getString(data, "StarSystem");
-                                    events.Add(new OutfittingEvent(timestamp, marketId, station, system) { raw = line, fromLoad = fromLogLoad });
+                                    var info = OutfittingInfo.FromFile();
+                                    if (info.Items != null && info.MarketID == marketId
+                                        && info.StarSystem == system
+                                        && info.StationName == station
+                                        && info.Horizons == EDDI.Instance.inHorizons)
+                                    {
+                                        events.Add(new OutfittingEvent(timestamp, marketId, station, system, info) { raw = line, fromLoad = fromLogLoad });
+                                    }
                                 }
                                 handled = true;
                                 break;
@@ -2042,19 +2056,22 @@ namespace EddiJournalMonitor
                                 {
                                     long? systemAddress = JsonParsing.getLong(data, "SystemAddress");
 
-                                    SignalSource source = GetSignalSource(data);
-                                    string spawningFaction = getFactionName(data, "SpawningFaction") ?? Superpower.None.localizedName; // the minor faction, if relevant
-                                    decimal? secondsRemaining = JsonParsing.getOptionalDecimal(data, "TimeRemaining"); // remaining lifetime in seconds, if relevant
+                                    SignalSource source = GetSignalSourceName(data);
+                                    source.spawningFaction = getFactionName(data, "SpawningFaction") ?? Superpower.None.localizedName; // the minor faction, if relevant
+                                    var secondsRemaining = JsonParsing.getOptionalDecimal(data, "TimeRemaining"); // remaining lifetime in seconds, if relevant
+                                    source.expiry = secondsRemaining is null ? (DateTime?)null : timestamp.AddSeconds((double)(secondsRemaining));
 
                                     string spawningstate = JsonParsing.getString(data, "SpawningState");
                                     string normalizedSpawningState = spawningstate?.Replace("$FactionState_", "")?.Replace("_desc;", "");
-                                    FactionState spawningState = FactionState.FromEDName(normalizedSpawningState) ?? new FactionState();
-                                    spawningState.fallbackLocalizedName = JsonParsing.getString(data, "SpawningState_Localised");
+                                    source.spawningState = FactionState.FromEDName(normalizedSpawningState) ?? new FactionState();
+                                    source.spawningState.fallbackLocalizedName = JsonParsing.getString(data, "SpawningState_Localised");
 
-                                    int? threatLevel = JsonParsing.getOptionalInt(data, "ThreatLevel") ?? 0;
-                                    bool? isStation = JsonParsing.getOptionalBool(data, "IsStation") ?? false;
+                                    source.threatLevel = JsonParsing.getOptionalInt(data, "ThreatLevel") ?? 0;
+                                    source.isStation = JsonParsing.getOptionalBool(data, "IsStation") ?? false;
 
-                                    events.Add(new SignalDetectedEvent(timestamp, systemAddress, source, spawningState, spawningFaction, secondsRemaining, threatLevel, isStation) { raw = line, fromLoad = fromLogLoad });
+                                    bool unique = EDDI.Instance.CurrentStarSystem.signalsources.Contains(source.localizedName);
+                                    
+                                    events.Add(new SignalDetectedEvent(timestamp, systemAddress, source, unique) { raw = line, fromLoad = fromLogLoad });
                                 }
                                 handled = true;
                                 break;
@@ -2150,7 +2167,7 @@ namespace EddiJournalMonitor
                                 break;
                             case "USSDrop":
                                 {
-                                    SignalSource source = GetSignalSource(data);
+                                    SignalSource source = GetSignalSourceName(data);
                                     data.TryGetValue("USSThreat", out object val);
                                     int threat = (int)(long)val;
                                     events.Add(new EnteredSignalSourceEvent(timestamp, source, threat) { raw = line, fromLoad = fromLogLoad });
@@ -2162,7 +2179,13 @@ namespace EddiJournalMonitor
                                     long marketId = JsonParsing.getLong(data, "MarketID");
                                     string station = JsonParsing.getString(data, "StationName");
                                     string system = JsonParsing.getString(data, "StarSystem");
-                                    events.Add(new MarketEvent(timestamp, marketId, station, system) { raw = line, fromLoad = fromLogLoad });
+                                    var info = MarketInfo.FromFile();
+                                    if (info != null && info.MarketID == marketId
+                                        && info.StarSystem == system
+                                        && info.StationName == station)
+                                    {
+                                        events.Add(new MarketEvent(timestamp, marketId, station, system, info) { raw = line, fromLoad = fromLogLoad });
+                                    }
                                 }
                                 handled = true;
                                 break;
@@ -2254,7 +2277,7 @@ namespace EddiJournalMonitor
                                     decimal? quality = JsonParsing.getOptionalDecimal(data, "Quality"); //
                                     string experimentalEffect = JsonParsing.getString(data, "ApplyExperimentalEffect"); //
 
-                                    string ship = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship monitor"))?.GetCurrentShip().model;
+                                    string ship = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship monitor"))?.GetCurrentShip().EDName;
                                     Compartment compartment = parseShipCompartment(ship, JsonParsing.getString(data, "Slot")); //
                                     compartment.module = Module.FromEDName(JsonParsing.getString(data, "Module"));
                                     List<CommodityAmount> commodities = new List<CommodityAmount>();
@@ -2679,10 +2702,10 @@ namespace EddiJournalMonitor
                                     Module module = Module.FromEDName(modulename);
                                     if (module != null)
                                     {
-                                        if (module.mount != null)
+                                        if (module.Mount != null)
                                         {
                                             // This is a weapon so provide a bit more information
-                                            string mount = module.LocalizedMountName();
+                                            string mount = module.mount;
                                             modulename = "" + module.@class.ToString() + module.grade + " " + mount + " " + module.localizedName;
                                         }
                                         else
@@ -2740,7 +2763,7 @@ namespace EddiJournalMonitor
                                     {
                                         events.Add(new TradeVoucherRedeemedEvent(timestamp, rewards, amount, brokerpercentage) { raw = line, fromLoad = fromLogLoad });
                                     }
-                                    else if (type == "settlement" || type == "scannable")
+                                    else if (type == "codex" || type == "settlement" || type == "scannable")
                                     {
                                         events.Add(new DataVoucherRedeemedEvent(timestamp, rewards, amount, brokerpercentage) { raw = line, fromLoad = fromLogLoad });
                                     }
@@ -2823,7 +2846,7 @@ namespace EddiJournalMonitor
                                 {
                                     long cgid = JsonParsing.getLong(data, "CGID");
 
-                                    events.Add(new MissionAbandonedEvent(timestamp, cgid, "MISSION_CommunityGoal", 0));
+                                    events.Add(new MissionAbandonedEvent(timestamp, cgid, "MISSION_CommunityGoal", 0) { raw = line, fromLoad = fromLogLoad });
                                 }
                                 handled = true;
                                 break;
@@ -3095,15 +3118,15 @@ namespace EddiJournalMonitor
                                     Module module = Module.FromEDName(item);
                                     if (module != null)
                                     {
-                                        if (module.mount != null)
+                                        if (module.Mount != null)
                                         {
                                             // This is a weapon so provide a bit more information
                                             string mount;
-                                            if (module.mount == Module.ModuleMount.Fixed)
+                                            if (module.Mount == Module.ModuleMount.Fixed)
                                             {
                                                 mount = "fixed";
                                             }
-                                            else if (module.mount == Module.ModuleMount.Gimballed)
+                                            else if (module.Mount == Module.ModuleMount.Gimballed)
                                             {
                                                 mount = "gimballed";
                                             }
@@ -3132,45 +3155,22 @@ namespace EddiJournalMonitor
                                     long price = (long)val;
 
                                     // Starting with version 3.7, the "Repair" event may contain one item or multiple items
-                                    // (With multiple items being a list of module names)
+                                    // Each item is either a description (e.g. all, wear, hull, paint) or the name of a module
                                     data.TryGetValue("Items", out object itemsVal);
                                     if (itemsVal != null)
                                     {
-                                        List<string> items = new List<string>();
-                                        List<Module> modules = new List<Module>();
-                                        if (itemsVal is List<object> moduleEdNames)
+                                        if (itemsVal is List<object> itemEDNames)
                                         {
-                                            foreach (string moduleEdName in moduleEdNames)
-                                            {
-                                                items.Add(moduleEdName);
-                                                var module = Module.FromEDName(moduleEdName);
-                                                if (module != null)
-                                                {
-                                                    modules.Add(module);
-                                                }
-                                            }
-                                            events.Add(new ShipRepairedEvent(timestamp, items, modules, price) { raw = line, fromLoad = fromLogLoad });
+                                            events.Add(new ShipRepairedEvent(timestamp, itemEDNames.ConvertAll(o => o.ToString()).ToList(), price) { raw = line, fromLoad = fromLogLoad });
                                         }
                                     }
                                     else
                                     {
-                                        // Item might be all, wear, hull, paint, or the name of a module
-                                        string item = JsonParsing.getString(data, "Item");
-
                                         // We have a single "item"
-                                        if (!string.IsNullOrEmpty(item))
+                                        string itemEDName = JsonParsing.getString(data, "Item");
+                                        if (!string.IsNullOrEmpty(itemEDName))
                                         {
-                                            Module module = null;
-                                            if (item == "Wear")
-                                            {
-                                                item = EddiDataDefinitions.Properties.Modules.ShipIntegrity;
-                                            }
-                                            else if (item != "All" && item != "Paint")
-                                            {
-                                                // Item might be a module
-                                                module = Module.FromEDName(item);
-                                            }
-                                            events.Add(new ShipRepairedEvent(timestamp, item, module, price) { raw = line, fromLoad = fromLogLoad });
+                                            events.Add(new ShipRepairedEvent(timestamp, itemEDName, price) { raw = line, fromLoad = fromLogLoad });
                                         }
                                     }
                                 }
@@ -3190,7 +3190,7 @@ namespace EddiJournalMonitor
                                 {
                                     data.TryGetValue("Cost", out object val);
                                     long price = (long)val;
-                                    events.Add(new ShipRepairedEvent(timestamp, "All", null, price) { raw = line, fromLoad = fromLogLoad });
+                                    events.Add(new ShipRepairedEvent(timestamp, "All", price) { raw = line, fromLoad = fromLogLoad });
                                 }
                                 handled = true;
                                 break;
@@ -3868,21 +3868,20 @@ namespace EddiJournalMonitor
                                         // Generate secondary tasks to spawn events when the carrier locks down landing pads and when it begins jumping.
                                         // These may be cancelled via the cancellation token source above.
 
-                                        // Jumps seems to always be scheduled for 16 minutes after the request, minus the absolute value of the difference from 10 seconds after the minute
-                                        // (i.e. between 15 minutes and 15 minutes 50 seconds after the request)
-                                        int varSeconds = Math.Abs(10 - timestamp.Second);
+                                        // Jumps seem to be scheduled for 10 seconds after the minute, between 15:10 and 16:10 after the request
+                                        int varSeconds = (60 + 10) - timestamp.Second;
                                         var tasks = new List<Task>();
 
                                         tasks.Add(Task.Run(async () =>
                                         {
-                                            int timeMs = (Constants.carrierPreJumpSeconds - varSeconds - Constants.carrierLandingPadLockdownSeconds) * 1000;
+                                            int timeMs = (Constants.carrierPreJumpSeconds + varSeconds - Constants.carrierLandingPadLockdownSeconds) * 1000;
                                             await Task.Delay(timeMs, carrierJumpCancellationTS.Token);
                                             EDDI.Instance.enqueueEvent(new CarrierPadsLockedEvent(timestamp.AddMilliseconds(timeMs), carrierId) { fromLoad = fromLogLoad });
                                         }, carrierJumpCancellationTS.Token));
 
                                         tasks.Add(Task.Run(async () =>
                                         {
-                                            int timeMs = (Constants.carrierPreJumpSeconds - varSeconds) * 1000;
+                                            int timeMs = (Constants.carrierPreJumpSeconds + varSeconds) * 1000;
                                             await Task.Delay(timeMs, carrierJumpCancellationTS.Token);
                                             string originStarSystem = EDDI.Instance.CurrentStarSystem?.systemname;
                                             long? originSystemAddress = EDDI.Instance.CurrentStarSystem?.systemAddress;
@@ -3892,7 +3891,7 @@ namespace EddiJournalMonitor
                                         tasks.Add(Task.Run(async () =>
                                         {
                                             // This event will be canceled and replaced by an updated `CarrierCooldownEvent` if the owner is aboard the fleet carrier and sees the `CarrierJumpedEvent`.
-                                            int timeMs = (Constants.carrierPreJumpSeconds - varSeconds + Constants.carrierPostJumpSeconds) * 1000; // Cooldown timer starts when the carrier jump is engaged, not when the jump ends
+                                            int timeMs = (Constants.carrierPreJumpSeconds + varSeconds + Constants.carrierPostJumpSeconds) * 1000; // Cooldown timer starts when the carrier jump is engaged, not when the jump ends
                                             await Task.Delay(timeMs, carrierJumpCancellationTS.Token);
                                             EDDI.Instance.enqueueEvent(new CarrierCooldownEvent(timestamp.AddMilliseconds(timeMs), systemName, systemAddress, bodyName, bodyId, null, null, null, carrierId) { fromLoad = fromLogLoad });
                                         }, carrierJumpCancellationTS.Token));
@@ -3926,6 +3925,15 @@ namespace EddiJournalMonitor
                                         carrierJumpCancellationTS.Cancel();
                                     }
                                     events.Add(new CarrierJumpCancelledEvent(timestamp, carrierId) { raw = line, fromLoad = fromLogLoad });
+                                    if (!fromLogLoad)
+                                    {
+                                        Task.Run(async () =>
+                                        {
+                                            int timeMs = 60000; // Cooldown timer starts when the carrier jump is cancelled and lasts for one minute
+                                            await Task.Delay(timeMs);
+                                            EDDI.Instance.enqueueEvent(new CarrierCooldownEvent(timestamp.AddMilliseconds(timeMs), null, null, null, null, null, null, null, carrierId) { fromLoad = fromLogLoad });
+                                        }).ConfigureAwait(false);
+                                    }
                                 }
                                 handled = true;
                                 break;
@@ -4241,7 +4249,7 @@ namespace EddiJournalMonitor
             return factions;
         }
 
-        private static SignalSource GetSignalSource(IDictionary<string, object> data)
+        private static SignalSource GetSignalSourceName(IDictionary<string, object> data)
         {
             // The source may be a direct source or a USS. If a USS, we want the USS type.
             SignalSource source;
@@ -4458,25 +4466,6 @@ namespace EddiJournalMonitor
 
         public void PostHandle(Event @event)
         {
-            if (@event is SignalDetectedEvent)
-            {
-                eventSignalDetected((SignalDetectedEvent)@event);
-            }
-        }
-
-        private bool eventSignalDetected(SignalDetectedEvent @event)
-        {
-            if (EDDI.Instance.CurrentStarSystem != null && !@event.fromLoad)
-            {
-                if (EDDI.Instance.CurrentStarSystem.systemAddress == @event.systemAddress)
-                {
-                    if (!EDDI.Instance.CurrentStarSystem.signalsources.Exists(s => s == @event.source))
-                    {
-                        EDDI.Instance.CurrentStarSystem.signalsources.Add(@event.source);
-                    }
-                }
-            }
-            return true;
         }
 
         public void HandleProfile(JObject profile)

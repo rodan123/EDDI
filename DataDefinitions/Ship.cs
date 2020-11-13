@@ -33,11 +33,11 @@ namespace EddiDataDefinitions
 
         /// <summary>the size of this ship</summary>
         [JsonIgnore]
-        public LandingPadSize Size { get; set; }
+        public LandingPadSize Size { get; set; } = LandingPadSize.Small;
 
         /// <summary>the spoken size of this ship</summary>
         [JsonIgnore]
-        public string size => Size.localizedName;
+        public string size => (Size ?? LandingPadSize.Small).localizedName;
 
         /// <summary>the size of the military compartment slots</summary>
         [JsonIgnore]
@@ -378,14 +378,14 @@ namespace EddiDataDefinitions
             cargohatch = new Module();
         }
 
-        public Ship(long EDID, string EDName, string Manufacturer, string Model, List<Translation> PhoneticModel, string Size, int? MilitarySize, decimal reservoirFuelTankSize)
+        public Ship(long EDID, string EDName, string Manufacturer, string Model, List<Translation> PhoneticModel, LandingPadSize Size, int? MilitarySize, decimal reservoirFuelTankSize)
         {
             this.EDID = EDID;
             this.EDName = EDName;
             manufacturer = Manufacturer;
             model = Model;
             phoneticModel = PhoneticModel;
-            this.Size = LandingPadSize.FromEDName(Size);
+            this.Size = Size;
             militarysize = MilitarySize;
             health = 100M;
             hardpoints = new List<Hardpoint>();
@@ -411,8 +411,7 @@ namespace EddiDataDefinitions
 
         public string SpokenName(string defaultname = null)
         {
-            string ship = (defaultname ?? phoneticmodel) ?? Properties.Ship._ship;
-            string result = Properties.Ship.your + " " + ship;
+            string result;
             if (!string.IsNullOrWhiteSpace(phoneticName))
             {
                 result = "<phoneme alphabet=\"ipa\" ph=\"" + phoneticName + "\">" + name + "</phoneme>";
@@ -420,6 +419,11 @@ namespace EddiDataDefinitions
             else if (!string.IsNullOrWhiteSpace(name))
             {
                 result = name;
+            }
+            else
+            {
+                string ship = (defaultname ?? phoneticmodel) ?? Properties.Ship._ship;
+                result = Properties.Ship.your + " " + ship;
             }
             return result;
         }
@@ -448,15 +452,7 @@ namespace EddiDataDefinitions
         public decimal? Distance(decimal? fromX, decimal? fromY, decimal? fromZ)
         {
             // Work out the distance to the system where the ship is stored if we can
-            if (x is null || y is null || z is null || fromX is null || fromY is null || fromZ is null)
-            {
-                // We don't know how far away the ship is
-                return null;
-            }
-            decimal dx = (fromX - x) ?? 0M;
-            decimal dy = (fromY - y) ?? 0M;
-            decimal dz = (fromZ - z) ?? 0M;
-            return (decimal)(Math.Sqrt((double)((dx * dx) + (dy * dy) + (dz * dz))));
+            return Functions.DistanceFromCoordinates(x, y, z, fromX, fromY, fromZ);
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")] // this usage is perfectly correct    
@@ -545,21 +541,21 @@ namespace EddiDataDefinitions
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
         }
 
-        public static Ship FromShipyardInfo(ShipyardInfo item)
+        public static Ship FromShipyardInfo(ShipyardInfoItem item)
         {
-            Ship ship = ShipDefinitions.FromEliteID(item.id) ?? ShipDefinitions.FromEDModel(item.shiptype);
+            Ship ship = ShipDefinitions.FromEliteID(item.EliteID) ?? ShipDefinitions.FromEDModel(item.edModel);
             if (ship == null)
             {
                 // Unknown ship; report the full object so that we can update the definitions 
-                Logging.Info("Ship definition error: " + item.shiptype);
+                Logging.Info("Ship definition error: " + item.edModel);
 
                 // Create a basic ship definition & supplement from the info available 
                 ship = new Ship
                 {
-                    EDName = item.shiptype
+                    EDName = item.edModel
                 };
             }
-            ship.value = item.shipprice;
+            ship.value = item.shipPrice;
 
             return ship;
         }

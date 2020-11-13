@@ -72,6 +72,9 @@
     <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <HintPath>..\packages\EntityFramework.6.2.0\lib\net45\EntityFramework.SqlServer.dll</HintPath>
     </Reference>
+    <Reference Include="JetBrains.Annotations, Version=2020.1.0.0, Culture=neutral, PublicKeyToken=1010a0d8d6380325, processorArchitecture=MSIL">
+      <HintPath>..\packages\JetBrains.Annotations.2020.1.0\lib\net20\JetBrains.Annotations.dll</HintPath>
+    </Reference>
     <Reference Include="MathNet.Numerics, Version=4.4.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\MathNet.Numerics.4.4.0\lib\net461\MathNet.Numerics.dll</HintPath>
     </Reference>
@@ -84,9 +87,6 @@
     </Reference>
     <Reference Include="RestSharp, Version=106.3.1.0, Culture=neutral, PublicKeyToken=598062e77f915f75, processorArchitecture=MSIL">
       <HintPath>..\packages\RestSharp.106.3.1\lib\net452\RestSharp.dll</HintPath>
-    </Reference>
-    <Reference Include="Rollbar, Version=1.1.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Rollbar.1.1.1\lib\net471\Rollbar.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Collections.Immutable, Version=1.2.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -140,8 +140,9 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
-    <Compile Include="CapiShipyardTests.cs" />
+    <Compile Include="CapiTests.cs" />
     <Compile Include="BgsDataTests.cs" />
+    <Compile Include="UtilityTests.cs" />
     <Compile Include="InaraTests.cs" />
     <Compile Include="CrimeMonitorTests.cs" />
     <Compile Include="NavigationServiceTests.cs" />
@@ -309,6 +310,10 @@
     <None Include="Properties\CapitalSystems.json" />
     <None Include="Properties\cubeSystemsAroundSol.json" />
     <None Include="Properties\inaraCmdrs.json" />
+    <EmbeddedResource Include="Properties\bgsEddbSystemResponse.json" />
+    <EmbeddedResource Include="Properties\bgsEddbSystem.json" />
+    <EmbeddedResource Include="Properties\market.json" />
+    <None Include="Properties\Libby Horizons.json" />
     <None Include="Properties\Sol.json" />
     <None Include="Properties\SolBodies.json" />
     <None Include="Properties\SolFactions.json" />

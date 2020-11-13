@@ -1,4 +1,5 @@
-﻿using EddiDataDefinitions;
+﻿using EddiBgsService;
+using EddiDataDefinitions;
 using EddiStarMapService;
 using System;
 using System.Collections.Generic;
@@ -57,7 +58,6 @@ namespace EddiDataProviderService
                     {
                         body.systemname = starSystem.systemname;
                         body.systemAddress = starSystem.systemAddress;
-                        body.systemEDDBID = starSystem.EDDBID;
                     }
                     starSystem.AddOrUpdateBodies(bodies);
                 }
@@ -77,6 +77,7 @@ namespace EddiDataProviderService
                         starSystem.stations = SetStationFactionData(stations, factions);
                         starSystem.stations = stations;
                     }
+                    starSystem = new BgsService().GetSystemPowerplay(starSystem);
                 }
 
                 starSystem = LegacyEddpService.SetLegacyData(starSystem, showInformation, showBodies, showStations);

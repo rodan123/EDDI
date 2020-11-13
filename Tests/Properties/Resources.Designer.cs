@@ -73,6 +73,26 @@ namespace Tests.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        public static byte[] bgsEddbSystem {
+            get {
+                object obj = ResourceManager.GetObject("bgsEddbSystem", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] bgsEddbSystemResponse {
+            get {
+                object obj = ResourceManager.GetObject("bgsEddbSystemResponse", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         public static byte[] bgsFaction {
             get {
                 object obj = ResourceManager.GetObject("bgsFaction", resourceCulture);
@@ -193,9 +213,29 @@ namespace Tests.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        public static byte[] Libby_Horizons {
+            get {
+                object obj = ResourceManager.GetObject("Libby_Horizons", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         public static byte[] loadout {
             get {
                 object obj = ResourceManager.GetObject("loadout", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] market {
+            get {
+                object obj = ResourceManager.GetObject("market", resourceCulture);
                 return ((byte[])(obj));
             }
         }

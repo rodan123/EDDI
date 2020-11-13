@@ -10,7 +10,7 @@ namespace Utilities
     {
         public const string EDDI_NAME = "EDDI";
         public const string EDDI_URL_PROTOCOL = "eddi";
-        public static Version EDDI_VERSION = new Version(3, 7, 0, Version.TestPhase.final, 0);
+        public static Version EDDI_VERSION = new Version(3, 7, 2, Version.TestPhase.b, 1);
         public const string EDDI_SERVER_URL = "https://edcd.github.io/EDDP/";
         public static readonly string EDDI_SYSTEM_MUTEX_NAME = $"{EDDI_SERVER_URL}/{EDDI_NAME}/{Environment.GetEnvironmentVariable("UserName")}";
 
@@ -41,6 +41,7 @@ namespace Utilities
         public const decimal earthPressurePascals = 101231.65625M;
         public const double earthMassKg = 5.9722e24;
         public const double solMassKg = 1.98847e30;
+        public const double gravitationalConstant = 6.67430e-11; // cubic meters / (kilograms * seconds squared)
 
         // Frame Shift Drive Constants
         public static Dictionary<string, decimal> baseOptimalMass = new Dictionary<string, decimal>()
@@ -69,7 +70,7 @@ namespace Utilities
         };
 
         // Fleet Carrier Constants
-        public const int carrierPreJumpSeconds = 960; // 16 minutes to spool up before jumping (minus the absolute value of the difference from 10 seconds after the minute)
+        public const int carrierPreJumpSeconds = 900; // 15 minutes to spool up before jumping (plus the difference to tne next 10 seconds after the minute)
         public const int carrierJumpSeconds = 72; // 72 seconds from when the jump is engaged to when it completes.
         public const int carrierPostJumpSeconds = 290; // 4 minutes 50 seconds cool down
         public const int carrierLandingPadLockdownSeconds = 180; // Landing pads are locked down 3 minutes prior to jumping

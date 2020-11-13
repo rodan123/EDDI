@@ -1100,6 +1100,7 @@ namespace EddiDataDefinitions
                 new Module(999999947, "Int_CodexScanner", -1, "CompositionScanner", 0, "I", -1),
                 new Module(999999948, "Krait_Light_Cockpit", -1, "CockpitCanopy", 1, "I", 0, 128839281),
                 new Module(999999949, "Mamba_Cockpit", -1, "CockpitCanopy", 1, "I", 0, 128915979),
+                new Module(999999950, "TypeX_2_Cockpit", -1, "CockpitCanopy", 1, "I", 0, 128816581),
 
                 // Fighter modules
                 new Module(899990000, "Empire_Fighter_Cockpit", -1, "CockpitCanopy", 1, "I", 0, -1),
@@ -1173,7 +1174,7 @@ namespace EddiDataDefinitions
 
         private static Dictionary<long, Module> ModulesByEliteID;
 
-        private static HashSet<string> PowerPlayModules = new HashSet<string>()
+        public static HashSet<string> PowerPlayModules = new HashSet<string>()
         {
             "Int_ShieldGenerator_Size1_Class5_Strong",
             "Int_ShieldGenerator_Size2_Class5_Strong",
@@ -1240,15 +1241,15 @@ namespace EddiDataDefinitions
             }
         }
 
-        public static Module FromOutfittingInfo(OutfittingInfo item)
+        public static Module FromOutfittingInfo(OutfittingInfoItem item)
         {
-            Module module = new Module(FromEliteID(item.id, item) ?? FromEDName(item.name, item) ?? new Module());
+            Module module = new Module(FromEliteID(item.EliteID, item) ?? FromEDName(item.edName, item) ?? new Module());
             if (module.invariantName == null)
             {
                 // Create a basic module & supplement from the info available
-                module = new Module(item.id, item.name, -1, item.name, -1, "", item.buyprice);
+                module = new Module(item.EliteID, item.edName, -1, item.edName, -1, "", item.buyPrice);
             }
-            module.price = item.buyprice;
+            module.price = item.buyPrice;
 
             return module;
         }

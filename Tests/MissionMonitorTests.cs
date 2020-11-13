@@ -6,6 +6,7 @@ using EddiMissionMonitor;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
 using System.Linq;
+using Utilities;
 
 namespace UnitTests
 {
@@ -18,7 +19,7 @@ namespace UnitTests
         List<Event> events;
 
         [TestInitialize]
-        private void StartTestMissionMonitor()
+        public void StartTestMissionMonitor()
         {
             MakeSafe();
         }
@@ -189,7 +190,9 @@ namespace UnitTests
             line = @"{ ""timestamp"":""2018-08-26T00:50:48Z"", ""event"":""MissionAbandoned"", ""Name"":""Mission_Courier_Elections_name"", ""Fine"":50000, ""MissionID"":413563499 }";
             events = JournalMonitor.ParseJournalEntry(line);
             Assert.IsTrue(events.Count == 1);
-            missionMonitor._handleMissionAbandonedEvent((MissionAbandonedEvent)events[0]);
+            missionMonitor.handleMissionAbandonedEvent((MissionAbandonedEvent)events[0]);
+            Assert.AreEqual("Failed", missionMonitor.missions.SingleOrDefault(m => m.missionid == 413563499)?.statusEDName);
+            missionMonitor._postHandleMissionAbandonedEvent((MissionAbandonedEvent)events[0]);
             Assert.AreEqual(2, missionMonitor.missions.Count);
 
             //MissionAcceptedEvent - 'AltruismCredits'
@@ -252,7 +255,9 @@ namespace UnitTests
             line = @"{ ""timestamp"":""2018-08-26T00:40:14Z"", ""event"":""MissionCompleted"", ""Faction"":""HIP 20277 Inc"", ""Name"":""Mission_Salvage_Planet_name"", ""MissionID"":413563829, ""Commodity"":""$Landmines_Name;"", ""Commodity_Localised"":""Landmines"", ""Count"":4, ""DestinationSystem"":""Carthage"", ""Reward"":465824, ""FactionEffects"":[ { ""Faction"":""HIP 20277 Inc"", ""Effects"":[ { ""Effect"":""$MISSIONUTIL_Interaction_Summary_civilUnrest_down;"", ""Effect_Localised"":""$#MinorFaction; are happy to report improved civil contentment, making a period of civil unrest unlikely."", ""Trend"":""DownGood"" } ], ""Influence"":[ { ""SystemAddress"":84053791442, ""Trend"":""UpGood"" } ], ""Reputation"":""UpGood"" } ] }";
             events = JournalMonitor.ParseJournalEntry(line);
             Assert.IsTrue(events.Count == 1);
-            missionMonitor._handleMissionCompletedEvent((MissionCompletedEvent)events[0]);
+            missionMonitor.handleMissionCompletedEvent((MissionCompletedEvent)events[0]);
+            Assert.AreEqual("Complete", missionMonitor.missions.SingleOrDefault(m => m.missionid == 413563829)?.statusEDName);
+            missionMonitor._postHandleMissionCompletedEvent((MissionCompletedEvent)events[0]);
             Assert.AreEqual(5, missionMonitor.missions.Count);
 
             //MissionFailedEvent
@@ -273,7 +278,9 @@ namespace UnitTests
             Assert.AreEqual(50000, report.amount);
             crimeData.ToFile();
 
-            missionMonitor._handleMissionFailedEvent((MissionFailedEvent)events[0]);
+            missionMonitor.handleMissionFailedEvent((MissionFailedEvent)events[0]);
+            Assert.AreEqual("Failed", missionMonitor.missions.SingleOrDefault(m => m.missionid == 413748324)?.statusEDName); 
+            missionMonitor._postHandleMissionFailedEvent((MissionFailedEvent)events[0]);
             Assert.AreEqual(4, missionMonitor.missions.Count);
 
             //MissionCompletedEvent - Donation
@@ -295,6 +302,66 @@ namespace UnitTests
             Assert.IsTrue(events.Count == 1);
             MissionCompletedEvent mcEvent = (MissionCompletedEvent)events[0];
             Assert.IsInstanceOfType(mcEvent, typeof(MissionCompletedEvent));
+        }
+
+        [TestMethod]
+        public void TestCommunityGoalScenario()
+        {
+            // Save original data
+            MissionMonitorConfiguration missionData = MissionMonitorConfiguration.FromFile();
+
+            missionMonitor.initializeMissionMonitor(new MissionMonitorConfiguration());
+
+            // MissionsEvent
+            line = @"{ ""timestamp"":""2020-10-24T01:39:13Z"", ""event"":""Missions"", ""Active"":[  ], ""Failed"":[  ], ""Complete"":[  ] }";
+            events = JournalMonitor.ParseJournalEntry(line);
+            Assert.IsTrue(events.Count == 1);
+            missionMonitor._handleMissionsEvent((MissionsEvent)events[0]);
+            Assert.AreEqual(0, missionMonitor.missions.Count);
+
+            // CommunityGoalJoin
+            line = @"{ ""timestamp"":""2020-10-24T05:05:25Z"", ""event"":""CommunityGoalJoin"", ""CGID"":619, ""Name"":""Federal Initiative to Deliver Supplies for Marlinist Refugees"", ""System"":""LFT 625"" }";
+            events = JournalMonitor.ParseJournalEntry(line);
+            Assert.IsTrue(events.Count == 1);
+            missionMonitor._handleMissionAcceptedEvent((MissionAcceptedEvent)events[0]);
+            Assert.AreEqual(1, missionMonitor.missions.Count);
+            Assert.AreEqual(619, missionMonitor.missions[0].missionid);
+            Assert.AreEqual("Federal Initiative to Deliver Supplies for Marlinist Refugees", missionMonitor.missions[0].localisedname);
+            Assert.AreEqual("LFT 625", missionMonitor.missions[0].originsystem);
+
+            // CommunityGoal (active)
+            line = @"{ ""timestamp"":""2020-10-25T05:05:51Z"", ""event"":""CommunityGoal"", ""CurrentGoals"":[ { ""CGID"":619, ""Title"":""Federal Initiative to Deliver Supplies for Marlinist Refugees"", ""SystemName"":""LFT 625"", ""MarketName"":""Fox Enterprise"", ""Expiry"":""2020-10-29T06:00:27Z"", ""IsComplete"":false, ""CurrentTotal"":14801430, ""PlayerContribution"":5516, ""NumContributors"":4560, ""TopTier"":{ ""Name"":""Tier 6"", ""Bonus"":""All systems supported"" }, ""TopRankSize"":10, ""PlayerInTopRank"":false, ""TierReached"":""Tier 1"", ""PlayerPercentileBand"":25, ""Bonus"":600000 }, { ""CGID"":620, ""Title"":""Federal Initiative to Protect Supplies for Marlinist Refugees"", ""SystemName"":""LFT 625"", ""MarketName"":""Fox Enterprise"", ""Expiry"":""2020-10-29T06:00:17Z"", ""IsComplete"":false, ""CurrentTotal"":6029526816, ""PlayerContribution"":281617, ""NumContributors"":2879, ""TopTier"":{ ""Name"":""Tier 6"", ""Bonus"":"""" }, ""TopRankSize"":10, ""PlayerInTopRank"":false, ""TierReached"":""Tier 2"", ""PlayerPercentileBand"":100, ""Bonus"":150000 } ] }";
+            events = JournalMonitor.ParseJournalEntry(line);
+            Assert.IsTrue(events.Count == 1);
+            missionMonitor._handleCommunityGoalEvent((CommunityGoalEvent)events[0]);
+            Assert.AreEqual("Fox Enterprise", missionMonitor.missions[0].originstation);
+            Assert.AreEqual("Active", missionMonitor.missions[0].statusEDName);
+            Assert.AreEqual(600000, missionMonitor.missions[0].reward);
+
+            // CommunityGoal (completed)
+            line = @"{ ""timestamp"":""2020-10-30T01:22:34Z"", ""event"":""CommunityGoal"", ""CurrentGoals"":[ { ""CGID"":619, ""Title"":""Federal Initiative to Deliver Supplies for Marlinist Refugees"", ""SystemName"":""LFT 625"", ""MarketName"":""Fox Enterprise"", ""Expiry"":""2020-10-29T06:00:27Z"", ""IsComplete"":true, ""CurrentTotal"":33417668, ""PlayerContribution"":6304, ""NumContributors"":0, ""TopTier"":{ ""Name"":""Tier 6"", ""Bonus"":""All systems supported"" }, ""TopRankSize"":10, ""PlayerInTopRank"":true, ""TierReached"":""Tier 3"", ""PlayerPercentileBand"":0, ""Bonus"":10000000 }, { ""CGID"":620, ""Title"":""Federal Initiative to Protect Supplies for Marlinist Refugees"", ""SystemName"":""LFT 625"", ""MarketName"":""Fox Enterprise"", ""Expiry"":""2020-10-29T06:00:17Z"", ""IsComplete"":true, ""CurrentTotal"":18046921733, ""PlayerContribution"":4899320, ""NumContributors"":0, ""TopTier"":{ ""Name"":""Tier 6"", ""Bonus"":"""" }, ""TopRankSize"":10, ""PlayerInTopRank"":true, ""TierReached"":""Tier 3"", ""PlayerPercentileBand"":0, ""Bonus"":10000000 } ] }";
+            events = JournalMonitor.ParseJournalEntry(line);
+            Assert.IsTrue(events.Count == 1);
+            missionMonitor._handleCommunityGoalEvent((CommunityGoalEvent)events[0]);
+            Assert.AreEqual("Claim", missionMonitor.missions[0].statusEDName);
+            Assert.AreEqual(10000000, missionMonitor.missions[0].reward);
+
+            // CommunityGoalReward
+            line = @"{ ""timestamp"":""2020-10-30T01:24:27Z"", ""event"":""CommunityGoalReward"", ""CGID"":619, ""Name"":""Federal Initiative to Deliver Supplies for Marlinist Refugees"", ""System"":""LFT 625"", ""Reward"":10000000 }";
+            events = JournalMonitor.ParseJournalEntry(line);
+            Assert.IsTrue(events.Count == 1);
+            missionMonitor._postHandleMissionCompletedEvent((MissionCompletedEvent)events[0]);
+            Assert.AreEqual(1, missionMonitor.missions.Count);
+
+            // MissionsEvent
+            line = @"{ ""timestamp"":""2020-10-30T01:30:27Z"", ""event"":""Missions"", ""Active"":[  ], ""Failed"":[  ], ""Complete"":[  ] }";
+            events = JournalMonitor.ParseJournalEntry(line);
+            Assert.IsTrue(events.Count == 1);
+            missionMonitor._handleMissionsEvent((MissionsEvent)events[0]);
+            Assert.AreEqual(0, missionMonitor.missions.Count);
+
+            // Restore original data
+            missionData.ToFile();
         }
 
         [TestCleanup]

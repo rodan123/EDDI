@@ -234,12 +234,12 @@
     <value>Script récupéré</value>
   </data>
   <data name="messagebox_recoveredScript" xml:space="preserve">
-    <value>EDDI a récupéré un script qui était en cours d'édition lors de la fermeture du programme. Souhaitez-vous le ré-ouvrir ?</value>
+    <value>EDDI a récupéré un script qui était en cours d'édition lors de la fermeture inattendue du programme. Souhaitez-vous le réouvrir ?</value>
   </data>
   <data name="validation_tooltip_name_empty" xml:space="preserve">
     <value>Veuillez saisir un nom</value>
   </data>
   <data name="validation_tooltip_name_taken" xml:space="preserve">
-    <value>Ce nom est déjà pris ; veuillez en fournir un autre</value>
+    <value>Ce nom est déjà pris; veuillez en fournir un autre</value>
   </data>
 </root>

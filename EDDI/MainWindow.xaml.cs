@@ -21,6 +21,7 @@ using System.Windows.Controls;
 using System.Windows.Forms;
 using System.Windows.Input;
 using Utilities;
+using Application = System.Windows.Application;
 
 namespace Eddi
 {
@@ -338,7 +339,7 @@ namespace Eddi
                 // Only show a tab if this can be turned off or has configuration elements
                 if (monitorConfiguration != null || !monitor.IsRequired())
                 {
-                    PluginSkeleton skeleton = new PluginSkeleton(monitor.MonitorName());
+                    PluginSkeleton skeleton = new PluginSkeleton(monitor.MonitorName(), !monitor.IsRequired());
                     skeleton.plugindescription.Text = monitor.MonitorDescription();
 
                     if (eddiConfiguration.Plugins.TryGetValue(monitor.MonitorName(), out bool enabled))
@@ -902,7 +903,11 @@ namespace Eddi
         private void companionApiStatusChanged(CompanionAppService.State oldState, CompanionAppService.State newState)
         {
             // The calling thread for this method may not have direct access to the MainWindow dispatcher so we invoke the dispatcher here.
-            System.Windows.Application.Current?.MainWindow?.Dispatcher?.Invoke(setStatusInfo);
+            Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                MainWindow mainwindow = (MainWindow)Application.Current?.MainWindow;
+                mainwindow?.Dispatcher?.Invoke(setStatusInfo);
+            });
 
             if (oldState == CompanionAppService.State.AwaitingCallback &&
                 newState == CompanionAppService.State.Authorized)
@@ -1249,7 +1254,14 @@ namespace Eddi
 
         private void EDDIClicked(object sender, RoutedEventArgs e)
         {
-            Process.Start("https://github.com/EDCD/EDDI/blob/master/README.md");
+            if (EDDI.Instance.EddiIsBeta())
+            {
+                Process.Start("https://github.com/EDCD/EDDI/blob/develop/README.md");
+            }
+            else
+            {
+                Process.Start("https://github.com/EDCD/EDDI/blob/stable/README.md");
+            }
         }
 
         private void WikiClicked(object sender, RoutedEventArgs e)
@@ -1259,7 +1271,14 @@ namespace Eddi
 
         private void TroubleshootClicked(object sender, RoutedEventArgs e)
         {
-            Process.Start("https://github.com/EDCD/EDDI/blob/master/TROUBLESHOOTING.md");
+            if (EDDI.Instance.EddiIsBeta())
+            {
+                Process.Start("https://github.com/EDCD/EDDI/blob/develop/TROUBLESHOOTING.md");
+            }
+            else
+            {
+                Process.Start("https://github.com/EDCD/EDDI/blob/stable/TROUBLESHOOTING.md");
+            }
         }
     }
 }

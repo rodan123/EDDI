@@ -27,8 +27,6 @@ namespace EddiDataProviderService
             JObject response = GetData(system.systemname);
             if (response != null)
             {
-                SetStarSystemLegacyData(system, response, setPowerplayData);
-                if (setBodyData) { SetBodyLegacyData(system, response); }
                 if (setStationData) { SetStationLegacyData(system, response); }
             }
             return system;
@@ -48,45 +46,6 @@ namespace EddiDataProviderService
             }
         }
 
-        private static void SetStarSystemLegacyData(StarSystem system, JObject json, bool setPowerplayData)
-        {
-            // Set data not currently available from EDSM: Powerplay data and EDDBID
-            // Note: EDDB does not report the following powerplay state ednames: 
-            // `HomeSystem`, `InPrepareRadius`, `Prepared`, `Turmoil`
-            // We can identify `HomeSystem` from static data, but  `InPrepareRadius`, `Prepared`, and `Turmoil`
-            // are only available from the `Jumped` and `Location` events:
-            // When in conflict, EDDB does not report the names of the conflicting powers.
-            system.EDDBID = (long?)json["id"];
-            if (setPowerplayData)
-            {
-                system.Power = Power.FromName((string)json["power"]) ?? Power.None;
-                system.powerState = (string)json["power_state"] == "None" ? PowerplayState.None
-                    : system.systemname == system.Power?.headquarters ? PowerplayState.HomeSystem
-                    : PowerplayState.FromName((string)json["power_state"]);
-
-            }
-        }
-
-        private static void SetBodyLegacyData(StarSystem system, JObject response)
-        {
-            // Set data not currently available from EDSM: EDDBID
-            if (response["bodies"] is JArray)
-            {
-                foreach (Body body in system.bodies)
-                {
-                    JObject Body = response["bodies"].Children<JObject>()
-                        .FirstOrDefault(o => o["name"] != null && o["name"].ToString() == body.bodyname);
-
-                    if (Body != null)
-                    {
-                        body.EDDBID = (long?)Body["id"];
-                        body.systemEDDBID = system.EDDBID;
-                    }
-                    system.AddOrUpdateBody(body);
-                }
-            }
-        }
-
         private static void SetStationLegacyData(StarSystem system, JObject response)
         {
             // Set data not currently available from EDSM
@@ -99,9 +58,6 @@ namespace EddiDataProviderService
 
                     if (Station != null)
                     {
-                        // Station EDDBID
-                        station.EDDBID = (long?)Station["id"];
-
                         // Commodities price listings
                         station.commodities = CommodityQuotesFromEDDP(Station);
                         station.commoditiesupdatedat = (long?)Station["market_updated_at"];
@@ -186,7 +142,6 @@ namespace EddiDataProviderService
                         Station settlement = new Station
                         {
                             name = (string)Station["name"],
-                            EDDBID = (long)Station["id"],
                             systemname = system.systemname,
                             hasdocking = false,
                             Model = StationModel.FromName((string)Station["type"]) ?? StationModel.None,

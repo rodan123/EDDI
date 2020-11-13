@@ -178,7 +178,7 @@
     <comment>MissionTarget signal</comment>
   </data>
   <data name="USS_Type_Convoy" xml:space="preserve">
-    <value>Padrão de Dispersão de Comboio Detectado</value>
+    <value>Padrão de Dispersão de Comboio</value>
     <comment>Convoy signal</comment>
   </data>
   <data name="USS_Type_DistressSignal" xml:space="preserve">
@@ -324,5 +324,17 @@
   <data name="FIXED_EVENT_DEBRIS" xml:space="preserve">
     <value>Campo de Detritos</value>
     <comment>Debris field</comment>
+  </data>
+  <data name="SAA_SignalType_Other" xml:space="preserve">
+    <value>Outro Sinal de Superfície</value>
+    <comment>Other Surface Signal</comment>
+  </data>
+  <data name="Settlement_Unflattened_WreckedUnknown" xml:space="preserve">
+    <value>Nave Thargoid Caída</value>
+    <comment>Thargoid crash site</comment>
+  </data>
+  <data name="MULTIPLAYER_SCENARIO81_TITLE" xml:space="preserve">
+    <value>Destroços Recuperáveis</value>
+    <comment>Salvageable Wreckage signal source</comment>
   </data>
 </root>

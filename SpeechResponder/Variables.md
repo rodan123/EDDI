@@ -73,7 +73,7 @@ A rating, for example a combat rating or empire rating.
 
     - `rank` the numeric rank of the rating, for example 0
     - `name` the name of the rating, for example 'Harmless'
-    - `femininename` the feminine name of the rating, for example 'Baroness' if it differs, otherwise the same as `name`
+    - `femininename` the feminine name of the rating, for example 'Baroness', if it differs. Otherwise null / not set
 
 ---
 
@@ -187,7 +187,7 @@ Details of an individual mission in the commander's mission log.
     - `localisedname` localised name of the mission
     - `type` localized type (altruism, delivery, massacre, etc) of the mission
     - `status` localized status (active, complete, failed) of the mission
-    - `faction` faction issuing the mission
+    - `faction` name of the faction issuing the mission
     - `originsystem` origin system of the mission
     - `originstation` origin station of the mission
     - `originreturn` true if the commander must return to origin to complete the mission
@@ -207,7 +207,7 @@ Details of an individual mission in the commander's mission log.
     - `passengerwanted` true if the passengers are wanted
     - `target` name of the target of the mission (if applicable)
     - `targettype` localized type of the target (civilian, pirate, etc) of the mission (if applicable)
-    - `targetfaction` faction of the target of the mission (if applicable)
+    - `targetfaction` name of the faction of the target of the mission (if applicable)
     - `amount` amount of the commodity,  passengers or targets involved in the mission (if applicable)
     - `expiry` expiry date and time of the mission
     - `expiryseconds` amount of seconds remaining before mission expiration
@@ -444,7 +444,8 @@ Any values might be missing, depending on EDDI's configuration and the informati
     - `population` the population of the starsystem
     - `allegiance` the superpower allegiance of this starsystem (Federation, Empire etc)
     - `government` the type of government in this starsystem (Democracy, Confederacy etc)
-    - `faction` the dominant faction in this starsystem
+    - `faction` the name of the dominant faction in this starsystem
+    - `factions` the starsystem's factions (array of Faction objects)
     - `primaryeconomy` the primary economy in this starsystem (High Technology, Agriculture, etc)
     - `state` the state of the starsystem (Boom, War, etc)
     - `security` the level of security in the starsystem (Low, Medium, High)
@@ -454,6 +455,8 @@ Any values might be missing, depending on EDDI's configuration and the informati
     - `y` the Y co-ordinate of the starsystem
     - `z` the Z co-ordinate of the starsystem
     - `stations` the starsystem's stations (array of Station objects)
+    - `planetarystations` the starsystem's stations, filtered to only return planetary stations (array of Station objects)
+    - `orbitalstations` the starsystem's stations, filtered to only return orbital stations (array of Station objects)
     - `bodies` the starsystem's bodies (array of Body objects)
     - `visits` the number of visits that the commander has made to this starsystem
     - `lastVisitSeconds` the time that the commander last visited this starsystem, expressed as a Unix timestamp in seconds
@@ -463,6 +466,7 @@ Any values might be missing, depending on EDDI's configuration and the informati
     - `requirespermit` (If using SystemDetails()) Whether this system requires a permit (as a boolean)
     - `permitname` (If using SystemDetails()) The name of the permit required for visiting this system, if any
     - `signalsources` a list of signals detected within the starsystem (for the current starsystem only)
+    - `carriersignalsources` a list of signals detected within the starsystem, filtered  to only return fleet carrier signals (for the current star system only) 
     - `isgreen` true if bodies in this starsystem contain all elements required for FSD synthesis
     - `isgold` true if bodies in this starsystem contain all elements available from surface prospecting
     - `estimatedvalue` the estimated exploration value of the starsystem (includes bonuses for fully scanning and mapping)
@@ -530,8 +534,8 @@ All bodies have the following data:
 	- `rings` (when applicable) (an array of ring objects)
     - `scanned` a DateTime value that is set when the body is scanned and unset otherwise.
     - `mapped` a DateTime value that is set when the body is mapped and unset otherwise.
-    - `alreadydiscovered` whether another commander has already submitted a scan of the body to Universal Cartographics
-    - `alreadymapped` whether another commander has already submitted mapping data for the body to Universal Cartographics
+    - `alreadydiscovered` whether another commander has already submitted a scan of the body to Universal Cartographics (scan required to fill this value)
+    - `alreadymapped` whether another commander has already submitted mapping data for the body to Universal Cartographics (scan required to fill this value)
     - `estimatedvalue` the current estimated value of the body, taking into account scans and mapping.
     - `periapsis` the argument of periapsis of the body, in degrees (as applicable)
     - `tilt` the axial tilt of the body, in degrees  (as applicable)
@@ -586,6 +590,8 @@ Planets and moons have the following data:
     - `materials` list of materials and their percentage availability on the planet (list of Material objects)
     - `gravityprobability` the cumulative probability describing the body's gravity, relative to other bodies of the same planet type.
     - `pressureprobability` the cumulative probability describing the body's atmospheric pressure, relative to other bodies of the same planet type.
+    - `solarday` the duration of a solar day on the body, in Earth days
+    - `solarsurfacevelocity` the ground speed of the parent body's shadow on the surface of the body in meters per second
 
 #### Atmosphere composition
 
@@ -625,9 +631,9 @@ An orbital or planetary station.
 
     - `name` the name of the station
     - `systemname` the name of the system in which this station resides
-    - `model` the model of the sation (Orbis, Coriolis, etc)
+    - `model` the model of the station (Orbis, Coriolis, etc)
     - `government` the type of government in this station (Democracy, Confederacy etc)
-    - `faction` the faction that controls this station
+    - `faction` the name  of the faction that controls this station
     - `allegiance` the superpower allegiance of the faction that controls this station (Federation, Empire etc)
     - `state` the state of the station (Boom, War, etc)
     - `primaryeconomy` the primary economy in this station (High Technology, Agriculture, etc)
@@ -643,6 +649,9 @@ An orbital or planetary station.
     - `stationservices` a list of the station services available at this station
     - `largestpad` the largest pad available at this station (None, Small, Medium, Large)
     - `commodities` the commodities that are bought and sold by this station (array of Commodity objects)
+    - `imports` the commodities that are bought by this station (array of Commodity objects)
+    - `exports` the commodities that are sold by this station (array of Commodity objects)
+    - `prohibited` the commodities prohibited by the station (array of Commodity objects, requires Frontier API access)
     - `outfitting` the modules that are available for outfitting at this station (array of Module objects)
     - `updatedat` the timestamp at which the station information was last updated
     - `commoditiesupdatedat` the timestamp at which the station commodities information was last updated

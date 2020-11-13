@@ -1,4 +1,6 @@
-﻿namespace EddiDataDefinitions
+﻿using System;
+
+namespace EddiDataDefinitions
 {
     public class SignalSource : ResourceBasedLocalizedEDName<SignalSource>
     {
@@ -17,6 +19,7 @@
             var ResourceExtractionLow = new SignalSource("MULTIPLAYER_SCENARIO77_TITLE");
             var ResourceExtractionHigh = new SignalSource("MULTIPLAYER_SCENARIO78_TITLE");
             var ResourceExtractionHazardous = new SignalSource("MULTIPLAYER_SCENARIO79_TITLE");
+            var SalvageableWreckage = new SignalSource("MULTIPLAYER_SCENARIO81_TITLE");
 
             var CombatZoneHigh = new SignalSource("Warzone_PointRace_High");
             var CombatZoneMedium = new SignalSource("Warzone_PointRace_Med");
@@ -54,6 +57,7 @@
             var Guardian = new SignalSource("SAA_SignalType_Guardian");
             var Human = new SignalSource("SAA_SignalType_Human");
             var Thargoid = new SignalSource("SAA_SignalType_Thargoid");
+            var Other = new SignalSource("SAA_SignalType_Other");
 
             var AncientGuardianRuins = new SignalSource("Ancient");
             var GuardianStructureT1 = new SignalSource("Ancient_Tiny_001");
@@ -68,11 +72,19 @@
             var GuardianStructureM2 = new SignalSource("Ancient_Medium_002");
             var GuardianStructureM3 = new SignalSource("Ancient_Medium_003");
             var ThargoidBarnacle = new SignalSource("Settlement_Unflattened_Unknown");
+            var ThargoidCrashSite = new SignalSource("Settlement_Unflattened_WreckedUnknown");
         }
 
         public static readonly SignalSource UnidentifiedSignalSource;
 
         public int index;
+        public string spawningFaction { get; set; }
+        public DateTime? expiry { get; set; }
+        public int? threatLevel { get; set; }
+        public bool? isStation { get; set; }
+        public SignalSource signalSource { get; set; }
+        public FactionState spawningState { get; set; }
+        public long? systemAddress { get; set; }
 
         // dummy used to ensure that the static constructor has run
         public SignalSource() : this("")

@@ -290,14 +290,14 @@ namespace EddiShipMonitor
             if (@event.timestamp > updatedAt)
             {
                 updatedAt = @event.timestamp;
-                if (!inFighter(@event.ship) && !inBuggy(@event.ship))
+                if (!inFighter(@event.shipEDModel) && !inBuggy(@event.shipEDModel))
                 {
-                    SetCurrentShip(@event.shipid, @event.ship);
+                    SetCurrentShip(@event.shipid, @event.shipEDModel);
                     Ship ship = GetCurrentShip();
                     if (ship == null)
                     {
                         // We don't know of this ship so need to create it
-                        ship = ShipDefinitions.FromEDModel(@event.ship);
+                        ship = ShipDefinitions.FromEDModel(@event.shipEDModel);
                         ship.LocalId = (int)@event.shipid;
                         ship.Role = Role.MultiPurpose;
                         AddShip(ship);
@@ -379,7 +379,7 @@ namespace EddiShipMonitor
             {
                 updatedAt = @event.timestamp;
                 // Set this as our current ship
-                SetCurrentShip(@event.shipid, @event.ship);
+                SetCurrentShip(@event.shipid, @event.edModel);
                 if (!@event.fromLoad) { writeShips(); }
             }
         }
@@ -397,7 +397,7 @@ namespace EddiShipMonitor
                 EDDI.Instance?.refreshProfile();
 
                 // Update our current ship
-                SetCurrentShip(@event.shipid, @event.ship);
+                SetCurrentShip(@event.shipid, @event.edModel);
 
                 if (@event.storedshipid != null)
                 {
@@ -468,12 +468,14 @@ namespace EddiShipMonitor
         {
             if (@event.timestamp > updatedAt)
             {
+                // If we're in the SRV when we start the game, we'll still get a Loadout event for our parent ship
                 updatedAt = @event.timestamp;
-                if (!inFighter(@event.ship) && !inBuggy(@event.ship))
+                if (!inFighter(@event.edModel))
                 {
                     Ship ship = ParseShipLoadoutEvent(@event);
 
-                    // Update the global variable
+                    // Update the local and global variables
+                    SetCurrentShip(ship.LocalId, ship.EDName);
                     EDDI.Instance.CurrentShip = ship;
 
                     AddShip(ship);
@@ -501,7 +503,7 @@ namespace EddiShipMonitor
             ship.raw = @event.raw;
 
             // Update model (in case it was solely from the edname), name, ident & paintjob if required
-            ship.model = @event.ship;
+            ship.model = ship.model.ToLowerInvariant() == ship.EDName.ToLowerInvariant() ? @event.ship : ship.model;
             setShipName(ship, @event.shipname);
             setShipIdent(ship, @event.shipident);
             ship.paintjob = @event.paintjob;
@@ -894,13 +896,13 @@ namespace EddiShipMonitor
                     Compartment fromCompartment = ship.compartments.FirstOrDefault(c => c.name == fromSlot);
                     if (fromCompartment is null)
                     {
-                        fromCompartment = new Compartment() { name = fromSlot, size = getHardpointSize(fromSlot) };
+                        fromCompartment = new Compartment() { name = fromSlot, size = getCompartmentSize(fromSlot, ship.militarysize) };
                         ship.compartments.Add(fromCompartment);
                     }
                     Compartment toCompartment = ship.compartments.FirstOrDefault(c => c.name == toSlot);
                     if (toCompartment is null)
                     {
-                        toCompartment = new Compartment() { name = toSlot, size = getHardpointSize(toSlot) };
+                        toCompartment = new Compartment() { name = toSlot, size = getCompartmentSize(toSlot, ship.militarysize) };
                         ship.compartments.Add(toCompartment);
                     }
                     sortCompartments(ship);
@@ -1234,6 +1236,9 @@ namespace EddiShipMonitor
                 List<Ship> newShiplist = configuration.shipyard.OrderBy(s => s.model).ToList();
                 List<StoredModule> newModuleList = configuration.storedmodules.OrderBy(s => s.slot).ToList();
 
+                // There was a bug (ref. #1894) that added the SRV as a ship. Clean that up here.
+                newShiplist = newShiplist.Where(s => s.EDName != "SRV").ToList();
+
                 // Update the shipyard
                 shipyard = new ObservableCollection<Ship>(newShiplist);
                 currentShipId = configuration.currentshipid;
@@ -1356,7 +1361,7 @@ namespace EddiShipMonitor
             return ship;
         }
 
-        public void SetCurrentShip(int? localId, string model = null)
+        public void SetCurrentShip(int? localId, string EDName = null)
         {
             lock (shipyardLock)
             {
@@ -1366,10 +1371,10 @@ namespace EddiShipMonitor
                 {
                     // We don't know about this ship yet
                     Logging.Debug("Unknown ship ID " + localId);
-                    if (localId.HasValue && model != null)
+                    if (localId.HasValue && EDName != null)
                     {
                         // We can make one though
-                        ship = ShipDefinitions.FromEDModel(model);
+                        ship = ShipDefinitions.FromEDModel(EDName);
                         ship.LocalId = (int)localId;
                         ship.Role = Role.MultiPurpose;
                         AddShip(ship);
@@ -1533,17 +1538,20 @@ namespace EddiShipMonitor
         private static int getCompartmentSize(string slot, int? militarySlotSize)
         {
             // Compartment slots are in the form of "Slotnn_Sizen" or "Militarynn"
-            if ((bool)slot?.Contains("Slot"))
+            if (!string.IsNullOrEmpty(slot))
             {
-                Match matches = Regex.Match(slot, @"Size([0-9]+)");
-                if (matches.Success)
+                if (slot.Contains("Slot"))
                 {
-                    return int.Parse(matches.Groups[1].Value);
+                    Match matches = Regex.Match(slot, @"Size([0-9]+)");
+                    if (matches.Success)
+                    {
+                        return int.Parse(matches.Groups[1].Value);
+                    }
                 }
-            }
-            else if ((bool)slot?.Contains("Military") && militarySlotSize != null)
-            {
-                return (int)militarySlotSize;
+                else if (slot.Contains("Military") && militarySlotSize != null)
+                {
+                    return (int)militarySlotSize;
+                }
             }
             // Compartment size could not be determined
             Logging.Error("Ship compartment slot size could not be determined for " + slot);
@@ -1787,7 +1795,7 @@ namespace EddiShipMonitor
             }
             Constants.ratingConstantFSD.TryGetValue(ship.frameshiftdrive.grade, out decimal ratingConstant);
             Constants.powerConstantFSD.TryGetValue(ship.frameshiftdrive.@class, out decimal powerConstant);
-            decimal maxJumpRange = ship.maxjumprange - boostConstant;
+            decimal maxJumpRange = Math.Max(ship.maxjumprange - boostConstant, 0);
             decimal massRatio = (ship.unladenmass + ship.maxfuelperjump) / ship.optimalmass;
 
             return ratingConstant * (decimal)Math.Pow((double)(maxJumpRange * massRatio), (double)powerConstant) / 1000;
@@ -1800,9 +1808,9 @@ namespace EddiShipMonitor
         }
 
         /// <summary> See if we're in a buggy / SRV </summary>
-        private bool inBuggy(string model)
+        private bool inBuggy(string edModel)
         {
-            return model.Contains("Buggy");
+            return edModel.Contains("Buggy") || edModel.Contains("SRV");
         }
 
         private Task _refreshProfileDelayed;
