@@ -31,7 +31,7 @@ namespace Eddi
             // Prepare to start the application
             Logging.incrementLogs(); // Increment to a new log file.
             EDDIConfiguration configuration = EDDIConfiguration.FromFile();
-            StartRollbar(configuration.DisableTelemetry); // do immediately to initialize error reporting
+            //StartRollbar(configuration.DisableTelemetry); // do immediately to initialize error reporting
             ApplyAnyOverrideCulture(configuration); // this must be done before any UI is generated
 
             // Start by fetching information from the update server, and handling appropriately

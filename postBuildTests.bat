@@ -12,7 +12,7 @@ ECHO %this%: Build configuration is %buildConfiguration%
 
 :: Ref. vstest.console.exe documentation at https://docs.microsoft.com/en-us/visualstudio/test/vstest-console-options?view=vs-2019
 :: We need to apply batch file rules for escaping certain characters in our command (using "^"), ref. https://www.robvanderwoude.com/escapechars.php
-IF %buildConfiguration%=="Release" (
+IF %buildConfiguration%=="Release.old" (
   :: Run all tests except Speech tests 
   SET "testCaseFilter=^/TestCaseFilter:""TestCategory!=Speech"""
 ) ELSE (
