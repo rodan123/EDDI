@@ -118,7 +118,7 @@ namespace GalnetMonitor
                    .Replace(" 3301", " thirty-three o-one").Replace(" 3302", " thirty-three o-two").Replace(" 3303", " thirty-three o-three")
                    .Replace(" 3304", " thirty-three o-four").Replace(" 3305", " thirty-three o-five").Replace(" 3306", " thirty-three o-six")
                    .Replace(" 3307", " thirty-three o-seven").Replace(" 3308", " thirty-three o-eight").Replace(" 3309", " thirty-three o-nine")
-                   .Replace("hargoid", "hargoyd");
+                   .Replace("hargoid", "hargoyd").Replace("*", "!");
             return sb.ToString();
         }
 
