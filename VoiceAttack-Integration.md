@@ -4,11 +4,13 @@ EDDI integrates with VoiceAttack in two ways.  Firstly, it generates a large num
 
 N.B. EDDI requires at least version 1.6.0 of VoiceAttack to function correctly.
 
-For EDDI to work with VoiceAttack it must be installed as a VoiceAttack plugin.  To do this EDDI should be installed within the `Apps` directory of your VoiceAttack installation; by default VoiceAttack installs in `C:\Program Files (x86)\VoiceAttack`.
+For EDDI to work with VoiceAttack it must be installed as a VoiceAttack plugin.  To do this EDDI should be installed within the `Apps` directory of your VoiceAttack installation; by default VoiceAttack installs in one of two locations: 
+- `C:\Program Files (x86)\VoiceAttack` (for standard licenses)
+- `C:\Program Files (x86)\Steam\steamapps\common\VoiceAttack` (for Steam licenses)
 
 VoiceAttack must be configured to use plugins.  To do so you must click on the Settings icon (a spanner) in the top-right corner of the VoiceAttack and check the 'Enable plugin support' option and restart VoiceAttack.
 
-If EDDI is installed in the correct location and plugin support is enabled you should see a message when starting VoiceAttack along the lines of `Plugin EDDI 3.4.1 initialized`.
+If EDDI is installed in the correct location and plugin support is enabled you should see a message when starting VoiceAttack along the lines of `Plugin EDDI 3.7.1 initialized`.
 
 ## EDDI's VoiceAttack Profile
 
@@ -315,7 +317,7 @@ Note: "Tiny" hardpoints are utility slots.
   * {TXT:Vehicle}: the vehicle the commander is currently controlling ("Ship", "SRV" or "Fighter")
   * {BOOL:cAPI active}: true if the cAPI is currently active 
   * {BOOL:icao active}: true if use of ICAO text replacements are currently enabled 
-  * {BOOL:ssml active}: true if ssml tags are currently enabled
+  * {BOOL:ipa active}: true if phonetic speech ssml tags are currently enabled
   * {TXT:EDDI uri}: uri's for EDDB, EDShipyard, and EDSM are written here when the appropriate plugin command is invoked.
   * {BOOL:EDDI speaking}: true if EDDI is currently speaking
 
@@ -325,7 +327,7 @@ Whenever EDDI sees a particular event occur it will attempt to run a script.  Th
 
     ((EDDI <event>))
 
-with the <event> being in lower-case.  For example, if you wanted VoiceAttack to run a script every time you docked you would create a script called `((EDDI docked))` (note the lower-case d at the beginning of docked).
+with the \<event\> being in lower-case.  For example, if you wanted VoiceAttack to run a script every time you docked you would create a script called `((EDDI docked))` (note the lower-case d at the beginning of docked).
 
 There are a large number of events available.  Full details of the variables available for each event are available in the individual [event pages](https://github.com/EDCD/EDDI/wiki/Events).  Note that event variables are only valid when the event occurs, and cannot be relied upon to be present or a specific value at any other time.  If you want to use information in an event after the event itself then you should copy the value to another variable.
 
@@ -333,7 +335,7 @@ There are a large number of events available.  Full details of the variables ava
 
 EDDI's VoiceAttack plugin allows you to access its features in your own profile.  Details of these functions are laid out below.
 
-![](../images/VoiceAttack-PluginView.jpg)
+![](images/VoiceAttack-PluginView.jpg)
 
 Note: Though the examples in this section show variables being passed as parameters within the plugin interface, it is no longer necessary to do so. Rather, when the plugin is invoked then the plugin will search for variables matching the plugin context and set prior to invoking the plugin.
 
@@ -346,6 +348,8 @@ This function uses EDDI's voice to read a script. It takes one mandatory and two
 - 'Script' (text variable) is a mandatory parameter containing the script to be read. 
 - 'Priority' (integer variable) is an optional parameter defining the priority of the invoked speech (defaults to 3).
 - 'Voice' (text variable) is an optional parameter defining the name of the voice you want to use.  Note that when you set this variable it will continue to be used until you unset it, at which point EDDI will use the voice configured in its text-to-speech settings.
+
+For convenience, the value `$=` in the script stands for the phonetic name of your ship while the value `$-` stands for your commander's phonetic name.
 
 To use this function in your own commands set the 'Script' variable and optionally the 'Priority' and 'Voice' variables, then use the 'Execute an external plugin function' command with the plugin context set to 'say'.
 
@@ -367,6 +371,8 @@ This function uses EDDI's voice to read a Speech Responder script with a radio e
 - 'Priority' (integer variable) is an optional parameter defining the priority of the invoked speech (defaults to 3).
 - 'Voice' (text variable) is an optional parameter defining the name of the voice you want to use.  Note that when you set this variable it will continue to be used until you unset it, at which point EDDI will use the voice configured in its text-to-speech settings.
  
+For convenience, the value `$=` in the script stands for the phonetic name of your ship while the value `$-` stands for your commander's phonetic name.
+
 To use this function in your own commands set the 'Script' variable and optionally the 'Priority' and 'Voice' variables, then use the 'Execute an external plugin function' command with the plugin context set to 'transmit'.
 
 ### shutup
@@ -488,7 +494,7 @@ For example, if you wanted to store the VoiceAttack boolean variable "Verbose" a
     * set the text variable "State variable" to "Verbose"
     * call EDDI with the context set to "setstate"
 
-![](../images/VoiceAttack-PluginView-SetState.jpg)
+![](images/VoiceAttack-PluginView-SetState.jpg)
 
 This function only supports integers, booleans, decimals and strings as state values.  The name of the value will be altered if necessary to ensure that it is all lower-case, and that spaces are replace by underscores.  For example, if you attempt to store a state variable "My variable" it will be stored as "my_variable".
 

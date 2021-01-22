@@ -128,16 +128,9 @@ namespace EddiCore
                 // Ensure that our primary data structures have something in them.  This allows them to be updated from any source
                 Cmdr = new Commander();
 
-                // Set up the Elite configuration
-                EliteConfiguration eliteConfiguration = EliteConfiguration.FromFile();
-                gameIsBeta = eliteConfiguration.Beta;
-                Logging.Info(gameIsBeta ? "On beta" : "On live");
-                inHorizons = eliteConfiguration.Horizons;
-
-                // Set up our CompanionAppService instance
-                // CAUTION: CompanionAppService.Instance must be invoked with the EDDI .ctor to correctly
-                // configure the CompanionAppService to receive DDE messages from its custom URL Protocol.
-                CompanionAppService.Instance.gameIsBeta = gameIsBeta;
+                // CAUTION: CompanionAppService.Instance must be invoked by the main application thread, before any other threads are generated, 
+                // to correctly configure the CompanionAppService to receive DDE messages from its custom URL Protocol.
+                CompanionAppService.Instance.gameIsBeta = false;
 
                 // Retrieve commander preferences
                 EDDIConfiguration configuration = EDDIConfiguration.FromFile();
@@ -241,8 +234,8 @@ namespace EddiCore
 #if DEBUG
             return true;
 #else
-            // use test endpoints if the game is in beta or EDDI is not release candidate or final
-            return EDDI.Instance.gameIsBeta || EddiIsBeta();
+            // use test endpoints if the game is in beta
+            return EDDI.Instance.gameIsBeta;
 #endif
         }
 
@@ -783,10 +776,6 @@ namespace EddiCore
                     {
                         passEvent = eventCarrierJumped((CarrierJumpedEvent)@event);
                     }
-                    else if (@event is SignalDetectedEvent)
-                    {
-                        passEvent = eventSignalDetected((SignalDetectedEvent)@event);
-                    }
 
                     // Additional processing is over, send to the event responders if required
                     if (passEvent)
@@ -810,16 +799,6 @@ namespace EddiCore
                     Instance.ObtainResponder("EDDN responder").Handle(@event);
                 }
             }
-        }
-
-        private bool eventSignalDetected(SignalDetectedEvent @event) 
-        {
-            if (Instance.CurrentStarSystem != null && Instance.CurrentStarSystem.systemAddress == @event.systemAddress)
-            {
-                Instance.CurrentStarSystem.signalSources.Add(@event.signalSource);
-                return true;
-            }
-            return false;
         }
 
         private bool eventCarrierJumpEngaged(CarrierJumpEngagedEvent @event)
@@ -1780,11 +1759,8 @@ namespace EddiCore
                         )
                     )
                 );
+            CompanionAppService.Instance.gameIsBeta = gameIsBeta;
             Logging.Info(gameIsBeta ? "On beta" : "On live");
-            EliteConfiguration config = EliteConfiguration.FromFile();
-            config.Beta = gameIsBeta;
-            config.ToFile();
-
             return true;
         }
 
@@ -1971,9 +1947,6 @@ namespace EddiCore
 
             // Set game version
             inHorizons = theEvent.horizons;
-            EliteConfiguration config = EliteConfiguration.FromFile();
-            config.Horizons = inHorizons;
-            config.ToFile();
 
             return true;
         }

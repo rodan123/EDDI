@@ -589,4 +589,8 @@
     <value>Advanced Missile Rack</value>
     <comment>Module Advanced Missile Rack</comment>
   </data>
+  <data name="RetributorBeamLaser" xml:space="preserve">
+    <value>Retributor Beam Laser</value>
+    <comment>Module RetributorBeamLaser</comment>
+  </data>
 </root>

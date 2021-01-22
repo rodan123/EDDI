@@ -20,7 +20,7 @@ Information on game state is available at the top level i.e. these values can be
 
     - `capi_active` true when the companion API is active
     - `icao_active` true if ICAO is currently enabled
-    - `ssml_active` true if ssml tags are currently enabled
+    - `ipa_active` true if phonetic speech ssml tags are currently enabled
     - `va_active` true when the Voice Attack plug-in is active
 
 ---
@@ -440,7 +440,7 @@ Information about your current starsystem is available under the `system` object
 
 Any values might be missing, depending on EDDI's configuration and the information available about the system.
 
-    - `name` the name of the starsystem
+    - `systemname` the name of the starsystem
     - `population` the population of the starsystem
     - `allegiance` the superpower allegiance of this starsystem (Federation, Empire etc)
     - `government` the type of government in this starsystem (Democracy, Confederacy etc)

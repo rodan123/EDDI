@@ -214,9 +214,6 @@
   <data name="tab_tts_disable_phonetic_speech_label" xml:space="preserve">
     <value>Desabilitar pronúncia fonética:</value>
   </data>
-  <data name="tab_tts_disable_phonetic_speech_note" xml:space="preserve">
-    <value>(isso desligará as funções usando tags de voz SSML, como visto no arquivo de Ajuda do Relator de Fala)</value>
-  </data>
   <data name="tab_tts_icao_desc" xml:space="preserve">
     <value>O EDDI pode usar ICAO, por exemplo, usando 'alfa' em vez de 'A', ao dizer nomes de estrela e corpos. Isso pode facilitar a compreensão dos nomes do sistema, mas demora mais para ser pronunciado. Se você quiser ouvir pronunciações ICAO, marque a opção abaixo. Note que isso não funcionará se você tiver desativado a fala fonética acima.</value>
   </data>

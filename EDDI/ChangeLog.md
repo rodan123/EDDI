@@ -2,9 +2,147 @@
 
 Full details of the variables available for each noted event, and VoiceAttack integrations, are available in the individual [event pages](https://github.com/EDCD/EDDI/wiki/Events).
 
+### 3.7.3-b1
+  * Core
+    * EDDI beta releases no longer send to test endpoints for EDDN or the EDSM Responder.
+
+### 3.7.2
+  * Promote 3.7.2-rc3 to final
+
+### 3.7.2-rc3
+  * Core
+    * Fixed a bug with parsing float / decimal commodity prices.
+
+### 3.7.2-rc2
+  * Core
+    * Fixed a bug that caused the `Signal detected` event to identify non-unique signals as unique rather than the reverse.
+
+### 3.7.2-rc1
+  * Frontier API
+    * Fixed a bug that would re-play the speech "Frontier API connection operational" when the token was refreshed.
+  * Speech Responder
+    * Scripts
+      * `Bond awarded` updated to more consistently apply the P() function.
+      * `Commander continued` updated to move mission check to new `Missions` event.
+      * `Carrier jump engaged` updated to fix indentation.  
+      * `Crime check system` updated to more consistently apply the P() function.
+      * `Data voucher awarded` updated to more consistently apply the P() function.
+      * `Fuel check` updated to more consistently apply the P() function.
+      * `Mission abandoned` updated to more consistently apply the P() function.
+      * `Mission check galaxy` updated to reduce verbosity.
+      * `Mission check station` updated to reduce verbosity.
+      * `Mission check system` updated to reduce verbosity and more consistently apply the P() function.
+      * `Mission completed` updated to more consistently apply the P() function. 
+      * `Mission expired` updated to more consistently apply the P() function.
+      * `Missions` added, triggered at startup when mission information has been updated.
+      * `Star report` updated to apply the List() function for notable features.
+      * `System state report` updated to remove "the" prefixing faction names (to correct pronunciation of faction names like "The Fatherhood"). 
+
+### 3.7.2-b2
+  * Speech Responder
+    * Functions
+      * `Humanise()` revised to leave the interpretation of simple whole numbers like 1000 and 10000 to the culture-specific voice.
+    * Scripts
+      * `Body report summary` updated to correct some script redundancies and formatting errors.
+      * `Community goal` updated to fix a formatting issue.
+      * `Mission accepted` updated to more consistently apply the P() function with faction names.
+      * `Mission completed` updated to correct typos.
+      * `Mission failed` updated to more consistently apply the P() function.
+      * `Mission redirected` updated to more consistently apply the P() function. 
+      * `Mission warning` updated to more consistently apply the P() function.
+      * `Module arrived` updated to more consistently apply the P() function.
+      * `Power commodity delivered` updated to correct a script formatting error.
+      * `Route details` updated to more consistently apply the P() function.
+      * `Ship arrived` updated to more consistently apply the P() function.
+      * `Ship sold` updated to more consistently apply the P() function.
+      * `Ship sold on rebuy` updated to more consistently apply the P() function.
+      * `Signal detected` updated to more consistently apply the P() function.
+      * `System state report` updated to more consistently apply the P() function.
+
 ### 3.7.2-b1
-  * Cargo monitor
+  * Core
+    * Fixed a bug that caused certain faction names (e.g. "Brazilian Armada X") to throw an exception when passed through the `P()` function.
+  * Cargo Monitor
     * Cargo value (per unit) is now calculated as a weighted average of acquisition costs (rather than using the galactic average price).
+  * EDSM Responder
+    * Fixed a bug that could prevent sending pending sync data to EDSM after a request to stop the responder (e.g. on closing).
+  * Inara Responder
+    * Fixed a bug that could prevent sending pending sync data to Inara after a request to stop the responder (e.g. on closing).
+  * Mission Monitor
+    * Fixed a bug that could cause the Mission monitor to only process the first stacked mission in a set if all were updated at the same time.
+    * Revised all missions to use the "Claim" status (rather than using "Complete" in some instances and "Claim" in others) after mission conditions are satisfied.
+  * Speech Responder
+    * Events
+      * `Modules stored` updated to prevent an exception while testing.
+      * `Signal detected` updated to fix a bug that could allow non-unique signals to be flagged as unique. 
+    * Functions
+      * Added an optional hint string 2nd parameter to the P() function to specify the type of pronunciation override to apply.
+      * Disabling phonetic speech no longer disables all SSML based functions (e.g. `{Pause()}` will no longer cease to work with phonetic speech disabled)
+      * Reorganized the way we store EDDI's custom Cottle functions. 
+      * `Humanise()` revised to fix a bug that created inaccurate descriptions for certain numbers, to return short decimal numbers when they are able to accurately and succinctly describe the number, and to round a little more aggressively for reduced verbosity.
+    * Scripts
+      * `Bodies mapped` updated to default to the current star system if context variable `eddi_context_system_name` is not set and updated the P() function utilization.
+      * `Bodies to map` updated to default to the current star system if context variable `eddi_context_system_name` is not set and updated the P() function utilization.
+      * `Body materials report` updated the P() function utilization.
+      * `Body report` updated the P() function utilization.
+      * `Body report summary` updated the P() function utilization.
+      * `Body volcanism report` updated the P() function utilization.
+      * `Bond redeemed` updated the P() function utilization.
+      * `Bounty awarded` updated the P() function utilization.
+      * `Bounty incurred` updated the P() function utilization.
+      * `Bounty redeemed` updated the P() function utilization.
+      * `Carrier jump engaged` updated the P() function utilization.
+      * `Carrier jump request` updated the P() function utilization.
+      * `Carrier jumped` updated the P() function utilization.
+      * `Commander continued` updated to set context variable `eddi_context_system_name`.
+      * `Community goal` updated the P() function utilization.
+      * `Data voucher redeemed` updated the P() function utilization.
+      * `Discovery scan` updated to default to the current star system if context variable `eddi_context_system_name` is not set.
+      * `Empire promotion` updated the P() function utilization.
+      * `Entered normal space` updated the P() function utilization.
+      * `Exploration data purchased` updated the P() function utilization.
+      * `Federation promotion` updated the P() function utilization.
+      * `Fine incurred` updated the P() function utilization.
+      * `FSD engaged` updated the P() function utilization.
+      * `Glide` updated the P() function utilization.
+      * `Jumped` updated the P() function utilization.
+      * `Launchbay report` updated the P() function utilization.
+      * `Location` updated the P() function utilization.
+      * `Mission accepted` updated to fix a typo preventing warnings about wanted passengers and to make the mission count both occasional and less frequent for higher commander combat ranks and updated the P() function utilization.
+      * `Mission check galaxy` updated the P() function utilization.
+      * `Mission completed` updated to summarize rewards more succinctly and include permit rewards. Community goals now use the localized name rather than "MISSION_CommunityGoal" and updated the P() function utilization.
+      * `Mission redirected` updated to filter duplicate similar mission redirects (e.g. from stacked similar missions) and updated the P() function utilization.
+      * `Module purchased` updated to better pronounce module class & grade.
+      * `Module retrieved` updated to better pronounce module class & grade.
+      * `Module sold` updated to better pronounce module class & grade.
+      * `Module sold from storage` updated to better pronounce module class & grade.
+      * `Module stored` updated to better pronounce module class & grade.
+      * `Module swapped` updated to better pronounce module class & grade.
+      * `Module transfer` updated to better pronounce module class & grade.
+      * `Modules stored` updated to prevent an exception while testing and to better pronounce module class & grade.
+      * `Power commodity delivered` updated the P() function utilization.
+      * `Power commodity fast tracked` updated the P() function utilization.
+      * `Power commodity obtained` updated the P() function utilization.
+      * `Power defected` updated the P() function utilization.
+      * `Power joined` updated the P() function utilization.
+      * `Power left` updated the P() function utilization.
+      * `Power salary claimed` updated the P() function utilization.
+      * `Powerplay` updated the P() function utilization.
+      * `Ship purchased` updated the P() function utilization.
+      * `Ship renamed` updated the P() function utilization.
+      * `Ship transfer initiated` updated the P() function utilization.
+      * `Signal detected` Spanish translation updated to fix a typo (missing paranthesis).
+      * `Star report` updated the P() function utilization.
+      * `System distance report` updated the P() function utilization.
+      * `System report` updated to default to the current star system if context variable `eddi_context_system_name` is not set and updated the P() function utilization.
+      * `System state changed` updated the P() function utilization.
+      * `System state report` updated to default to the current star system if context variable `eddi_context_system_name` is not set and updated the P() function utilization.
+      * `Touchdown` updated the P() function utilization.
+      * `Trade data purchased` updated the P() function utilization.
+      * `Trade voucher redeemed` updated the updated the P() function utilization.
+    * VoiceAttack Responder
+      * Revised `$-` output to more clearly render commander phonetic name
+      * Updated VoiceAttack wiki documentation to document implicit variables `$=` and `$-` as variables representing phonetic ship and commander names.
 
 ### 3.7.1
   * Core

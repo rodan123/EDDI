@@ -165,12 +165,10 @@ namespace EddiSpeechService
         {
             if (speech == null || speech.Trim() == "") { return; }
 
-            // If the user wants to disable SSML then we remove any tags here
-            if (Configuration.DisableSsml && (speech.Contains("<")))
+            // If the user wants to disable IPA then we remove any IPA phoneme tags here
+            if (Configuration.DisableIpa && speech.Contains("<phoneme"))
             {
-                Logging.Debug("Removing SSML");
-                // User has disabled SSML so remove all tags
-                speech = Regex.Replace(speech, "<.*?>", string.Empty);
+                speech = DisableIPA(speech);
             }
 
             if (string.IsNullOrWhiteSpace(voice))
@@ -233,6 +231,15 @@ namespace EddiSpeechService
                     play(source, priority);
                 }
             }
+        }
+
+        private static string DisableIPA(string speech)
+        {
+            // User has disabled IPA so remove all IPA phoneme tags
+            Logging.Debug("Phonetic speech is disabled, removing.");
+            speech = Regex.Replace(speech, @"<phoneme.*?>", string.Empty);
+            speech = Regex.Replace(speech, @"<\/phoneme>", string.Empty);
+            return speech;
         }
 
         private static List<string> SeparateSpeechStatements(string speech, string separators)
@@ -374,7 +381,7 @@ namespace EddiSpeechService
                         string culture = @" xml:lang=""" + bestGuessCulture() + @"""";
                         Logging.Debug("Best guess culture is " + culture);
                         speech = @"<?xml version=""1.0"" encoding=""UTF-8""?><speak version=""1.0"" xmlns=""https://www.w3.org/2001/10/synthesis""" + culture + ">" + escapeSsml(speech) + @"</speak>";
-                        Logging.Debug("Feeding SSML to synthesizer: " + escapeSsml(speech));
+                        Logging.Debug("Feeding SSML to synthesizer: " + speech);
                         if (voice != null && voice.StartsWith("CereVoice "))
                         {
                             // Cereproc voices do not respect `SpeakSsml` (particularly for IPA), but they do handle SSML via the `Speak` method.
@@ -483,49 +490,49 @@ namespace EddiSpeechService
             string result = text;
 
             // We need to make sure file names for the play function include a "/" (e.g. C:/)
-            result = Regex.Replace(result, "(<.+?src=\")(.:)(.*?" + @"\/>)", "$1" + "$2SSSSS" + "$3");
+            result = Regex.Replace(result, "(<.+?src=\")(.:)(.*?" + @"\/>)", "$1" + "$2%SSS%" + "$3");
 
             // Our valid SSML elements are audio, break, emphasis, play, phoneme, & prosody so encode these differently for now
             // Also escape any double quotes or single quotes inside the elements
-            result = Regex.Replace(result, "(<[^>]*)\"", "$1ZZZZZ");
-            result = Regex.Replace(result, "(<[^>]*)\"", "$1ZZZZZ");
-            result = Regex.Replace(result, "(<[^>]*)\"", "$1ZZZZZ");
-            result = Regex.Replace(result, "(<[^>]*)\"", "$1ZZZZZ");
-            result = Regex.Replace(result, "(<[^>]*)\'", "$1WWWWW");
-            result = Regex.Replace(result, "(<[^>]*)\'", "$1WWWWW");
-            result = Regex.Replace(result, "(<[^>]*)\'", "$1WWWWW");
-            result = Regex.Replace(result, "(<[^>]*)\'", "$1WWWWW");
-            result = Regex.Replace(result, "<(audio.*?)>", "XXXXX$1YYYYY");
-            result = Regex.Replace(result, "<(break.*?)>", "XXXXX$1YYYYY");
-            result = Regex.Replace(result, "<(play.*?)>", "XXXXX$1YYYYY");
-            result = Regex.Replace(result, "<(phoneme.*?)>", "XXXXX$1YYYYY");
-            result = Regex.Replace(result, "<(/phoneme)>", "XXXXX$1YYYYY");
-            result = Regex.Replace(result, "<(prosody.*?)>", "XXXXX$1YYYYY");
-            result = Regex.Replace(result, "<(/prosody)>", "XXXXX$1YYYYY");
-            result = Regex.Replace(result, "<(emphasis.*?)>", "XXXXX$1YYYYY");
-            result = Regex.Replace(result, "<(/emphasis)>", "XXXXX$1YYYYY");
-            result = Regex.Replace(result, "<(transmit.*?)>", "XXXXX$1YYYYY");
-            result = Regex.Replace(result, "<(/transmit)>", "XXXXX$1YYYYY");
-            result = Regex.Replace(result, "<(voice.*?)>", "XXXXX$1YYYYY");
-            result = Regex.Replace(result, "<(/voice)>", "XXXXX$1YYYYY");
-            result = Regex.Replace(result, "<(say-as.*?)>", "XXXXX$1YYYYY");
-            result = Regex.Replace(result, "<(/say-as)>", "XXXXX$1YYYYY");
+            result = Regex.Replace(result, "(<[^>]*)\"", "$1%ZZZ%");
+            result = Regex.Replace(result, "(<[^>]*)\"", "$1%ZZZ%");
+            result = Regex.Replace(result, "(<[^>]*)\"", "$1%ZZZ%");
+            result = Regex.Replace(result, "(<[^>]*)\"", "$1%ZZZ%");
+            result = Regex.Replace(result, "(<[^>]*)\'", "$1%WWW%");
+            result = Regex.Replace(result, "(<[^>]*)\'", "$1%WWW%");
+            result = Regex.Replace(result, "(<[^>]*)\'", "$1%WWW%");
+            result = Regex.Replace(result, "(<[^>]*)\'", "$1%WWW%");
+            result = Regex.Replace(result, "<(audio.*?)>", "%XXX%$1%YYY%");
+            result = Regex.Replace(result, "<(break.*?)>", "%XXX%$1%YYY%");
+            result = Regex.Replace(result, "<(play.*?)>", "%XXX%$1%YYY%");
+            result = Regex.Replace(result, "<(phoneme.*?)>", "%XXX%$1%YYY%");
+            result = Regex.Replace(result, "<(/phoneme)>", "%XXX%$1%YYY%");
+            result = Regex.Replace(result, "<(prosody.*?)>", "%XXX%$1%YYY%");
+            result = Regex.Replace(result, "<(/prosody)>", "%XXX%$1%YYY%");
+            result = Regex.Replace(result, "<(emphasis.*?)>", "%XXX%$1%YYY%");
+            result = Regex.Replace(result, "<(/emphasis)>", "%XXX%$1%YYY%");
+            result = Regex.Replace(result, "<(transmit.*?)>", "%XXX%$1%YYY%");
+            result = Regex.Replace(result, "<(/transmit)>", "%XXX%$1%YYY%");
+            result = Regex.Replace(result, "<(voice.*?)>", "%XXX%$1%YYY%");
+            result = Regex.Replace(result, "<(/voice)>", "%XXX%$1%YYY%");
+            result = Regex.Replace(result, "<(say-as.*?)>", "%XXX%$1%YYY%");
+            result = Regex.Replace(result, "<(/say-as)>", "%XXX%$1%YYY%");
 
             // Cereproc uses some additional custom SSML tags (documented in https://www.cereproc.com/files/CereVoiceCloudGuide.pdf)
-            result = Regex.Replace(result, "<(usel.*?)>", "XXXXX$1YYYYY");
-            result = Regex.Replace(result, "<(/usel)>", "XXXXX$1YYYYY");
-            result = Regex.Replace(result, "<(spurt.*?)>", "XXXXX$1YYYYY");
-            result = Regex.Replace(result, "<(/spurt)>", "XXXXX$1YYYYY");
+            result = Regex.Replace(result, "<(usel.*?)>", "%XXX%$1%YYY%");
+            result = Regex.Replace(result, "<(/usel)>", "%XXX%$1%YYY%");
+            result = Regex.Replace(result, "<(spurt.*?)>", "%XXX%$1%YYY%");
+            result = Regex.Replace(result, "<(/spurt)>", "%XXX%$1%YYY%");
 
             // Now escape anything that is still present
             result = SecurityElement.Escape(result) ?? "";
 
             // Put back the characters we hid
-            result = Regex.Replace(result, "XXXXX", "<");
-            result = Regex.Replace(result, "YYYYY", ">");
-            result = Regex.Replace(result, "ZZZZZ", "\"");
-            result = Regex.Replace(result, "WWWWW", "\'");
-            result = Regex.Replace(result, "SSSSS", @"\");
+            result = Regex.Replace(result, "%XXX%", "<");
+            result = Regex.Replace(result, "%YYY%", ">");
+            result = Regex.Replace(result, "%ZZZ%", "\"");
+            result = Regex.Replace(result, "%WWW%", "\'");
+            result = Regex.Replace(result, "%SSS%", @"\");
             return result;
         }
 

@@ -194,9 +194,6 @@
   <data name="tab_tts_disable_phonetic_speech_label" xml:space="preserve">
     <value>Fonetikus beszéd kikapcsolása:</value>
   </data>
-  <data name="tab_tts_disable_phonetic_speech_note" xml:space="preserve">
-    <value>(ez kikapcsolja az összes SSML beszéd címkét használó funkciót, ahogy az a Speech Responder segítség fájljában is megtalálható)</value>
-  </data>
   
   <data name="tab_tts_icao_label" xml:space="preserve">
     <value>ICAO engedélyezése:</value>

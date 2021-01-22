@@ -654,7 +654,7 @@ namespace EddiJournalMonitor
                                             {
                                                 // Ignore decals
                                             }
-                                            else if (slot.StartsWith("String_Lights", StringComparison.InvariantCultureIgnoreCase))
+                                            else if (slot.StartsWith("StringLights", StringComparison.InvariantCultureIgnoreCase))
                                             {
                                                 // Ignore string lights
                                             }
@@ -711,6 +711,8 @@ namespace EddiJournalMonitor
                                                     module.engineermodification = modification;
                                                     module.engineerlevel = level;
                                                     module.engineerquality = quality;
+                                                    module.engineerExperimentalEffectEDName = experimentalEffect;
+                                                    module.modifiers = modifiers;
                                                     compartment.module = module;
                                                     compartments.Add(compartment);
                                                 }
@@ -1359,12 +1361,12 @@ namespace EddiJournalMonitor
                                             slots.Add(slot);
 
                                             module = Module.FromEDName(JsonParsing.getString(item, "Name"));
-                                            module.hot = JsonParsing.getBool(data, "Hot");
-                                            string engineerModifications = JsonParsing.getString(data, "EngineerModifications");
+                                            module.hot = JsonParsing.getBool(item, "Hot");
+                                            string engineerModifications = JsonParsing.getString(item, "EngineerModifications");
                                             module.modified = engineerModifications != null;
-                                            module.engineerlevel = JsonParsing.getOptionalInt(data, "Level") ?? 0;
+                                            module.engineerlevel = JsonParsing.getOptionalInt(item, "Level") ?? 0;
                                             module.engineermodification = Blueprint.FromEDName(engineerModifications) ?? Blueprint.None;
-                                            module.engineerquality = JsonParsing.getOptionalDecimal(data, "Quality") ?? 0;
+                                            module.engineerquality = JsonParsing.getOptionalDecimal(item, "Quality") ?? 0;
                                             modules.Add(module);
                                         }
                                     }
@@ -2069,7 +2071,12 @@ namespace EddiJournalMonitor
                                     source.threatLevel = JsonParsing.getOptionalInt(data, "ThreatLevel") ?? 0;
                                     source.isStation = JsonParsing.getOptionalBool(data, "IsStation") ?? false;
 
-                                    bool unique = EDDI.Instance.CurrentStarSystem.signalsources.Contains(source.localizedName);
+                                    bool unique = false;
+                                    if (EDDI.Instance.CurrentStarSystem != null && EDDI.Instance.CurrentStarSystem.systemAddress == systemAddress)
+                                    {
+                                        unique = !EDDI.Instance.CurrentStarSystem.signalsources.Contains(source.localizedName);
+                                        EDDI.Instance.CurrentStarSystem.AddOrUpdateSignalSource(source);
+                                    }
                                     
                                     events.Add(new SignalDetectedEvent(timestamp, systemAddress, source, unique) { raw = line, fromLoad = fromLogLoad });
                                 }
@@ -3863,7 +3870,7 @@ namespace EddiJournalMonitor
                                     {
                                         // Generate a new cancellation token source
                                         carrierJumpCancellationTS = new CancellationTokenSource();
-                                        carrierJumpCancellationTokenSources.Add(carrierId, carrierJumpCancellationTS);
+                                        carrierJumpCancellationTokenSources[carrierId] = carrierJumpCancellationTS;
 
                                         // Generate secondary tasks to spawn events when the carrier locks down landing pads and when it begins jumping.
                                         // These may be cancelled via the cancellation token source above.

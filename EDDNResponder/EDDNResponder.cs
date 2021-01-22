@@ -176,12 +176,15 @@ namespace EDDNResponder
             {
                 if (fullLocationEvents.Contains(edType) || partialLocationEvents.Contains(edType))
                 {
-                    data = StripPersonalData(data);
-                    data = EnrichLocationData(edType, data);
-
-                    if (data != null)
+                    if (CheckSanity(edType, data))
                     {
-                        SendToEDDN("https://eddn.edcd.io/schemas/journal/1", data);
+                        data = StripPersonalData(data);
+                        data = EnrichLocationData(edType, data);
+
+                        if (data != null) 
+                        { 
+                            SendToEDDN("https://eddn.edcd.io/schemas/journal/1", data);
+                        }
                     }
                 }
             }
@@ -264,6 +267,28 @@ namespace EDDNResponder
 #endif
                 }
             }
+        }
+
+        private bool CheckSanity(string edType, IDictionary<string, object> data)
+        {
+            // We've already vetted location data via the CheckLocationData method.
+            // Perform any additional quality checks we think we need here.
+            var passed = true;
+            switch (edType)
+            {
+                case "Docked":
+                    // Identify and catch a possible FDev bug that can allow incomplete `Docked` messages
+                    // missing a MarketID and many other properties.
+                    if (!data.ContainsKey("MarketID")) { passed = false; }
+                    break;
+                case "SAASignalsFound":
+                    if (!data.ContainsKey("Signals")) { passed = false; }
+                    break;
+                case "Scan":
+                    if (!data.ContainsKey("ScanType")) { passed = false; }
+                    break;
+            }
+            return passed;
         }
 
         private bool LocationIsSet()
@@ -367,16 +392,14 @@ namespace EDDNResponder
 
         private void sendCommodityInformation(MarketInformationUpdatedEvent theEvent)
         {
-            if (theEvent.commodityQuotes?.Count > 0)
+            if (theEvent.commodityQuotes != null)
             {
+                // An empty list is permissible, e.g. if a fleet carrier isn't buying or selling any commodities.
                 var commodities = theEvent.commodityQuotes
                     .Where(c => c.IsMarketable())
                     .ToList();
 
-                // Only send the message if we have commodities
-                if (commodities.Count > 0)
-                {
-                    IDictionary<string, object> data = new Dictionary<string, object>
+                IDictionary<string, object> data = new Dictionary<string, object>
                     {
                         { "timestamp", Dates.FromDateTimeToString(theEvent.timestamp) },
                         { "systemName", theEvent.starSystem },
@@ -384,14 +407,13 @@ namespace EDDNResponder
                         { "marketId", theEvent.marketId },
                         { "horizons", theEvent.inHorizons}
                     };
-                    data.Add("commodities", commodities);
-                    if (theEvent.prohibitedCommodities?.Count > 0)
-                    {
-                        data.Add("prohibited", theEvent.prohibitedCommodities);
-                    }
-
-                    SendToEDDN("https://eddn.edcd.io/schemas/commodity/3", data);
+                data.Add("commodities", commodities);
+                if (theEvent.prohibitedCommodities?.Count > 0)
+                {
+                    data.Add("prohibited", theEvent.prohibitedCommodities);
                 }
+
+                SendToEDDN("https://eddn.edcd.io/schemas/commodity/3", data);
             }
         }
 

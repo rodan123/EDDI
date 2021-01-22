@@ -126,9 +126,9 @@ namespace EddiDataDefinitions
             }
         }
 
-        public List<string> factionSystems { get; set; }
-        public List<string> interstellarBountyFactions { get; set; }
-        public List<FactionReport> factionReports { get; set; }
+        public List<string> factionSystems { get; set; } = new List<string>();
+        public List<string> interstellarBountyFactions { get; set; } = new List<string>();
+        public List<FactionReport> factionReports { get; set; } = new List<FactionReport>();
 
         [JsonIgnore]
         // All bonds awareded, excluding the discrepancy report
@@ -167,9 +167,6 @@ namespace EddiDataDefinitions
         public FactionRecord(string faction)
         {
             this.faction = faction;
-            factionSystems = new List<string>();
-            interstellarBountyFactions = new List<string>();
-            factionReports = new List<FactionReport>();
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

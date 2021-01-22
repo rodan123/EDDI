@@ -1,8 +1,8 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Rollbar;
-using Rollbar.Telemetry;
 using Rollbar.DTOs;
+using Rollbar.Telemetry;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -280,7 +280,7 @@ namespace Utilities
         // Exception handling (configuration instructions are at https://github.com/rollbar/Rollbar.NET)
         // The Rollbar API test console is available at https://docs.rollbar.com/reference.
 
-        const string rollbarWriteToken = "e20e7fa8ca53430aa97c5f2c77d3482a";
+        const string rollbarWriteToken = "5c2ec62308d748e8afa59af48f0e126c";
         public static bool TelemetryEnabled {
             get => RollbarLocator.RollbarInstance.Config.Enabled;
             // ReSharper disable once ValueParameterNotUsed

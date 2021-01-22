@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using EddiDataDefinitions;
+﻿using EddiDataDefinitions;
 using EDDNResponder;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Tests.Properties;
 using Utilities;
 
@@ -72,7 +72,7 @@ namespace UnitTests
                 ""legality"": """",
                 ""buyPrice"": 313,
                 ""sellPrice"": 281,
-                ""meanPrice"": 294,
+                ""meanPrice"": 294.0000000012,
                 ""demandBracket"": """",
                 ""stockBracket"": 2,
                 ""stock"": 31881,

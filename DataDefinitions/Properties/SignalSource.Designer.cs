@@ -61,6 +61,15 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Distress Call.
+        /// </summary>
+        public static string Aftermath_Large {
+            get {
+                return ResourceManager.GetString("Aftermath_Large", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Ancient Ruins.
         /// </summary>
         public static string Ancient {
@@ -201,6 +210,15 @@ namespace EddiDataDefinitions.Properties {
         public static string FIXED_EVENT_DEBRIS {
             get {
                 return ResourceManager.GetString("FIXED_EVENT_DEBRIS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Distribution Center.
+        /// </summary>
+        public static string FIXED_EVENT_DISTRIBUTIONCENTRE {
+            get {
+                return ResourceManager.GetString("FIXED_EVENT_DISTRIBUTIONCENTRE", resourceCulture);
             }
         }
         

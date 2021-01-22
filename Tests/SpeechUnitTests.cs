@@ -315,25 +315,25 @@ namespace UnitTests
         [TestMethod]
         public void TestSpeechHumanize7()
         {
-            Assert.AreEqual("minus 51 million", Translations.Humanize(-51000000));
+            Assert.AreEqual("minus 51000000", Translations.Humanize(-51000000));
         }
 
         [TestMethod]
         public void TestSpeechHumanize8()
         {
-            Assert.AreEqual("just over 51 million", Translations.Humanize(51000001));
+            Assert.AreEqual("51000000", Translations.Humanize(51000001));
         }
 
         [TestMethod]
         public void TestSpeechHumanize9()
         {
-            Assert.AreEqual("10 thousand", Translations.Humanize(10000));
+            Assert.AreEqual("10000", Translations.Humanize(10000));
         }
 
         [TestMethod]
         public void TestSpeechHumanize10()
         {
-            Assert.AreEqual("100 thousand", Translations.Humanize(100000));
+            Assert.AreEqual("100000", Translations.Humanize(100000));
         }
 
         [TestMethod]
@@ -357,25 +357,25 @@ namespace UnitTests
         [TestMethod]
         public void TestSpeechHumanize14()
         {
-            Assert.AreEqual("over minus 12", Translations.Humanize(-12.1M));
+            Assert.AreEqual("minus 12.1", Translations.Humanize(-12.1M));
         }
 
         [TestMethod]
         public void TestSpeechHumanize15()
         {
-            Assert.AreEqual("just over minus 12", Translations.Humanize(-12.01M));
+            Assert.AreEqual("minus 12", Translations.Humanize(-12.01M));
         }
 
         [TestMethod]
         public void TestSpeechHumanize16()
         {
-            Assert.AreEqual("just over 436 trillion", Translations.Humanize(4.36156E14M));
+            Assert.AreEqual("over 430 trillion", Translations.Humanize(4.36156E14M));
         }
 
         [TestMethod]
         public void TestSpeechHumanize17()
         {
-            Assert.AreEqual("well over 945 billion", Translations.Humanize(9.4571E11M));
+            Assert.AreEqual("over 940 billion", Translations.Humanize(9.4571E11M));
         }
 
         [TestMethod]
@@ -387,7 +387,31 @@ namespace UnitTests
         [TestMethod]
         public void TestSpeechHumanize19()
         {
-            Assert.AreEqual("nearly 646 thousand", Translations.Humanize(6.459E5M));
+            Assert.AreEqual("over 640 thousand", Translations.Humanize(6.459E5M));
+        }
+
+        [TestMethod]
+        public void TestSpeechHumanize20()
+        {
+            Assert.AreEqual("456", Translations.Humanize(456));
+        }
+
+        [TestMethod]
+        public void TestSpeechHumanize21()
+        {
+            Assert.AreEqual("1.8 million", Translations.Humanize(1.8E6M));
+        }
+
+        [TestMethod]
+        public void TestSpeechHumanize22()
+        {
+            Assert.AreEqual("1.8 million", Translations.Humanize(1800001));
+        }
+
+        [TestMethod]
+        public void TestSpeechHumanize23()
+        {
+            Assert.AreEqual("minus 1000", Translations.Humanize(-1000));
         }
 
         [TestMethod]
@@ -457,6 +481,27 @@ namespace UnitTests
             var line = @"<spurt audio='g0001_004'>cough</spurt> This is a <usel variant=""1"">test</usel> sentence.";
             var result = SpeechService.escapeSsml(line);
             Assert.AreEqual(line, result);
+        }
+
+        [TestMethod]
+        public void TestSpeechServiceEscaping5()
+        {
+            // Test escaping for characters included in the escape sequence ('X' in this case)
+            var line = @"Brazilian armada <say-as interpret-as=""characters"">X</say-as>";
+            var result = SpeechService.escapeSsml(line);
+            Assert.AreEqual(line, result);
+        }
+
+        [TestMethod]
+        public void TestDisableIPA()
+        {
+            // Test removal of <phoneme> tags (and only phenome tags) when the user has indicated that they would like to disable phonetic speech
+            var line = @"<break time=""100ms""/><phoneme alphabet=""ipa"" ph=""ʃɪnˈrɑːrtə"">Shinrarta</phoneme> <phoneme alphabet='ipa' ph='ˈdezɦrə'>Dezhra</phoneme> & Co's shop";
+
+            var service = new PrivateType(typeof(SpeechService));
+            var result = service.InvokeStatic("DisableIPA", line)?.ToString();
+
+            Assert.AreEqual(@"<break time=""100ms""/>Shinrarta Dezhra & Co's shop", result);
         }
     }
 }

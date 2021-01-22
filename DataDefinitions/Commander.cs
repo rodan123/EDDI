@@ -116,7 +116,7 @@ namespace EddiDataDefinitions
         public string squadronfaction { get; set; }
 
         /// <summary>The insurance excess percentage the commander has to pay</summary>
-        public decimal? insurance { get; set; }
+        public decimal? insurance { get; set; } = 0.05M;
 
         /// <summary>The Commander's friends</summary>
         public List<Friend> friends = new List<Friend>();
@@ -146,6 +146,8 @@ namespace EddiDataDefinitions
 
         public static Commander FromFrontierApiCmdr(Commander currentCmdr, FrontierApiCommander frontierApiCommander, DateTime apiTimeStamp, DateTime journalTimeStamp, out bool cmdrMatches)
         {
+            if (frontierApiCommander is null) { cmdrMatches = true; return currentCmdr; }
+
             // Copy our current commander to a new commander object
             Commander Cmdr = currentCmdr.Copy();
 

@@ -434,7 +434,7 @@ namespace Eddi
             ttsRateSlider.Value = speechServiceConfiguration.Rate;
             ttsEffectsLevelSlider.Value = speechServiceConfiguration.EffectsLevel;
             ttsDistortCheckbox.IsChecked = speechServiceConfiguration.DistortOnDamage;
-            disableSsmlCheckbox.IsChecked = speechServiceConfiguration.DisableSsml;
+            DisableIpaCheckbox.IsChecked = speechServiceConfiguration.DisableIpa;
             enableIcaoCheckbox.IsChecked = speechServiceConfiguration.EnableIcao;
 
             ttsTestShipDropDown.ItemsSource = ShipDefinitions.ShipModels; // already sorted
@@ -971,6 +971,7 @@ namespace Eddi
                     companionAppText.Text = Properties.EddiResources.frontier_api_please_authenticate;
                     break;
                 case CompanionAppService.State.Authorized:
+                case CompanionAppService.State.TokenRefresh:
                     companionAppStatusValue.Text = Properties.EddiResources.frontierApiConnected;
                     companionAppButton.Content = Properties.MainWindow.reset_button;
                     companionAppButton.IsEnabled = true;
@@ -1073,7 +1074,7 @@ namespace Eddi
             SpeechService.Instance.Say(testShip, message, 0);
         }
 
-        private void disableSsmlUpdated(object sender, RoutedEventArgs e)
+        private void disableIpaUpdated(object sender, RoutedEventArgs e)
         {
             ttsUpdated();
         }
@@ -1095,7 +1096,7 @@ namespace Eddi
                 Rate = (int)ttsRateSlider.Value,
                 EffectsLevel = (int)ttsEffectsLevelSlider.Value,
                 DistortOnDamage = ttsDistortCheckbox.IsChecked.Value,
-                DisableSsml = disableSsmlCheckbox.IsChecked.Value,
+                DisableIpa = DisableIpaCheckbox.IsChecked.Value,
                 EnableIcao = enableIcaoCheckbox.IsChecked.Value
             };
             SpeechService.Instance.Configuration = speechConfiguration;

@@ -9,53 +9,92 @@ namespace EddiSpeechService
     /// <summary>Translations for Elite items for text-to-speech</summary>
     public class Translations
     {
-        public static string GetTranslation(string val, bool useICAO = false)
+        public static string GetTranslation(string val, bool useICAO = false, string type = null)
         {
             // Translations from fixed dictionaries
             string translation = val;
-            if (translation == val)
+            type = !string.IsNullOrEmpty(type) ? type.ToLowerInvariant() : null;
+
+            string getPhoneticModel(string val2)
             {
-                translation = Power(val);
-            }
-            if (translation == val)
-            {
-                translation = StellarClass(val);
-            }
-            if (translation == val)
-            {
-                translation = PlanetClass(val);
-            }
-            if (translation == val)
-            {
-                Ship ship = ShipDefinitions.FromModel(val);
+                Ship ship = ShipDefinitions.FromModel(val2);
                 if (ship != null && ship.EDID > 0)
                 {
-                    translation = ship.SpokenModel();
+                    return ship.SpokenModel();
                 }
+                return val2;
             }
-            if (translation == val)
+
+            string getPhoneticManufacturer(string val2) 
             {
-                string phoneticManufacturer = ShipDefinitions.SpokenManufacturer(val);
+                string phoneticManufacturer = ShipDefinitions.SpokenManufacturer(val2);
                 if (phoneticManufacturer != null)
                 {
-                    translation = phoneticManufacturer;
+                    return phoneticManufacturer;
                 }
+                return val2;
             }
-            if (translation == val)
+
+            switch (type)
             {
-                translation = Body(val, useICAO);
-            }
-            if (translation == val)
-            {
-                translation = StarSystem(val, useICAO);
-            }
-            if (translation == val)
-            {
-                translation = Station(val);
-            }
-            if (translation == val)
-            {
-                translation = Faction(val);
+                case "power":
+                    translation = Power(val);
+                    break;
+                case "planettype":
+                    translation = PlanetClass(val);
+                    break;
+                case "shipmodel":
+                    translation = getPhoneticModel(val);
+                    break;
+                case "shipmanufacturer":
+                    translation = getPhoneticManufacturer(val);
+                    break;
+                case "body":
+                    translation = Body(val, useICAO);
+                    break;
+                case "starsystem":
+                    translation = StarSystem(val, useICAO);
+                    break;
+                case "station":
+                    translation = Station(val);
+                    break;
+                case "faction":
+                    translation = Faction(val);
+                    break;
+                default:
+                    if (translation == val)
+                    {
+                        translation = Power(val);
+                    }
+                    if (translation == val)
+                    {
+                        translation = PlanetClass(val);
+                    }
+                    if (translation == val)
+                    {
+                        translation = getPhoneticModel(val);
+                    }
+                    if (translation == val)
+                    {
+                        translation = getPhoneticManufacturer(val);
+                    }
+                    if (translation == val)
+                    {
+                        translation = Body(val, useICAO);
+                    }
+                    if (translation == val)
+                    {
+                        translation = StarSystem(val, useICAO);
+                    }
+                    if (translation == val)
+                    {
+                        translation = Station(val);
+                    }
+                    if (translation == val)
+                    {
+                        translation = Faction(val);
+                    }
+                    break;
             }
             return translation.Trim();
         }
@@ -102,6 +141,7 @@ namespace EddiSpeechService
         {
             { "VESPER-M4", "Vesper M 4" }, // Stop Vesper being treated as a sector
             { "Sagittarius A*", "Sagittarius " + sayAsLettersOrNumbers("A") + " Star" }, // Allow the * to be parsed out
+            { "Summerland", "Summer Land" }, // Separate summer from land 
         };
 
         // Fixes to avoid issues with pronunciation of station model names
@@ -183,17 +223,6 @@ namespace EddiSpeechService
             { "Zhang Fei", new string[] { Properties.Phonetics.zhangfei_zhang, Properties.Phonetics.zhangfei_fei } },
         };
 
-        public static string StellarClass(string val)
-        {
-            if (val == null)
-            {
-                return null;
-            }
-
-            // Some test to speech voices replace "TTS" with "text-to-speech". Fix that here.
-            return val != "TTS" ? val : val.Replace("TTS", "T T S");
-        }
-
         public static string PlanetClass(string val)
         {
             if (val == null)
@@ -273,6 +302,7 @@ namespace EddiSpeechService
         private static readonly Regex PLANET = new Regex(@"^[A-Za-z]$");
         private static readonly Regex SUBSTARS = new Regex(@"^A[BCDE]?[CDE]?[DE]?[E]?|B[CDE]?[DE]?[E]?|C[DE]?[E]?|D[E]?$");
         private static readonly Regex BODY = new Regex(@"^(.*?) ([A-E]+ ){0,2}(Belt(?:\s|$)|Cluster(?:\s|$)|Ring|\d{1,2}(?:\s|$)|[A-Za-z](?:\s|$)){1,12}$", RegexOptions.IgnoreCase);
+        private static readonly Regex SHORTBODY = new Regex(@"^([A-E]){0,1}(?> )*(\d+){0,1}(?> )*([a-z]){0,1}$");
 
         /// <summary>Fix up faction names</summary>
         public static string Faction(string faction)
@@ -320,6 +350,12 @@ namespace EddiSpeechService
             }
             else
             {
+                // Might be a short body name
+                if (SHORTBODY.IsMatch(body))
+                {
+                    return sayAsLettersOrNumbers(body);
+                }
+
                 // Parse the starsystem
                 results.Add(StarSystem(match.Groups[1].Value.Trim(), useICAO));
                 // Parse the body
@@ -400,7 +436,7 @@ namespace EddiSpeechService
             // Specific fixing of names to avoid later confusion
             if (STAR_SYSTEM_FIXES.ContainsKey(starSystem))
             {
-                starSystem = STAR_SYSTEM_FIXES[starSystem];
+                return STAR_SYSTEM_FIXES[starSystem];
             }
 
             // Specific translations
@@ -726,11 +762,11 @@ namespace EddiSpeechService
                 return null;
             }
 
-            string minus = "";
+            string maybeMinus = "";
             if (value < 0)
             {
-                minus = Properties.Phrases.minus + " ";
-                value *= -1;
+                maybeMinus = Properties.Phrases.minus + " ";
+                value = -value;
             }
 
             if (value == 0)
@@ -748,109 +784,142 @@ namespace EddiSpeechService
                     numzeros++;
                 }
                 // Now round it to 2sf
-                return minus + (Math.Round((double)value * 10) / (Math.Pow(10, numzeros + 2))).ToString();
+                return maybeMinus + (Math.Round((double)value * 10) / (Math.Pow(10, numzeros + 2))).ToString();
+            }
+
+            (int number, int nextDigit) Normalize(decimal inputValue, long orderMultiplierVal)
+            {
+                return (
+                    number: (int)(inputValue / orderMultiplierVal),
+                    nextDigit: (int)((inputValue % orderMultiplierVal) / ((decimal)orderMultiplierVal / 10))
+                );
             }
 
             int number;
             int nextDigit;
             string order;
-            int digits = (int)Math.Log10((double)value);
-            if (digits < 3)
+            long orderMultiplier = 1;
+            int magnitude = (int)Math.Log10((double)value);
+            if (magnitude < 3)
             {
                 // Units
-                number = (int)value;
                 order = "";
-                nextDigit = (int)((value - number) * 10);
+                (number, nextDigit) = Normalize((decimal)value, orderMultiplier);
             }
-            else if (digits < 6)
+            else if (magnitude < 6)
             {
                 // Thousands
-                number = (int)(value / 1E3M);
                 order = " " + Properties.Phrases.thousand;
-                nextDigit = (int)((value - (number * 1E3M)) / 1E2M);
+                orderMultiplier = (long)1E3;
+                (number, nextDigit) = Normalize((decimal)value, orderMultiplier);
             }
-            else if (digits < 9)
+            else if (magnitude < 9)
             {
                 // Millions
-                number = (int)(value / 1E6M);
                 order = " " + Properties.Phrases.million;
-                nextDigit = (int)((value - (number * 1E6M)) / 1E5M);
+                orderMultiplier = (long)1E6;
+                (number, nextDigit) = Normalize((decimal)value, orderMultiplier);
             }
-            else if (digits < 12)
+            else if (magnitude < 12)
             {
                 // Billions
-                number = (int)(value / 1E9M);
                 order = " " + Properties.Phrases.billion;
-                nextDigit = (int)((value - (number * 1E9M)) / 1E8M);
+                orderMultiplier = (long)1E9;
+                (number, nextDigit) = Normalize((decimal)value, orderMultiplier);
             }
-            else if (digits < 15)
+            else if (magnitude < 15)
             {
                 // Trillions
-                number = (int)(value / 1E12M);
                 order = " " + Properties.Phrases.trillion;
-                nextDigit = (int)((value - (number * 1E12M)) / 1E11M);
+                orderMultiplier = (long)1E12;
+                (number, nextDigit) = Normalize((decimal)value, orderMultiplier);
             }
             else
             {
                 // Quadrillions
-                number = (int)(value / 1E15M);
                 order = " " + Properties.Phrases.quadrillion;
-                nextDigit = (int)((value - (number * 1E15M)) / 1E14M);
+                orderMultiplier = (long)1E15M;
+                (number, nextDigit) = Normalize((decimal)value, orderMultiplier);
             }
-
-            // See if we have an exact match
-            if (((long)(((decimal)value) / (decimal)Math.Pow(10, digits - 1))) * (decimal)(Math.Pow(10, digits - 1)) == value)
+            
+            // See if we have a whole number that is fully described within the largest order
+            if (number * orderMultiplier == Math.Abs((decimal)value))
             {
-                return minus + number + order;
+                // Some languages render these differently than others. "1000" in English is "one thousand" but in Italian is simply "mille".
+                // Consequently, we leave the interpretation to the culture-specific voice.
+                return maybeMinus + number * orderMultiplier;
             }
 
-            // Describe decimal values
             if (number < 100)
             {
+                // See if we have a number whose value can be expressed with a short decimal (i.e 1.3 million)
+                if (number + ((decimal)nextDigit / 10) == Math.Round((decimal)value / orderMultiplier, 2))
+                {
+                    if (nextDigit == 0)
+                    {
+                        return maybeMinus + number * orderMultiplier;
+                    }
+                    else
+                    {
+                        return maybeMinus + (number + (decimal)nextDigit / 10) + order;
+                    }
+                }
+
+                // Describe values for complex numbers where the largest order number does not exceed one hundred
                 string andahalf = " " + Properties.Phrases.andahalf;
                 switch (nextDigit)
                 {
                     case 0:
-                        return Properties.Phrases.justover + " " + minus + number + order;
+                        // the figure we are saying is round enough already
+                        return maybeMinus + number + order;
                     case 1:
+                        return Properties.Phrases.justover + " " + maybeMinus + number + order;
                     case 2:
-                        return Properties.Phrases.over + " " + minus + number + order;
+                        return Properties.Phrases.over + " " + maybeMinus + number + order;
                     case 3:
-                        return Properties.Phrases.wellover + " " + minus + number + order;
+                        return Properties.Phrases.wellover + " " + maybeMinus + number + order;
                     case 4:
-                        return Properties.Phrases.nearly + " " + minus + number + andahalf + order;
+                        return Properties.Phrases.nearly + " " + maybeMinus + number + andahalf + order;
                     case 5:
-                        return Properties.Phrases.around + " " + minus + number + andahalf + order;
+                        return Properties.Phrases.around + " " + maybeMinus + number + andahalf + order;
                     case 6:
                     case 7:
-                        return Properties.Phrases.over + " " + minus + number + andahalf + order;
+                        return Properties.Phrases.over + " " + maybeMinus + number + andahalf + order;
                     case 8:
-                        return Properties.Phrases.wellover + " " + minus + number + andahalf + order;
+                        return Properties.Phrases.wellover + " " + maybeMinus + number + andahalf + order;
                     case 9:
-                        return Properties.Phrases.nearly + " " + minus + (number + 1) + order;
+                        return Properties.Phrases.nearly + " " + maybeMinus + (number + 1) + order;
                 }
             }
-            // Describe (less precisely) decimal values for more complex numbers    
+            // Describe (less precisely) values for complex numbers where the largest order number exceeds one hundred
             else
             {
-                if (nextDigit < 2)
+                // Round largest order numbers in the hundreds to the nearest 10, except where the number after the hundreds place is 20 or less
+                if (number - (int)((decimal)number/100) * 100 >= 20)
                 {
-                    return Properties.Phrases.justover + " " + minus + number + order;
+                    (number, nextDigit) = Normalize(number, 10);
+                    number *= 10;
                 }
-                else if (nextDigit < 6)
+                
+                if (nextDigit == 0)
                 {
-                    return Properties.Phrases.over + " " + minus + number + order;
+                    // the figure we are saying is round enough already
+                    return maybeMinus + number + order;
                 }
-                else if (nextDigit < 8)
+                else if (nextDigit < 2)
                 {
-                    return Properties.Phrases.wellover + " " + minus + number + order;
+                    return Properties.Phrases.justover + " " + maybeMinus + number + order;
+                }
+                else if (nextDigit < 7)
+                {
+                    return Properties.Phrases.over + " " + maybeMinus + number + order;
                 }
                 else if (nextDigit < 10)
                 {
-                    return Properties.Phrases.nearly + " " + minus + (number + 1) + order;
+                    return Properties.Phrases.nearly + " " + maybeMinus + (number + 1) + order;
                 }
             }
-            return Properties.Phrases.around + " " + minus + number + order;
+            return Properties.Phrases.around + " " + maybeMinus + number + order;
         }
     }
 }

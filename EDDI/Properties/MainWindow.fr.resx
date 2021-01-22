@@ -214,9 +214,6 @@
   <data name="tab_tts_disable_phonetic_speech_label" xml:space="preserve">
     <value>Désactiver le langage phonétique :</value>
   </data>
-  <data name="tab_tts_disable_phonetic_speech_note" xml:space="preserve">
-    <value>(Ceci désactivera toutes les fonctions utilisant les tags SSML, comme décrit dans le fichier d'aide du répondeur de dialogue)</value>
-  </data>
   <data name="tab_tts_icao_desc" xml:space="preserve">
     <value>EDDI peut utiliser l'ICAO, par exemple utiliser 'alpha' plutôt que 'A' pour nommer le noms des étoile ou des astres. Cela facilite la compréhension des noms de systèmes mais les rend plus long à prononcer. Pour utiliser ce type de prononciation, veuillez cochez l'option ci-dessous. À noter que cela ne fonctionnera pas si vous avez désactivé le langage phonétique.</value>
   </data>

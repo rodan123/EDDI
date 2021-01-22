@@ -845,11 +845,11 @@ namespace EddiVoiceAttackResponder
             string cmdrScript;
             if (string.IsNullOrEmpty(EDDI.Instance.Cmdr?.name))
             {
-                cmdrScript = "EDDI.Instance.Cmdr";
+                cmdrScript = Eddi.Properties.EddiResources.Commander;
             }
             else
             {
-                cmdrScript = "EDDI.Instance.Cmdr " + EDDI.Instance.Cmdr.phoneticname;
+                cmdrScript = EDDI.Instance.Cmdr.phoneticname;
             }
             script = script.Replace("$-", cmdrScript);
 
@@ -885,7 +885,7 @@ namespace EddiVoiceAttackResponder
             }
 
             // Step 3 - pass it through the script resolver
-            res = new ScriptResolver(null).resolveFromValue(res, true);
+            res = new EddiSpeechResponder.Service.ScriptResolver(null).resolveFromValue(res, true);
 
             return res ?? "";
         }

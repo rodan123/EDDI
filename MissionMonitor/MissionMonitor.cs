@@ -290,7 +290,7 @@ namespace EddiMissionMonitor
 
         private void handleDataScannedEvent(DataScannedEvent @event)
         {
-            if (@event.timestamp > updateDat)
+            if (@event.timestamp >= updateDat)
             {
                 updateDat = @event.timestamp;
                 if (_handleDataScannedEvent(@event))
@@ -311,6 +311,7 @@ namespace EddiMissionMonitor
                     string type = mission.typeEDName.ToLowerInvariant();
                     switch (type)
                     {
+                        // A `MissionRedirected` journal event isn't written for each waypoint in multi-destination passenger missions, so we handle those here.
                         case "sightseeing":
                             {
                                 DestinationSystem system = mission.destinationsystems
@@ -318,21 +319,17 @@ namespace EddiMissionMonitor
                                 if (system != null)
                                 {
                                     system.visited = true;
-                                    if (mission.destinationsystems.Where(s => s.visited == false).Count() > 0)
+                                    string waypointSystemName = mission.destinationsystems?
+                                        .FirstOrDefault(s => s.visited == false)?.name;
+                                    if (!string.IsNullOrEmpty(waypointSystemName))
                                     {
                                         // Set destination system to next in chain & trigger a 'Mission redirected' event
-                                        string destinationsystem = mission.destinationsystems?
-                                            .FirstOrDefault(s => s.visited == false).name;
-                                        EDDI.Instance.enqueueEvent(new MissionRedirectedEvent(DateTime.UtcNow, mission.missionid, mission.name, null, null, destinationsystem, EDDI.Instance?.CurrentStarSystem?.systemname));
+                                        EDDI.Instance.enqueueEvent(new MissionRedirectedEvent(DateTime.UtcNow, mission.missionid, mission.name, null, null, waypointSystemName, EDDI.Instance?.CurrentStarSystem?.systemname));
                                     }
                                     update = true;
                                 }
                             }
                             break;
-                    }
-                    if (update)
-                    {
-                        break;
                     }
                 }
             }
@@ -341,7 +338,7 @@ namespace EddiMissionMonitor
 
         private void handleMissionsEvent(MissionsEvent @event)
         {
-            if (@event.timestamp > updateDat)
+            if (@event.timestamp >= updateDat)
             {
                 updateDat = @event.timestamp;
                 if (_handleMissionsEvent(@event))
@@ -418,16 +415,14 @@ namespace EddiMissionMonitor
             // Remove strays from the mission log
             foreach (Mission missionEntry in missions.ToList())
             {
-                // Ensure Community Goals remain in the mission log
-                if (!missionEntry.communal)
+                Mission mission = @event.missions.FirstOrDefault(m => m.missionid == missionEntry.missionid);
+                if (mission == null || mission.name.Contains("StartZone") || (missionEntry.communal && missionEntry.statusEDName != "Active"))
                 {
-                    Mission mission = @event.missions.FirstOrDefault(m => m.missionid == missionEntry.missionid);
-                    if (mission == null || mission.name.Contains("StartZone"))
-                    {
-                        // Strip out the stray and 'StartZone' missions from the log
-                        RemoveMissionWithMissionId(missionEntry.missionid);
-                        update = true;
-                    }
+                    // Strip out the stray and 'StartZone' missions from the log
+                    // This can include stale community goals (if any are eligible to claim,
+                    // they will be re-added by a Community Goal event)
+                    RemoveMissionWithMissionId(missionEntry.missionid);
+                    update = true;
                 }
             }
             return update;
@@ -435,7 +430,7 @@ namespace EddiMissionMonitor
 
         private void handlePassengersEvent(PassengersEvent @event)
         {
-            if (@event.timestamp > updateDat)
+            if (@event.timestamp >= updateDat)
             {
                 updateDat = @event.timestamp;
                 _handlePassengersEvent(@event);
@@ -475,7 +470,7 @@ namespace EddiMissionMonitor
 
         private void handleCommunityGoalEvent(CommunityGoalEvent @event)
         {
-            if (@event.timestamp > updateDat)
+            if (@event.timestamp >= updateDat)
             {
                 updateDat = @event.timestamp;
                 _handleCommunityGoalEvent(@event);
@@ -525,7 +520,7 @@ namespace EddiMissionMonitor
 
         private void handleCargoDepotEvent(CargoDepotEvent @event)
         {
-            if (@event.timestamp > updateDat)
+            if (@event.timestamp >= updateDat)
             {
                 _handleCargoDepotEvent(@event);
                 updateDat = @event.timestamp;
@@ -605,8 +600,8 @@ namespace EddiMissionMonitor
                     }
                     else if (amountRemaining == 0)
                     {
-                        // Update 'owned' mission status to 'Complete'
-                        MissionStatus status = MissionStatus.FromEDName("Complete");
+                        // Update 'owned' mission status to 'Claim'
+                        MissionStatus status = MissionStatus.FromEDName("Claim");
                         mission.statusDef = status;
                     }
                 }
@@ -627,7 +622,7 @@ namespace EddiMissionMonitor
 
         private void postHandleMissionAbandonedEvent(MissionAbandonedEvent @event)
         {
-            if (@event.timestamp > updateDat)
+            if (@event.timestamp >= updateDat)
             {
                 updateDat = @event.timestamp;
                 if (_postHandleMissionAbandonedEvent(@event))
@@ -654,7 +649,7 @@ namespace EddiMissionMonitor
 
         private void handleMissionAcceptedEvent(MissionAcceptedEvent @event)
         {
-            if (@event.timestamp > updateDat)
+            if (@event.timestamp >= updateDat)
             {
                 updateDat = @event.timestamp;
                 if (_handleMissionAcceptedEvent(@event))
@@ -783,7 +778,7 @@ namespace EddiMissionMonitor
 
         private void postHandleMissionCompletedEvent(MissionCompletedEvent @event)
         {
-            if (@event.timestamp > updateDat)
+            if (@event.timestamp >= updateDat)
             {
                 updateDat = @event.timestamp;
                 if (_postHandleMissionCompletedEvent(@event))
@@ -847,7 +842,7 @@ namespace EddiMissionMonitor
 
         private void postHandleMissionFailedEvent(MissionFailedEvent @event)
         {
-            if (@event.timestamp > updateDat)
+            if (@event.timestamp >= updateDat)
             {
                 updateDat = @event.timestamp;
                 if (_postHandleMissionFailedEvent(@event))
@@ -874,7 +869,7 @@ namespace EddiMissionMonitor
 
         private void handleMissionRedirectedEvent(MissionRedirectedEvent @event)
         {
-            if (@event.timestamp > updateDat)
+            if (@event.timestamp >= updateDat)
             {
                 updateDat = @event.timestamp;
                 if (_handleMissionRedirectedEvent(@event))
@@ -1443,7 +1438,7 @@ namespace EddiMissionMonitor
                     case "sightseeing":
                     case "smuggle":
                         {
-                            // Check if the system is origin system for 'Active' and 'Complete' missions
+                            // Check if the system is origin system for 'Active' and 'Claim' missions
                             if (mission.originsystem == system) { return true; }
 
                             // Check if the system is destination system for 'Active' missions
@@ -1451,7 +1446,7 @@ namespace EddiMissionMonitor
                             {
                                 if (mission.destinationsystems?.Any() ?? false)
                                 {
-                                    if (mission.destinationsystems.Where(d => d.name == system).Any()) { return true; }
+                                    if (mission.destinationsystems.Any(d => d.name == system)) { return true; }
                                 }
                                 else if (mission.destinationsystem == system) { return true; }
                             }
@@ -1477,14 +1472,6 @@ namespace EddiMissionMonitor
                     case "massacre":
                     case "massacrethargoid":
                     case "massacrewing":
-                        {
-                            if (mission.statusEDName != "Claim" && mission.expiry <= DateTime.UtcNow)
-                            {
-                                mission.statusDef = MissionStatus.FromEDName("Claim");
-                                return true;
-                            }
-                        }
-                        break;
                     case "hack":
                     case "longdistanceexpedition":
                     case "passengervip":
@@ -1494,15 +1481,14 @@ namespace EddiMissionMonitor
                     case "scan":
                     case "sightseeing":
                         {
-                            if (mission.statusEDName != "Complete")
+                            if (mission.statusEDName != "Claim")
                             {
-                                mission.statusDef = MissionStatus.FromEDName("Complete");
+                                mission.statusDef = MissionStatus.FromEDName("Claim");
                                 return true;
                             }
                         }
                         break;
                 }
-
             }
             return false;
         }

@@ -521,6 +521,12 @@ namespace EddiShipMonitor
             ship.maxjumprange = @event.maxjumprange;
             ship.health = @event.hullhealth;
 
+            // Calculate and update our commander's insurance rate
+            if (@event.value > 0)
+            {
+                EDDI.Instance.Cmdr.insurance = Math.Round((decimal)@event.rebuy / (@event.value ?? 0), 2);
+            }
+
             // Set the standard modules
             Compartment compartment = @event.compartments.FirstOrDefault(c => c.name == "Armour");
             if (compartment != null)
@@ -1127,16 +1133,16 @@ namespace EddiShipMonitor
                         ship.optimalmass = profileCurrentShip.optimalmass;
                         // Update ship hull health from profile
                         ship.health = profileCurrentShip.health;
-                        // Update ship module health from profile
-                        ship.bulkheads.health = profileCurrentShip.bulkheads.health;
-                        ship.powerplant.health = profileCurrentShip.powerplant.health;
-                        ship.thrusters.health = profileCurrentShip.thrusters.health;
-                        ship.powerdistributor.health = profileCurrentShip.powerdistributor.health;
-                        ship.frameshiftdrive.health = profileCurrentShip.frameshiftdrive.health;
-                        ship.lifesupport.health = profileCurrentShip.lifesupport.health;
-                        ship.sensors.health = profileCurrentShip.sensors.health;
-                        ship.fueltank.health = profileCurrentShip.fueltank.health;
-                        ship.cargohatch.health = profileCurrentShip.cargohatch.health;
+                        // Update ship modules from the profile
+                        ship.bulkheads.UpdateFromFrontierAPIModule(profileCurrentShip.bulkheads);
+                        ship.powerplant.UpdateFromFrontierAPIModule(profileCurrentShip.powerplant);
+                        ship.thrusters.UpdateFromFrontierAPIModule(profileCurrentShip.thrusters);
+                        ship.powerdistributor.UpdateFromFrontierAPIModule(profileCurrentShip.powerdistributor);
+                        ship.frameshiftdrive.UpdateFromFrontierAPIModule(profileCurrentShip.frameshiftdrive);
+                        ship.lifesupport.UpdateFromFrontierAPIModule(profileCurrentShip.lifesupport);
+                        ship.sensors.UpdateFromFrontierAPIModule(profileCurrentShip.sensors);
+                        ship.fueltank.UpdateFromFrontierAPIModule(profileCurrentShip.fueltank);
+                        ship.cargohatch.UpdateFromFrontierAPIModule(profileCurrentShip.cargohatch);
                         foreach (var profileHardpoint in profileCurrentShip.hardpoints)
                         {
                             foreach (var shipHardpoint in ship.hardpoints)
@@ -1144,7 +1150,7 @@ namespace EddiShipMonitor
                                 if (profileHardpoint.module != null && profileHardpoint.module.invariantName == shipHardpoint.module.invariantName)
                                 {
                                     shipHardpoint.module = shipHardpoint.module ?? new Module();
-                                    shipHardpoint.module.health = profileHardpoint.module.health;
+                                    shipHardpoint.module.UpdateFromFrontierAPIModule(profileHardpoint.module);
                                 }
                             }
                         }
@@ -1155,7 +1161,7 @@ namespace EddiShipMonitor
                                 if (profileCompartment.module != null && profileCompartment.module.invariantName == shipCompartment.module.invariantName)
                                 {
                                     shipCompartment.module = shipCompartment.module ?? new Module();
-                                    shipCompartment.module.health = profileCompartment.module.health;
+                                    shipCompartment.module.UpdateFromFrontierAPIModule(profileCompartment.module);
                                 }
                             }
                         }
@@ -1357,6 +1363,31 @@ namespace EddiShipMonitor
             lock (shipyardLock)
             {
                 ship = shipyard.FirstOrDefault(s => s.LocalId == localId);
+            }
+            return ship;
+        }
+
+        public Ship GetShip(int? localId, string model)
+        {
+            Ship ship;
+            if (localId == null)
+            {
+                // No local ID so take the current ship
+                ship = GetCurrentShip();
+            }
+            else
+            {
+                // Find the ship with the given local ID
+                ship = GetShip(localId);
+            }
+            if (ship == null)
+            {
+                // Provide a basic ship based on the model template if no ship is found using the local ID
+                ship = ShipDefinitions.FromModel(model);
+                if (ship == null)
+                {
+                    ship = ShipDefinitions.FromEDModel(model);
+                }
             }
             return ship;
         }
