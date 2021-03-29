@@ -221,9 +221,9 @@ Common usage of this is to provide further information about your rating, for ex
     You have been promoted {EmpireRatingDetails("Lord").rank} times.</value>
   </data>
   <data name="EngineerDetails" xml:space="preserve">
-    <value>This function will provide full information for an Engineer given its name (including current progress information if you are in game).
+    <value>This function will provide full information for an Engineer given either the engineer's name or the star system where the engineer resides (including current progress information if you are in game).
 
-EngineerDetails() takes a single argument of the engineer for which you want more information and returns an Engineer object.</value>
+EngineerDetails() takes a single argument of either the engineer's name for which you want more information or the star system where the engineer resides. It returns an Engineer object.</value>
   </data>
   <data name="ExplorationRatingDetails" xml:space="preserve">
     <value>This function will provide full information for an exploration rating given its name.
@@ -574,6 +574,8 @@ If you have set up a phonetic name for your ship it will return that, otherwise 
 
 ShipName() takes an optional ship ID for which to provide the name. If no argument is supplied then it provides the name for your current ship.
 
+ShipName() also takes an optional ship model. If the optional ship ID is not found then this provides a ship name based on the ship model.
+
 If you have not set up a name for your ship it will just return "your ship".</value>
   </data>
   <data name="Spacialise" xml:space="preserve">
@@ -749,6 +751,6 @@ In addition to the basic Cottle features EDDI has a number of features that prov
   <data name="FunctionsHeader" xml:space="preserve">
     <value>EDDI's Speech Responder uses [Cottle templating language](https://cottle.readthedocs.io/en/stable/) to generate verbal responses to various events.
 
-Cottle's library is extended with several functions listed below ([detailed documentation](https://github.com/EDCD/EDDI/blob/beta/SpeechResponder/Help.md)):</value>
+Cottle's library is extended with several functions listed below ([detailed documentation](https://github.com/EDCD/EDDI/wiki/Help)):</value>
   </data>
 </root>

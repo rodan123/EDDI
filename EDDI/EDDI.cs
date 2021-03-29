@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -116,7 +117,8 @@ namespace EddiCore
         public ObservableConcurrentDictionary<string, object> State = new ObservableConcurrentDictionary<string, object>();
 
         // The event queue
-        public ConcurrentQueue<Event> eventQueue { get; private set; } = new ConcurrentQueue<Event>();
+        private BlockingCollection<Event> eventQueue { get; } = new BlockingCollection<Event>();
+        private readonly CancellationTokenSource eventHandlerTS = new CancellationTokenSource();
 
         private EDDI(bool safeMode)
         {
@@ -303,9 +305,11 @@ namespace EddiCore
                         {
                             Logging.Error("Failed to start " + responder.ResponderName(), ex);
                         }
-
                     }
                 }
+
+                // Start our event handler thread
+                Task.Run(dequeueEvents);
 
                 started = true;
             }
@@ -316,6 +320,7 @@ namespace EddiCore
             running = false; // Otherwise keepalive restarts them
             if (started)
             {
+                eventHandlerTS.Cancel();
                 foreach (EDDIResponder responder in responders)
                 {
                     DisableResponder(responder.ResponderName());
@@ -526,40 +531,25 @@ namespace EddiCore
 
         public void enqueueEvent(Event @event)
         {
-            eventQueue.Enqueue(@event);
-
-            try
+            if (!eventQueue.IsAddingCompleted)
             {
-                Thread eventHandler = new Thread(() => dequeueEvent())
-                {
-                    Name = "EventHandler",
-                    IsBackground = true
-                };
-                eventHandler.Start();
-                eventHandler.Join();
-            }
-            catch (ThreadAbortException tax)
-            {
-                Thread.ResetAbort();
-                Logging.Debug("Thread aborted", tax);
-            }
-            catch (Exception ex)
-            {
-                Dictionary<string, object> data = new Dictionary<string, object>
-                {
-                    { "event", JsonConvert.SerializeObject(@event) },
-                    { "exception", ex.Message },
-                    { "stacktrace", ex.StackTrace }
-                };
-                Logging.Error("Failed to enqueue event", data);
+                eventQueue.Add(@event);
             }
         }
 
-        private void dequeueEvent()
+        private void dequeueEvents()
         {
-            if (eventQueue.TryDequeue(out Event @event))
+            try
             {
-                eventHandler(@event);
+                foreach (var @event in eventQueue.GetConsumingEnumerable(eventHandlerTS.Token))
+                {
+                    eventHandler(@event);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Task canceled. Mark this collection as not accepting any new items.
+                eventQueue.CompleteAdding();
             }
         }
 
@@ -572,209 +562,205 @@ namespace EddiCore
                     Logging.Debug("Handling event " + JsonConvert.SerializeObject(@event));
                     // We have some additional processing to do for a number of events
                     bool passEvent = true;
-                    if (@event is FileHeaderEvent)
+                    if (@event is FileHeaderEvent fileHeaderEvent)
                     {
-                        passEvent = eventFileHeader((FileHeaderEvent)@event);
+                        passEvent = eventFileHeader(fileHeaderEvent);
                     }
-                    else if (@event is LocationEvent)
+                    else if (@event is LocationEvent locationEvent)
                     {
-                        passEvent = eventLocation((LocationEvent)@event);
+                        passEvent = eventLocation(locationEvent);
                     }
-                    else if (@event is DockedEvent)
+                    else if (@event is DockedEvent dockedEvent)
                     {
-                        passEvent = eventDocked((DockedEvent)@event);
+                        passEvent = eventDocked(dockedEvent);
                     }
-                    else if (@event is UndockedEvent)
+                    else if (@event is UndockedEvent undockedEvent)
                     {
-                        passEvent = eventUndocked((UndockedEvent)@event);
+                        passEvent = eventUndocked(undockedEvent);
                     }
                     else if (@event is DockingRequestedEvent dockingRequestedEvent)
                     {
                         passEvent = eventDockingRequested(dockingRequestedEvent);
                     }
-                    else if (@event is TouchdownEvent)
+                    else if (@event is TouchdownEvent touchdownEvent)
                     {
-                        passEvent = eventTouchdown((TouchdownEvent)@event);
+                        passEvent = eventTouchdown(touchdownEvent);
                     }
-                    else if (@event is LiftoffEvent)
+                    else if (@event is LiftoffEvent liftoffEvent)
                     {
-                        passEvent = eventLiftoff((LiftoffEvent)@event);
+                        passEvent = eventLiftoff(liftoffEvent);
                     }
-                    else if (@event is FSDEngagedEvent)
+                    else if (@event is FSDEngagedEvent fsdEngagedEvent)
                     {
-                        passEvent = eventFSDEngaged((FSDEngagedEvent)@event);
+                        passEvent = eventFSDEngaged(fsdEngagedEvent);
                     }
-                    else if (@event is FSDTargetEvent)
+                    else if (@event is FSDTargetEvent fsdTargetEvent)
                     {
-                        passEvent = eventFSDTarget((FSDTargetEvent)@event);
+                        passEvent = eventFSDTarget(fsdTargetEvent);
                     }
-                    else if (@event is JumpedEvent)
+                    else if (@event is JumpedEvent jumpedEvent)
                     {
-                        passEvent = eventJumped((JumpedEvent)@event);
+                        passEvent = eventJumped(jumpedEvent);
                     }
-                    else if (@event is EnteredSupercruiseEvent)
+                    else if (@event is EnteredSupercruiseEvent enteredSupercruiseEvent)
                     {
-                        passEvent = eventEnteredSupercruise((EnteredSupercruiseEvent)@event);
+                        passEvent = eventEnteredSupercruise(enteredSupercruiseEvent);
                     }
-                    else if (@event is EnteredNormalSpaceEvent)
+                    else if (@event is EnteredNormalSpaceEvent enteredNormalSpaceEvent)
                     {
-                        passEvent = eventEnteredNormalSpace((EnteredNormalSpaceEvent)@event);
+                        passEvent = eventEnteredNormalSpace(enteredNormalSpaceEvent);
                     }
-                    else if (@event is CommanderLoadingEvent)
+                    else if (@event is CommanderLoadingEvent commanderLoadingEvent)
                     {
-                        passEvent = eventCommanderLoading((CommanderLoadingEvent)@event);
+                        passEvent = eventCommanderLoading(commanderLoadingEvent);
                     }
-                    else if (@event is CommanderContinuedEvent)
+                    else if (@event is CommanderContinuedEvent commanderContinuedEvent)
                     {
-                        passEvent = eventCommanderContinued((CommanderContinuedEvent)@event);
+                        passEvent = eventCommanderContinued(commanderContinuedEvent);
                     }
-                    else if (@event is CommanderRatingsEvent)
+                    else if (@event is CommanderRatingsEvent commanderRatingsEvent)
                     {
-                        passEvent = eventCommanderRatings((CommanderRatingsEvent)@event);
+                        passEvent = eventCommanderRatings(commanderRatingsEvent);
                     }
-                    else if (@event is CombatPromotionEvent)
+                    else if (@event is CombatPromotionEvent combatPromotionEvent)
                     {
-                        passEvent = eventCombatPromotion((CombatPromotionEvent)@event);
+                        passEvent = eventCombatPromotion(combatPromotionEvent);
                     }
-                    else if (@event is TradePromotionEvent)
+                    else if (@event is TradePromotionEvent tradePromotionEvent)
                     {
-                        passEvent = eventTradePromotion((TradePromotionEvent)@event);
+                        passEvent = eventTradePromotion(tradePromotionEvent);
                     }
-                    else if (@event is ExplorationPromotionEvent)
+                    else if (@event is ExplorationPromotionEvent explorationPromotionEvent)
                     {
-                        passEvent = eventExplorationPromotion((ExplorationPromotionEvent)@event);
+                        passEvent = eventExplorationPromotion(explorationPromotionEvent);
                     }
-                    else if (@event is FederationPromotionEvent)
+                    else if (@event is FederationPromotionEvent federationPromotionEvent)
                     {
-                        passEvent = eventFederationPromotion((FederationPromotionEvent)@event);
+                        passEvent = eventFederationPromotion(federationPromotionEvent);
                     }
-                    else if (@event is EmpirePromotionEvent)
+                    else if (@event is EmpirePromotionEvent empirePromotionEvent)
                     {
-                        passEvent = eventEmpirePromotion((EmpirePromotionEvent)@event);
+                        passEvent = eventEmpirePromotion(empirePromotionEvent);
                     }
-                    else if (@event is CrewJoinedEvent)
+                    else if (@event is CrewJoinedEvent crewJoinedEvent)
                     {
-                        passEvent = eventCrewJoined((CrewJoinedEvent)@event);
+                        passEvent = eventCrewJoined(crewJoinedEvent);
                     }
-                    else if (@event is CrewLeftEvent)
+                    else if (@event is CrewLeftEvent crewLeftEvent)
                     {
-                        passEvent = eventCrewLeft((CrewLeftEvent)@event);
+                        passEvent = eventCrewLeft(crewLeftEvent);
                     }
-                    else if (@event is EnteredCQCEvent)
+                    else if (@event is EnteredCQCEvent enteredCqcEvent)
                     {
-                        passEvent = eventEnteredCQC((EnteredCQCEvent)@event);
+                        passEvent = eventEnteredCQC(enteredCqcEvent);
                     }
-                    else if (@event is SRVLaunchedEvent)
+                    else if (@event is SRVLaunchedEvent srvLaunchedEvent)
                     {
-                        passEvent = eventSRVLaunched((SRVLaunchedEvent)@event);
+                        passEvent = eventSRVLaunched(srvLaunchedEvent);
                     }
-                    else if (@event is SRVDockedEvent)
+                    else if (@event is SRVDockedEvent srvDockedEvent)
                     {
-                        passEvent = eventSRVDocked((SRVDockedEvent)@event);
+                        passEvent = eventSRVDocked(srvDockedEvent);
                     }
-                    else if (@event is FighterLaunchedEvent)
+                    else if (@event is FighterLaunchedEvent fighterLaunchedEvent)
                     {
-                        passEvent = eventFighterLaunched((FighterLaunchedEvent)@event);
+                        passEvent = eventFighterLaunched(fighterLaunchedEvent);
                     }
-                    else if (@event is FighterDockedEvent)
+                    else if (@event is FighterDockedEvent fighterDockedEvent)
                     {
-                        passEvent = eventFighterDocked((FighterDockedEvent)@event);
+                        passEvent = eventFighterDocked(fighterDockedEvent);
                     }
-                    else if (@event is StarScannedEvent)
+                    else if (@event is StarScannedEvent starScannedEvent)
                     {
-                        passEvent = eventStarScanned((StarScannedEvent)@event);
+                        passEvent = eventStarScanned(starScannedEvent);
                     }
-                    else if (@event is BodyScannedEvent)
+                    else if (@event is BodyScannedEvent bodyScannedEvent)
                     {
-                        passEvent = eventBodyScanned((BodyScannedEvent)@event);
+                        passEvent = eventBodyScanned(bodyScannedEvent);
                     }
-                    else if (@event is BodyMappedEvent)
+                    else if (@event is BodyMappedEvent bodyMappedEvent)
                     {
-                        passEvent = eventBodyMapped((BodyMappedEvent)@event);
+                        passEvent = eventBodyMapped(bodyMappedEvent);
                     }
-                    else if (@event is RingMappedEvent)
+                    else if (@event is RingMappedEvent ringMappedEvent)
                     {
-                        passEvent = eventRingMapped((RingMappedEvent)@event);
+                        passEvent = eventRingMapped(ringMappedEvent);
                     }
-                    else if (@event is VehicleDestroyedEvent)
+                    else if (@event is VehicleDestroyedEvent vehicleDestroyedEvent)
                     {
-                        passEvent = eventVehicleDestroyed((VehicleDestroyedEvent)@event);
+                        passEvent = eventVehicleDestroyed(vehicleDestroyedEvent);
                     }
-                    else if (@event is NearSurfaceEvent)
+                    else if (@event is NearSurfaceEvent nearSurfaceEvent)
                     {
-                        passEvent = eventNearSurface((NearSurfaceEvent)@event);
+                        passEvent = eventNearSurface(nearSurfaceEvent);
                     }
-                    else if (@event is SquadronStatusEvent)
+                    else if (@event is SquadronStatusEvent squadronStatusEvent)
                     {
-                        passEvent = eventSquadronStatus((SquadronStatusEvent)@event);
+                        passEvent = eventSquadronStatus(squadronStatusEvent);
                     }
-                    else if (@event is SquadronRankEvent)
+                    else if (@event is SquadronRankEvent squadronRankEvent)
                     {
-                        passEvent = eventSquadronRank((SquadronRankEvent)@event);
+                        passEvent = eventSquadronRank(squadronRankEvent);
                     }
-                    else if (@event is FriendsEvent)
+                    else if (@event is FriendsEvent friendsEvent)
                     {
-                        passEvent = eventFriends((FriendsEvent)@event);
+                        passEvent = eventFriends(friendsEvent);
                     }
-                    else if (@event is MarketEvent)
+                    else if (@event is MarketEvent marketEvent)
                     {
-                        passEvent = eventMarket((MarketEvent)@event);
+                        passEvent = eventMarket(marketEvent);
                     }
-                    else if (@event is OutfittingEvent)
+                    else if (@event is OutfittingEvent outfittingEvent)
                     {
-                        passEvent = eventOutfitting((OutfittingEvent)@event);
+                        passEvent = eventOutfitting(outfittingEvent);
                     }
-                    else if (@event is ShipyardEvent)
+                    else if (@event is ShipyardEvent shipyardEvent)
                     {
-                        passEvent = eventShipyard((ShipyardEvent)@event);
+                        passEvent = eventShipyard(shipyardEvent);
                     }
-                    else if (@event is SettlementApproachedEvent)
+                    else if (@event is DiscoveryScanEvent discoveryScanEvent)
                     {
-                        passEvent = eventSettlementApproached((SettlementApproachedEvent)@event);
+                        passEvent = eventDiscoveryScan(discoveryScanEvent);
                     }
-                    else if (@event is DiscoveryScanEvent)
+                    else if (@event is SystemScanComplete systemScanComplete)
                     {
-                        passEvent = eventDiscoveryScan((DiscoveryScanEvent)@event);
+                        passEvent = eventSystemScanComplete(systemScanComplete);
                     }
-                    else if (@event is SystemScanComplete)
+                    else if (@event is PowerplayEvent powerplayEvent)
                     {
-                        passEvent = eventSystemScanComplete((SystemScanComplete)@event);
+                        passEvent = eventPowerplay(powerplayEvent);
                     }
-                    else if (@event is PowerplayEvent)
+                    else if (@event is PowerDefectedEvent powerDefectedEvent)
                     {
-                        passEvent = eventPowerplay((PowerplayEvent)@event);
+                        passEvent = eventPowerDefected(powerDefectedEvent);
                     }
-                    else if (@event is PowerDefectedEvent)
+                    else if (@event is PowerJoinedEvent powerJoinedEvent)
                     {
-                        passEvent = eventPowerDefected((PowerDefectedEvent)@event);
+                        passEvent = eventPowerJoined(powerJoinedEvent);
                     }
-                    else if (@event is PowerJoinedEvent)
+                    else if (@event is PowerLeftEvent powerLeftEvent)
                     {
-                        passEvent = eventPowerJoined((PowerJoinedEvent)@event);
+                        passEvent = eventPowerLeft(powerLeftEvent);
                     }
-                    else if (@event is PowerLeftEvent)
+                    else if (@event is PowerPreparationVoteCast powerPreparationVoteCast)
                     {
-                        passEvent = eventPowerLeft((PowerLeftEvent)@event);
+                        passEvent = eventPowerPreparationVoteCast(powerPreparationVoteCast);
                     }
-                    else if (@event is PowerPreparationVoteCast)
+                    else if (@event is PowerSalaryClaimedEvent powerSalaryClaimedEvent)
                     {
-                        passEvent = eventPowerPreparationVoteCast((PowerPreparationVoteCast)@event);
+                        passEvent = eventPowerSalaryClaimed(powerSalaryClaimedEvent);
                     }
-                    else if (@event is PowerSalaryClaimedEvent)
+                    else if (@event is PowerVoucherReceivedEvent powerVoucherReceivedEvent)
                     {
-                        passEvent = eventPowerSalaryClaimed((PowerSalaryClaimedEvent)@event);
+                        passEvent = eventPowerVoucherReceived(powerVoucherReceivedEvent);
                     }
-                    else if (@event is PowerVoucherReceivedEvent)
+                    else if (@event is CarrierJumpEngagedEvent carrierJumpEngagedEvent)
                     {
-                        passEvent = eventPowerVoucherReceived((PowerVoucherReceivedEvent)@event);
+                        passEvent = eventCarrierJumpEngaged(carrierJumpEngagedEvent);
                     }
-                    else if (@event is CarrierJumpEngagedEvent)
+                    else if (@event is CarrierJumpedEvent carrierJumpedEvent)
                     {
-                        passEvent = eventCarrierJumpEngaged((CarrierJumpEngagedEvent)@event);
-                    }
-                    else if (@event is CarrierJumpedEvent)
-                    {
-                        passEvent = eventCarrierJumped((CarrierJumpedEvent)@event);
+                        passEvent = eventCarrierJumped(carrierJumpedEvent);
                     }
 
                     // Additional processing is over, send to the event responders if required
@@ -1141,23 +1127,6 @@ namespace EddiCore
             return true;
         }
 
-        private bool eventSettlementApproached(SettlementApproachedEvent @event)
-        {
-            Station station = CurrentStarSystem?.stations?.Find(s => s.name == @event.name);
-            if (station == null && @event.systemAddress == CurrentStarSystem?.systemAddress)
-            {
-                // This settlement is unknown to us, might not be in our data source or we might not have connectivity.  Use a placeholder
-                station = new Station
-                {
-                    name = @event.name,
-                    marketId = @event.marketId,
-                    systemname = CurrentStarSystem.systemname
-                };
-                CurrentStarSystem?.stations?.Add(station);
-            }
-            return true;
-        }
-
         private bool eventFriends(FriendsEvent @event)
         {
             bool passEvent = false;
@@ -1511,7 +1480,7 @@ namespace EddiCore
                 if (CompanionAppService.Instance.CurrentState == CompanionAppService.State.Authorized)
                 {
                     // Refresh station data
-                    if (theEvent.fromLoad || !passEvent) { return true; } // Don't fire this event when loading pre-existing logs or if we were already at this station
+                    if (theEvent.fromLoad || !passEvent) { return false; } // Don't fire this event when loading pre-existing logs or if we were already at this station
                     profileUpdateNeeded = true;
                     profileStationRequired = CurrentStation.name;
                     Thread updateThread = new Thread(() => conditionallyRefreshProfile())
@@ -1537,16 +1506,15 @@ namespace EddiCore
 
         private bool eventTouchdown(TouchdownEvent theEvent)
         {
-            Environment = Constants.ENVIRONMENT_LANDED;
-            if (theEvent.playercontrolled)
+            // Only pass on this event if our location is set
+            // (if not then this is probably being written prior to a `Location` event))
+            if (theEvent.latitude != null && theEvent.longitude != null)
             {
-                Vehicle = Constants.VEHICLE_SHIP;
+                Environment = Constants.ENVIRONMENT_LANDED;
+                Vehicle = theEvent.playercontrolled ? Constants.VEHICLE_SHIP : Constants.VEHICLE_SRV;
+                return true;
             }
-            else
-            {
-                Vehicle = Constants.VEHICLE_SRV;
-            }
-            return true;
+            return false;
         }
 
         private bool eventLiftoff(LiftoffEvent theEvent)
@@ -1649,6 +1617,12 @@ namespace EddiCore
         {
             if (name == null || CurrentStarSystem?.systemname == name) { return; }
 
+            // Discard any signal sources from the current star system
+            if (CurrentStarSystem != null)
+            {
+                CurrentStarSystem.signalSources = ImmutableList<SignalSource>.Empty;
+            }
+
             // We have changed system so update the old one as to when we left
             StarSystemSqLiteRepository.Instance.LeaveStarSystem(CurrentStarSystem);
 
@@ -1745,12 +1719,14 @@ namespace EddiCore
 
         private bool eventFileHeader(FileHeaderEvent @event)
         {
-            // Test whether we're in beta by checking the filename, version described by the header, 
-            // and certain version / build combinations
+            // Test whether we're in beta by checking the filename, version described by the header,
+            // and certain version / build combinations. Test the most common situations first.
             gameIsBeta =
                 (
                     @event.filename.Contains("Beta") ||
                     @event.version.Contains("Beta") ||
+                    @event.filename.Contains("Alpha") ||
+                    @event.version.Contains("Alpha") ||
                     (
                         @event.version.Contains("2.2") &&
                         (
@@ -2636,7 +2612,7 @@ namespace EddiCore
                         }
 
                         // Make sure we know where we are
-                        if (CurrentStarSystem.systemname.Length < 0)
+                        if (CurrentStarSystem is null || CurrentStarSystem.systemname.Length < 0)
                         {
                             break;
                         }
@@ -2646,13 +2622,13 @@ namespace EddiCore
                         if (profile != null)
                         {
                             // Sanity check
-                            if (profile.Cmdr.name != Cmdr.name)
+                            if (profile.Cmdr != null && profile.Cmdr.name != Cmdr.name)
                             {
                                 Logging.Warn("Frontier API incorrectly configured: Returning information for Commander " +
                                     $"'{profile.Cmdr.name}' rather than for '{Cmdr.name}'. Disregarding incorrect information.");
                                 return;
                             }
-                            else if (profile.CurrentStarSystem.systemName != CurrentStarSystem.systemname)
+                            else if (profile.CurrentStarSystem != null && profile.CurrentStarSystem.systemName != CurrentStarSystem.systemname)
                             {
                                 Logging.Warn("Frontier API incorrectly configured: Returning information for Star System " +
                                     $"'{profile.CurrentStarSystem.systemName}' rather than for '{CurrentStarSystem.systemname}'. Disregarding incorrect information.");

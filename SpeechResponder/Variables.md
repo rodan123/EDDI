@@ -56,6 +56,8 @@ Any values might be missing, depending on EDDI's configuration.
 An engineer object
 
     - `name` the name of the engineer
+    - `systemname` the name of the star system at which the engineer resides
+    - `stationname` the name of the station at which the engineer resides
     - `rank` the rank of your relationship with the engineer
     - `stage` the current stage of your relations with the engineer (e.g. Invited/Known/Unlocked/Barred)
     - `rankprogress` the percentage towards your next rank with the engineer
@@ -471,6 +473,8 @@ Any values might be missing, depending on EDDI's configuration and the informati
     - `isgold` true if bodies in this starsystem contain all elements available from surface prospecting
     - `estimatedvalue` the estimated exploration value of the starsystem (includes bonuses for fully scanning and mapping)
     - `totalbodies` the total number of discoverable bodies within the system (only available after a discovery scan)
+    - `scannedbodies` the total number of bodies you have scanned within the system
+    - `mappedbodies` the total number of bodies you have mapped within the system
     - `scoopable` true if a fuel scoop equipped ship can refuel at at least one star in this starsystem
 
 #### Last starsystem

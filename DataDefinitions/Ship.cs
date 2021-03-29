@@ -122,7 +122,7 @@ namespace EddiDataDefinitions
         }
 
         private string _model;
-        /// <summary>the model of the ship (Python, Anaconda, etc.)</summary>
+        /// <summary>the model of the ship (Python, Anaconda, Cobra Mk. III, etc.)</summary>
         public string model
         {
             get
@@ -360,6 +360,8 @@ namespace EddiDataDefinitions
         public long EDID { get; set; }
         // The name in Elite: Dangerous' database
         public string EDName { get; set; }
+        [JsonIgnore]
+        internal string possessiveYour { get; set; }
 
         public Ship()
         {
@@ -378,12 +380,13 @@ namespace EddiDataDefinitions
             cargohatch = new Module();
         }
 
-        public Ship(long EDID, string EDName, string Manufacturer, string Model, List<Translation> PhoneticModel, LandingPadSize Size, int? MilitarySize, decimal reservoirFuelTankSize)
+        public Ship(long EDID, string EDName, string Manufacturer, string Model, string possessiveYour, List<Translation> PhoneticModel, LandingPadSize Size, int? MilitarySize, decimal reservoirFuelTankSize)
         {
             this.EDID = EDID;
             this.EDName = EDName;
             manufacturer = Manufacturer;
             model = Model;
+            this.possessiveYour = possessiveYour;
             phoneticModel = PhoneticModel;
             this.Size = Size;
             militarysize = MilitarySize;
@@ -422,8 +425,7 @@ namespace EddiDataDefinitions
             }
             else
             {
-                string ship = (defaultname ?? phoneticmodel) ?? Properties.Ship._ship;
-                result = Properties.Ship.your + " " + ship;
+                result = $"{possessiveYour ?? Properties.Ship.your} {(defaultname ?? phoneticmodel) ?? Properties.Ship._ship}";
             }
             return result;
         }
@@ -523,6 +525,7 @@ namespace EddiDataDefinitions
                 EDID = template.EDID;
                 EDName = template.EDName;
                 manufacturer = template.manufacturer;
+                possessiveYour = template.possessiveYour;
                 phoneticModel = template.phoneticModel;
                 Size = template.Size;
                 militarysize = template.militarysize;

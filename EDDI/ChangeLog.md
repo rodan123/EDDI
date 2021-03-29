@@ -2,9 +2,51 @@
 
 Full details of the variables available for each noted event, and VoiceAttack integrations, are available in the individual [event pages](https://github.com/EDCD/EDDI/wiki/Events).
 
-### 3.7.3-b1
+### 3.7.4-b1
   * Core
     * EDDI beta releases no longer send to test endpoints for EDDN or the EDSM Responder.
+    * Fixed a bug that could double-count signal sources when re-logging. 
+    * Fixed a bug that could cause undockable approached settlements to be counted as stations.
+    * Fixed a bug that had broken access to the `category` property in material objects. 
+    * "Conflict zone" signal sources are no longer described as "Combat zone" signal sources.
+    * `Starsystem` object properties updated to add `scannedbodies` and `mappedbodies` counts.
+  * Galnet Monitor
+    * Reduced Galnet article polling from 30s / 2min to 5min / 15min.
+    * Delayed active monitoring until 5 minutes after we become active in game rather than 5 minutes after EDDI is launched.
+  * Material Monitor
+    * Expanded conditions that can trigger a `Material threshold` event (for example, if the material amount is increased above the minimum)
+    * Fixed a bug that could prevent the `Material threshold` from firing when we meet but do not exceed the maximum material threshold.
+    * Fixed a bug that could prevent material counts from being updated for materials no longer in inventory.
+  * Mission Monitor
+    * Fixed a bug that temporarily stripped community goal missions from the mission list.
+    * Fixed a bug that prevented community goal missions from sometimes being identified as community goal missions. 
+  * Speech Responder
+    * Functions
+      * Revised the `EngineerDetails` function to accept a system name as an input.
+      * Updated the ShipName() function to document its second argument (which is optional).
+    * Personalities
+      * Portuguese default personality updated (thanks to @Kenjiro). 
+    * Scripts
+      * `Carrier jumped` script updated to announce engineer systems.
+      * `Community goal` script revised and re-enabled. The event is now written only in response to specific changes in community goal status.
+      * `Community goals` script added, updated whenever the game provides updated information on community goals.
+      * `Engineer report` script added.
+      * `Entered normal space` script updated to provide easier access to invariant bodytype names and to correct a bug around filtering unknown station types.
+      * `Material threshold` script updated for expanded triggering conditions.
+      * `Message received` script and properties updated to better support localization.
+      * `Mission check galaxy` script updated to more gracefully handle community goals.
+      * `Mission check station` script updated to more gracefully handle community goals.
+      * `Mission check system` script updated to more gracefully handle community goals.
+      * `Jumped` script updated to announce engineer systems.
+      * `Ship arrived` event updated to use the `ShipName()` function and provide improved phonetics. 
+      * `Ship rebooted` event updated to provide localized and invariant module names rather than ship slots.
+      * `Signal detected` script revised to reference `conflict zone` signal sources rather than `combat zone` signal sources.
+      * `Swapout check` script revised to clarify that swapping out the module will reduce your re-buy.
+  * VoiceAttack
+    * Added system variables `{INT:System scanned bodies}` and `{INT:System mapped bodies}`.
+
+### 3.7.3
+  * Treat alpha game clients just the same as beta game clients, i.e. do not upload data to live endpoints.
 
 ### 3.7.2
   * Promote 3.7.2-rc3 to final

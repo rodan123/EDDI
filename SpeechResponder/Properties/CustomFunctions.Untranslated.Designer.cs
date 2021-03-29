@@ -207,9 +207,9 @@ namespace EddiSpeechResponder.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to This function will provide full information for an Engineer given its name (including current progress information if you are in game).
+        ///   Looks up a localized string similar to This function will provide full information for an Engineer given either the engineer&apos;s name or the star system where the engineer resides (including current progress information if you are in game).
         ///
-        ///EngineerDetails() takes a single argument of the engineer for which you want more information and returns an Engineer object..
+        ///EngineerDetails() takes a single argument of either the engineer&apos;s name for which you want more information or the star system where the engineer resides. It returns an Engineer object..
         /// </summary>
         public static string EngineerDetails {
             get {
@@ -286,7 +286,7 @@ namespace EddiSpeechResponder.Properties {
         /// <summary>
         ///   Looks up a localized string similar to EDDI&apos;s Speech Responder uses [Cottle templating language](https://cottle.readthedocs.io/en/stable/) to generate verbal responses to various events.
         ///
-        ///Cottle&apos;s library is extended with several functions listed below ([detailed documentation](https://github.com/EDCD/EDDI/blob/beta/SpeechResponder/Help.md)):.
+        ///Cottle&apos;s library is extended with several functions listed below ([detailed documentation](https://github.com/EDCD/EDDI/wiki/Help)):.
         /// </summary>
         public static string FunctionsHeader {
             get {
@@ -715,7 +715,7 @@ namespace EddiSpeechResponder.Properties {
         ///
         ///ShipName() takes an optional ship ID for which to provide the name. If no argument is supplied then it provides the name for your current ship.
         ///
-        ///If you have not set up a name for your ship it will just return &quot;your ship&quot;..
+        ///ShipName() also takes an optional ship model. If the optional ship ID is not found then this provides a ship name based on the ship mo [rest of string was truncated]&quot;;.
         /// </summary>
         public static string ShipName {
             get {

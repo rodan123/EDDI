@@ -116,45 +116,45 @@ namespace EddiMaterialMonitor
             Logging.Debug("Received event " + JsonConvert.SerializeObject(@event));
 
             // Handle the events that we care about
-            if (@event is MaterialInventoryEvent)
+            if (@event is MaterialInventoryEvent materialInventoryEvent)
             {
-                handleMaterialInventoryEvent((MaterialInventoryEvent)@event);
+                handleMaterialInventoryEvent(materialInventoryEvent);
             }
-            else if (@event is MaterialCollectedEvent)
+            else if (@event is MaterialCollectedEvent materialCollectedEvent)
             {
-                handleMaterialCollectedEvent((MaterialCollectedEvent)@event);
+                handleMaterialCollectedEvent(materialCollectedEvent);
             }
-            else if (@event is MaterialDiscardedEvent)
+            else if (@event is MaterialDiscardedEvent materialDiscardedEvent)
             {
-                handleMaterialDiscardedEvent((MaterialDiscardedEvent)@event);
+                handleMaterialDiscardedEvent(materialDiscardedEvent);
             }
-            else if (@event is MaterialDonatedEvent)
+            else if (@event is MaterialDonatedEvent materialDonatedEvent)
             {
-                handleMaterialDonatedEvent((MaterialDonatedEvent)@event);
+                handleMaterialDonatedEvent(materialDonatedEvent);
             }
-            else if (@event is MaterialTradedEvent)
+            else if (@event is MaterialTradedEvent materialTradedEvent)
             {
-                handleMaterialTradedEvent((MaterialTradedEvent)@event);
+                handleMaterialTradedEvent(materialTradedEvent);
             }
-            else if (@event is SynthesisedEvent)
+            else if (@event is SynthesisedEvent synthesisedEvent)
             {
-                handleSynthesisedEvent((SynthesisedEvent)@event);
+                handleSynthesisedEvent(synthesisedEvent);
             }
-            else if (@event is ModificationCraftedEvent)
+            else if (@event is ModificationCraftedEvent modificationCraftedEvent)
             {
-                handleModificationCraftedEvent((ModificationCraftedEvent)@event);
+                handleModificationCraftedEvent(modificationCraftedEvent);
             }
-            else if (@event is TechnologyBrokerEvent)
+            else if (@event is TechnologyBrokerEvent technologyBrokerEvent)
             {
-                handleTechnologyBrokerEvent((TechnologyBrokerEvent)@event);
+                handleTechnologyBrokerEvent(technologyBrokerEvent);
             }
-            else if (@event is MissionCompletedEvent)
+            else if (@event is MissionCompletedEvent missionCompletedEvent)
             {
-                handleMissionCompletedEvent((MissionCompletedEvent)@event);
+                handleMissionCompletedEvent(missionCompletedEvent);
             }
-            else if (@event is EngineerContributedEvent)
+            else if (@event is EngineerContributedEvent engineerContributedEvent)
             {
-                handleEngineerContributedEvent((EngineerContributedEvent)@event);
+                handleEngineerContributedEvent(engineerContributedEvent);
             }
 
         }
@@ -185,11 +185,19 @@ namespace EddiMaterialMonitor
 
         private void handleMaterialInventoryEvent(MaterialInventoryEvent @event)
         {
+            // Set all listed material quantities to match the event
             List<string> knownNames = new List<string>();
             foreach (MaterialAmount materialAmount in @event.inventory)
             {
                 setMaterial(materialAmount.edname, materialAmount.amount);
                 knownNames.Add(materialAmount.edname);
+            }
+
+            // Set any unlisted materials to zero
+            var unlistedMaterials = Material.AllOfThem.Select(m => m.edname).Except(knownNames).ToList();
+            foreach (var unlistedMaterial in unlistedMaterials)
+            {
+                setMaterial(unlistedMaterial, 0);
             }
 
             // Update configuration information
@@ -268,8 +276,8 @@ namespace EddiMaterialMonitor
         {
             lock (inventoryLock)
             {
-                Material material = Material.FromEDName(edname);
-                MaterialAmount ma = inventory.Where(inv => inv.edname == material.edname).FirstOrDefault();
+                var material = Material.FromEDName(edname);
+                var ma = inventory.FirstOrDefault(inv => inv.edname == material.edname);
                 if (ma == null)
                 {
                     // No information for the current material - create one and set it to 0
@@ -277,25 +285,24 @@ namespace EddiMaterialMonitor
                     inventory.Add(ma);
                 }
 
-                int previous = ma.amount;
+                var previous = ma.amount;
                 ma.amount += amount;
                 Logging.Debug(ma.edname + ": " + previous + "->" + ma.amount);
 
-                if (ma.maximum.HasValue)
+                if (ma.maximum != null && incMaterialThreshold(previous, ma.amount, ma.maximum))
                 {
-                    if (previous <= ma.maximum && ma.amount > ma.maximum)
-                    {
-                        // We have crossed the high water threshold for this material
-                        pendingEvents.Enqueue(new MaterialThresholdEvent(DateTime.UtcNow, Material.FromEDName(edname), "Maximum", (int)ma.maximum, ma.amount, "Increase") { fromLoad = fromLogLoad });
-                    }
+                    // We have crossed the high water threshold for this material
+                    pendingEvents.Enqueue(new MaterialThresholdEvent(DateTime.UtcNow, material, "Maximum", (int)ma.maximum, ma.amount, "Increase") { fromLoad = fromLogLoad });
                 }
-                if (ma.desired.HasValue)
+                if (ma.desired != null && incMaterialThreshold(previous, ma.amount, ma.desired))
                 {
-                    if (previous < ma.desired && ma.amount >= ma.desired)
-                    {
-                        // We have crossed the desired threshold for this material
-                        pendingEvents.Enqueue(new MaterialThresholdEvent(DateTime.UtcNow, Material.FromEDName(edname), "Desired", (int)ma.desired, ma.amount, "Increase") { fromLoad = fromLogLoad });
-                    }
+                    // We have crossed the desired threshold for this material
+                    pendingEvents.Enqueue(new MaterialThresholdEvent(DateTime.UtcNow, material, "Desired", (int)ma.desired, ma.amount, "Increase") { fromLoad = fromLogLoad });
+                }
+                if (ma.minimum != null && incMaterialThreshold(previous, ma.amount, ma.minimum))
+                {
+                    // We have crossed the minimum threshold for this material
+                    pendingEvents.Enqueue(new MaterialThresholdEvent(DateTime.UtcNow, material, "Minimum", (int)ma.minimum, ma.amount, "Increase") { fromLoad = fromLogLoad });
                 }
 
                 writeMaterials();
@@ -309,8 +316,8 @@ namespace EddiMaterialMonitor
         {
             lock (inventoryLock)
             {
-                Material material = Material.FromEDName(edname);
-                MaterialAmount ma = inventory.Where(inv => inv.edname == material.edname).FirstOrDefault();
+                var material = Material.FromEDName(edname);
+                var ma = inventory.FirstOrDefault(inv => inv.edname == material.edname);
                 if (ma == null)
                 {
                     // No information for the current material - create one and set it to amount
@@ -318,30 +325,43 @@ namespace EddiMaterialMonitor
                     inventory.Add(ma);
                 }
 
-                int previous = ma.amount;
+                var previous = ma.amount;
                 ma.amount -= Math.Min(amount, previous); // Never subtract more than we started with
                 Logging.Debug(ma.edname + ": " + previous + "->" + ma.amount);
 
                 // We have limits for this material; carry out relevant checks
-                if (ma.minimum.HasValue)
+                if (ma.minimum != null && decMaterialThreshold(previous, ma.amount, ma.minimum))
                 {
-                    if (previous >= ma.minimum && ma.amount < ma.minimum)
-                    {
-                        // We have crossed the low water threshold for this material
-                        pendingEvents.Enqueue(new MaterialThresholdEvent(DateTime.UtcNow, Material.FromEDName(edname), "Minimum", (int)ma.minimum, ma.amount, "Decrease") { fromLoad = fromLogLoad });
-                    }
+                    // We have crossed the minimum threshold for this material
+                    pendingEvents.Enqueue(new MaterialThresholdEvent(DateTime.UtcNow, Material.FromEDName(edname), "Minimum", (int)ma.minimum, ma.amount, "Decrease") { fromLoad = fromLogLoad });
                 }
-                if (ma.desired.HasValue)
+                if (ma.desired != null && decMaterialThreshold(previous, ma.amount, ma.desired))
                 {
-                    if (previous >= ma.desired && ma.amount < ma.desired)
-                    {
-                        // We have crossed the desired threshold for this material
-                        pendingEvents.Enqueue(new MaterialThresholdEvent(DateTime.UtcNow, Material.FromEDName(edname), "Desired", (int)ma.desired, ma.amount, "Decrease") { fromLoad = fromLogLoad });
-                    }
+                    // We have crossed the desired threshold for this material
+                    pendingEvents.Enqueue(new MaterialThresholdEvent(DateTime.UtcNow, Material.FromEDName(edname), "Desired", (int)ma.desired, ma.amount, "Decrease") { fromLoad = fromLogLoad });
+                }
+                if (ma.maximum != null && decMaterialThreshold(previous, ma.amount, ma.maximum))
+                {
+                    // We have crossed the maximum threshold for this material
+                    pendingEvents.Enqueue(new MaterialThresholdEvent(DateTime.UtcNow, Material.FromEDName(edname), "Maximum", (int)ma.maximum, ma.amount, "Decrease") { fromLoad = fromLogLoad });
                 }
 
                 writeMaterials();
             }
+        }
+
+        private bool incMaterialThreshold(int previous, int amount, int? target)
+        {
+            // For the comparison operators <, >, <=, and >=, if one or both operands are null, the result is false
+            // https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/nullable-value-types
+            return previous < target && target <= amount;
+        }
+
+        private bool decMaterialThreshold(int previous, int amount, int? target)
+        {
+            // For the comparison operators <, >, <=, and >=, if one or both operands are null, the result is false
+            // https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/nullable-value-types
+            return previous >= target && target > amount;
         }
 
         /// <summary>

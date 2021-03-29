@@ -409,8 +409,9 @@ namespace UnitTests
             MessageReceivedEvent theEvent = (MessageReceivedEvent)events[0];
 
             Assert.IsFalse(theEvent.player);
-            Assert.AreEqual("Police", theEvent.source);
+            Assert.AreEqual("Police", theEvent.Source.invariantName);
             Assert.AreEqual("Federal Security Service", theEvent.from);
+            Assert.AreEqual("npc", theEvent.Channel.invariantName);
         }
 
         [TestMethod]
@@ -424,8 +425,9 @@ namespace UnitTests
             MessageReceivedEvent event1 = (MessageReceivedEvent)events[0];
 
             Assert.IsFalse(event1.player);
-            Assert.AreEqual("Pirate", event1.source);
+            Assert.AreEqual("Pirate", event1.Source.invariantName);
             Assert.AreEqual("Jonathan Dallard", event1.from);
+            Assert.AreEqual("npc", event1.Channel.invariantName);
 
             NPCCargoScanCommencedEvent event2 = (NPCCargoScanCommencedEvent)events[1];
 
@@ -451,9 +453,10 @@ namespace UnitTests
             MessageReceivedEvent event1 = (MessageReceivedEvent)events[0];
 
             Assert.IsTrue(event1.player);
-            Assert.AreEqual("Commander", event1.source);
+            Assert.AreEqual("Commander", event1.Source.invariantName);
             Assert.AreEqual("SlowIce", event1.from);
             Assert.AreEqual("good luck", event1.message);
+            Assert.AreEqual("player", event1.Channel.invariantName);
         }
 
         [TestMethod]
@@ -466,9 +469,10 @@ namespace UnitTests
             MessageReceivedEvent event1 = (MessageReceivedEvent)events[0];
 
             Assert.IsTrue(event1.player);
-            Assert.AreEqual("Commander", event1.source);
+            Assert.AreEqual("Commander", event1.Source.invariantName);
             Assert.AreEqual("Rebecca Lansing", event1.from);
             Assert.AreEqual("Hi there", event1.message);
+            Assert.AreEqual("local", event1.Channel.invariantName);
         }
 
         [TestMethod]
@@ -481,9 +485,10 @@ namespace UnitTests
             MessageReceivedEvent event1 = (MessageReceivedEvent)events[0];
 
             Assert.IsTrue(event1.player);
-            Assert.AreEqual("Wing mate", event1.source);
+            Assert.AreEqual("Wing mate", event1.Source.invariantName);
             Assert.AreEqual("SlowIce", event1.from);
             Assert.AreEqual("hello", event1.message);
+            Assert.AreEqual("wing", event1.Channel.invariantName);
         }
 
         [TestMethod]
@@ -497,8 +502,8 @@ namespace UnitTests
             MessageReceivedEvent event1 = (MessageReceivedEvent)events[0];
 
             Assert.IsTrue(event1.player);
-            Assert.AreEqual("multicrew", event1.channel);
-            Assert.AreEqual("Crew mate", event1.source);
+            Assert.AreEqual("multicrew", event1.Channel.invariantName);
+            Assert.AreEqual("Crew mate", event1.Source.invariantName);
             Assert.AreEqual("Nexonoid", event1.from);
             Assert.AreEqual("whats up", event1.message);
         }
@@ -1241,10 +1246,11 @@ namespace UnitTests
             Assert.AreEqual("HIP 41908 AB 1 c a", surfaceSignalEvent.bodyname);
             Assert.AreEqual(61461226668, surfaceSignalEvent.systemAddress);
             Assert.AreEqual(3, surfaceSignalEvent.surfacesignals.Count);
-            Assert.AreEqual("Biological Surface Signal", surfaceSignalEvent.surfacesignals[0].signalSource.invariantName);
-            Assert.AreEqual(16, surfaceSignalEvent.surfacesignals[0].amount);
-            Assert.AreEqual("Geological Surface Signal", surfaceSignalEvent.surfacesignals[1].signalSource.invariantName);
-            Assert.AreEqual(17, surfaceSignalEvent.surfacesignals[1].amount);
+            // The types of surface signals are ordered by count, so we expect geo signals before bio signals.
+            Assert.AreEqual("Geological Surface Signal", surfaceSignalEvent.surfacesignals[0].signalSource.invariantName);
+            Assert.AreEqual(17, surfaceSignalEvent.surfacesignals[0].amount);
+            Assert.AreEqual("Biological Surface Signal", surfaceSignalEvent.surfacesignals[1].signalSource.invariantName);
+            Assert.AreEqual(16, surfaceSignalEvent.surfacesignals[1].amount);
             Assert.AreEqual("Human Surface Signal", surfaceSignalEvent.surfacesignals[2].signalSource.invariantName);
             Assert.AreEqual(4, surfaceSignalEvent.surfacesignals[2].amount);
         }
@@ -1419,6 +1425,97 @@ namespace UnitTests
 
             // Assert the results
             Assert.IsTrue(expectedEvent.DeepEquals(@event));
+        }
+
+        [TestMethod]
+        public void TestShipInterdictedByPlayerEvent()
+        {
+            string line = @"{ ""timestamp"":""2021-01-14T16:15:01Z"", ""event"":""Interdicted"", ""Submitted"":true, ""Interdictor"":""Blaes"", ""IsPlayer"":true, ""CombatRank"":5 }";
+            List<Event> events = JournalMonitor.ParseJournalEntry(line);
+            ShipInterdictedEvent @event = (ShipInterdictedEvent)events[0];
+            Assert.AreEqual("Ship interdicted", @event.type);
+            Assert.IsTrue(@event.submitted);
+            Assert.AreEqual("Blaes", @event.interdictor);
+            Assert.IsTrue(@event.iscommander);
+            Assert.AreEqual(CombatRating.FromRank(5).localizedName, @event.rating);
+            Assert.IsNull(@event.power);
+        }
+
+        [TestMethod]
+        public void TestAFMURepairsEvent()
+        {
+            string line1 = @"{ ""timestamp"":""2021-01-30T00:28:18Z"", ""event"":""AfmuRepairs"", ""Module"":""$int_modulereinforcement_size2_class2_name;"", ""Module_Localised"":""Module Reinforcement"", ""FullyRepaired"":false, ""Health"":1.000000 }";
+            List<Event> events = JournalMonitor.ParseJournalEntry(line1);
+            ShipAfmuRepairedEvent event1 = (ShipAfmuRepairedEvent)events[0];
+            Assert.AreEqual("Module Reinforcement Package", event1.item);
+            Assert.AreEqual(1M, event1.health);
+            // There is an FDev bug that can set `repairedfully` to false even when the module health is full.
+            // This appears to be a unique problem with Module Reinforcement Packages. We need to work around this.
+            Assert.IsTrue(event1.repairedfully);
+
+            string line2 = @"{ ""timestamp"":""2020-05-31T16:37:08Z"", ""event"":""AfmuRepairs"", ""Module"":""$hpt_multicannon_gimbal_small_name;"", ""Module_Localised"":""Multi-Cannon"", ""FullyRepaired"":true, ""Health"":1.000000 }";
+            events = JournalMonitor.ParseJournalEntry(line2);
+            ShipAfmuRepairedEvent event2 = (ShipAfmuRepairedEvent)events[0];
+            Assert.AreEqual("1G gimballed Multi-Cannon", event2.item);
+            Assert.AreEqual(1M, event2.health);
+            Assert.IsTrue(event2.repairedfully);
+
+            string line3 = @"{ ""timestamp"":""2020-05-31T16:38:56Z"", ""event"":""AfmuRepairs"", ""Module"":""$hpt_beamlaser_gimbal_medium_name;"", ""Module_Localised"":""Beam Laser"", ""FullyRepaired"":false, ""Health"":0.993321 }";
+            events = JournalMonitor.ParseJournalEntry(line3);
+            ShipAfmuRepairedEvent event3 = (ShipAfmuRepairedEvent)events[0];
+            Assert.AreEqual("2D gimballed Beam Laser", event3.item);
+            Assert.AreEqual(0.993321M, event3.health);
+            Assert.IsFalse(event3.repairedfully);
+        }
+
+        [TestMethod]
+        public void TestCommunityGoalsEvent()
+        {
+            string line = @"{
+               ""timestamp"": ""2021-02-27T15:32:42Z"",
+               ""event"": ""CommunityGoal"",
+               ""CurrentGoals"": [
+                  {
+                     ""CGID"": 641,
+                     ""Title"": ""Defence of the Galactic Summit"",
+                     ""SystemName"": ""Sirius"",
+                     ""MarketName"": ""Spirit of Laelaps"",
+                     ""Expiry"": ""2021-03-04T06:00:00Z"",
+                     ""IsComplete"": false,
+                     ""CurrentTotal"": 163782436330,
+                     ""PlayerContribution"": 84049848,
+                     ""NumContributors"": 8354,
+                     ""TopTier"": {
+                        ""Name"": ""Tier 8"",
+                        ""Bonus"": """"
+                     },
+                     ""TopRankSize"": 10,
+                     ""PlayerInTopRank"": false,
+                     ""TierReached"": ""Tier 5"",
+                     ""PlayerPercentileBand"": 10,
+                     ""Bonus"": 100000000
+                  }
+               ]
+            }";
+            var events = JournalMonitor.ParseJournalEntry(line);
+            var @event = (CommunityGoalsEvent)events[0];
+            var goal = @event.goals[0];
+            Assert.AreEqual(641, goal.cgid);
+            Assert.AreEqual("Defence of the Galactic Summit", goal.name);
+            Assert.AreEqual("Sirius", goal.system);
+            Assert.AreEqual("Spirit of Laelaps", goal.station);
+            Assert.AreEqual(DateTime.Parse("2021-03-04T06:00:00Z").ToUniversalTime(), goal.expiryDateTime );
+            Assert.AreEqual(false, goal.iscomplete);
+            Assert.AreEqual(163782436330, goal.total);
+            Assert.AreEqual(84049848, goal.contribution);
+            Assert.AreEqual(8354, goal.contributors);
+            Assert.AreEqual(8, goal.toptier);
+            Assert.AreEqual("", goal.toptierreward);
+            Assert.AreEqual(10, goal.topranksize);
+            Assert.AreEqual(false, goal.toprank);
+            Assert.AreEqual(5, goal.tier);
+            Assert.AreEqual(10, goal.percentileband);
+            Assert.AreEqual(100000000, goal.tierreward);
         }
     }
 }

@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 namespace EddiSpeechService
 {
     /// <summary>Translations for Elite items for text-to-speech</summary>
-    public class Translations
+    public partial class Translations
     {
         public static string GetTranslation(string val, bool useICAO = false, string type = null)
         {
@@ -619,7 +619,7 @@ namespace EddiSpeechService
                         elements.Add("<phoneme alphabet=\"ipa\" ph=\"ˈbrɑːˈvo\">bravo</phoneme>");
                         break;
                     case 'C':
-                        elements.Add("<phoneme alphabet=\"ipa\" ph=\"ˈtʃɑːli\">charlie</phoneme>");
+                        elements.Add("<phoneme alphabet=\"ipa\" ph=\"ˈtʃɑɹli\">charlie</phoneme>");
                         break;
                     case 'D':
                         elements.Add("<phoneme alphabet=\"ipa\" ph=\"ˈdɛltə\">delta</phoneme>");
@@ -753,173 +753,6 @@ namespace EddiSpeechService
                 }
             }
             return sb.ToString();
-        }
-
-        public static string Humanize(decimal? value)
-        {
-            if (value == null)
-            {
-                return null;
-            }
-
-            string maybeMinus = "";
-            if (value < 0)
-            {
-                maybeMinus = Properties.Phrases.minus + " ";
-                value = -value;
-            }
-
-            if (value == 0)
-            {
-                return Properties.Phrases.zero;
-            }
-
-            if (value < 10)
-            {
-                // Work out how many 0s to begin with
-                int numzeros = -1;
-                while (value < 1)
-                {
-                    value *= 10;
-                    numzeros++;
-                }
-                // Now round it to 2sf
-                return maybeMinus + (Math.Round((double)value * 10) / (Math.Pow(10, numzeros + 2))).ToString();
-            }
-
-            (int number, int nextDigit) Normalize(decimal inputValue, long orderMultiplierVal)
-            {
-                return (
-                    number: (int)(inputValue / orderMultiplierVal),
-                    nextDigit: (int)((inputValue % orderMultiplierVal) / ((decimal)orderMultiplierVal / 10))
-                );
-            }
-
-            int number;
-            int nextDigit;
-            string order;
-            long orderMultiplier = 1;
-            int magnitude = (int)Math.Log10((double)value);
-            if (magnitude < 3)
-            {
-                // Units
-                order = "";
-                (number, nextDigit) = Normalize((decimal)value, orderMultiplier);
-            }
-            else if (magnitude < 6)
-            {
-                // Thousands
-                order = " " + Properties.Phrases.thousand;
-                orderMultiplier = (long)1E3;
-                (number, nextDigit) = Normalize((decimal)value, orderMultiplier);
-            }
-            else if (magnitude < 9)
-            {
-                // Millions
-                order = " " + Properties.Phrases.million;
-                orderMultiplier = (long)1E6;
-                (number, nextDigit) = Normalize((decimal)value, orderMultiplier);
-            }
-            else if (magnitude < 12)
-            {
-                // Billions
-                order = " " + Properties.Phrases.billion;
-                orderMultiplier = (long)1E9;
-                (number, nextDigit) = Normalize((decimal)value, orderMultiplier);
-            }
-            else if (magnitude < 15)
-            {
-                // Trillions
-                order = " " + Properties.Phrases.trillion;
-                orderMultiplier = (long)1E12;
-                (number, nextDigit) = Normalize((decimal)value, orderMultiplier);
-            }
-            else
-            {
-                // Quadrillions
-                order = " " + Properties.Phrases.quadrillion;
-                orderMultiplier = (long)1E15M;
-                (number, nextDigit) = Normalize((decimal)value, orderMultiplier);
-            }
-            
-            // See if we have a whole number that is fully described within the largest order
-            if (number * orderMultiplier == Math.Abs((decimal)value))
-            {
-                // Some languages render these differently than others. "1000" in English is "one thousand" but in Italian is simply "mille".
-                // Consequently, we leave the interpretation to the culture-specific voice.
-                return maybeMinus + number * orderMultiplier;
-            }
-
-            if (number < 100)
-            {
-                // See if we have a number whose value can be expressed with a short decimal (i.e 1.3 million)
-                if (number + ((decimal)nextDigit / 10) == Math.Round((decimal)value / orderMultiplier, 2))
-                {
-                    if (nextDigit == 0)
-                    {
-                        return maybeMinus + number * orderMultiplier;
-                    }
-                    else
-                    {
-                        return maybeMinus + (number + (decimal)nextDigit / 10) + order;
-                    }
-                }
-
-                // Describe values for complex numbers where the largest order number does not exceed one hundred
-                string andahalf = " " + Properties.Phrases.andahalf;
-                switch (nextDigit)
-                {
-                    case 0:
-                        // the figure we are saying is round enough already
-                        return maybeMinus + number + order;
-                    case 1:
-                        return Properties.Phrases.justover + " " + maybeMinus + number + order;
-                    case 2:
-                        return Properties.Phrases.over + " " + maybeMinus + number + order;
-                    case 3:
-                        return Properties.Phrases.wellover + " " + maybeMinus + number + order;
-                    case 4:
-                        return Properties.Phrases.nearly + " " + maybeMinus + number + andahalf + order;
-                    case 5:
-                        return Properties.Phrases.around + " " + maybeMinus + number + andahalf + order;
-                    case 6:
-                    case 7:
-                        return Properties.Phrases.over + " " + maybeMinus + number + andahalf + order;
-                    case 8:
-                        return Properties.Phrases.wellover + " " + maybeMinus + number + andahalf + order;
-                    case 9:
-                        return Properties.Phrases.nearly + " " + maybeMinus + (number + 1) + order;
-                }
-            }
-            // Describe (less precisely) values for complex numbers where the largest order number exceeds one hundred
-            else
-            {
-                // Round largest order numbers in the hundreds to the nearest 10, except where the number after the hundreds place is 20 or less
-                if (number - (int)((decimal)number/100) * 100 >= 20)
-                {
-                    (number, nextDigit) = Normalize(number, 10);
-                    number *= 10;
-                }
-                
-                if (nextDigit == 0)
-                {
-                    // the figure we are saying is round enough already
-                    return maybeMinus + number + order;
-                }
-                else if (nextDigit < 2)
-                {
-                    return Properties.Phrases.justover + " " + maybeMinus + number + order;
-                }
-                else if (nextDigit < 7)
-                {
-                    return Properties.Phrases.over + " " + maybeMinus + number + order;
-                }
-                else if (nextDigit < 10)
-                {
-                    return Properties.Phrases.nearly + " " + maybeMinus + (number + 1) + order;
-                }
-            }
-            return Properties.Phrases.around + " " + maybeMinus + number + order;
         }
     }
 }

@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "EDDI"
-#define MyAppVersion "3.7.2"
+#define MyAppVersion "3.7.3"
 #define MyAppPublisher "Elite Dangerous Community Developers (EDCD)"
 #define MyAppURL "https://github.com/EDCD/EDDI/"
 #define MyAppExeName "EDDI.exe"
@@ -62,7 +62,6 @@ Source: "EddiDataProviderService.dll.config"; DestDir: "{app}"; Flags: ignorever
 Source: "EDDI.exe.config"; DestDir: "{app}"; Flags: ignoreversion
 Source: "EddiVoiceAttackResponder.dll.config"; DestDir: "{app}"; Flags: ignoreversion
 Source: "EddiGalnetMonitor.dll.config"; DestDir: "{app}"; Flags: ignoreversion
-Source: "System.Data.SQLite.dll.config"; DestDir: "{app}"; Flags: ignoreversion
 
 ; Remove outdated files
 [InstallDelete]
@@ -81,6 +80,7 @@ Type: files; Name: "{app}\CSCore.xml"
 Type: files; Name: "{app}\RestSharp.xml"
 Type: files; Name: "{app}\EntityFramework.SqlServer.xml"
 Type: files; Name: "{app}\EntityFramework.xml"
+Type: files; Name: "{app}\System.Data.SQLite.dll.config"
 Type: files; Name: "{userappdata}\EDDI\credentials.json"
 Type: files; Name: "{userappdata}\EDDI\elite.json"
 

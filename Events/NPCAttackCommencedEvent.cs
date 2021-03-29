@@ -1,4 +1,5 @@
-﻿using System;
+﻿using EddiDataDefinitions;
+using System;
 using System.Collections.Generic;
 
 namespace EddiEvents
@@ -7,19 +8,24 @@ namespace EddiEvents
     {
         public const string NAME = "NPC attack commenced";
         public const string DESCRIPTION = "Triggered when an attack on your ship by an NPC is detected";
-        public static readonly NPCAttackCommencedEvent SAMPLE = new NPCAttackCommencedEvent(DateTime.UtcNow, "Bounty hunter");
+        public static readonly NPCAttackCommencedEvent SAMPLE = new NPCAttackCommencedEvent(DateTime.UtcNow, MessageSource.BountyHunter);
         public static Dictionary<string, string> VARIABLES = new Dictionary<string, string>();
 
         static NPCAttackCommencedEvent()
         {
-            VARIABLES.Add("by", "Who the attack is by (Pirate, Military, Bounty hunter, Cargo hunter, etc)");
+            VARIABLES.Add("by", "The localized source of the attack (Pirate, Military, Bounty hunter, Cargo hunter, etc)");
+            VARIABLES.Add("by_invariant", "The invariant source of the attack (Pirate, Military, Bounty hunter, Cargo hunter, etc)");
         }
 
-        public string by { get; private set; }
+        public string by => Source.localizedName;
+        public string by_invariant => Source.invariantName;
 
-        public NPCAttackCommencedEvent(DateTime timestamp, string by) : base(timestamp, NAME)
+        // Not intended to be user facing
+        public MessageSource Source { get; }
+
+        public NPCAttackCommencedEvent(DateTime timestamp, MessageSource source) : base(timestamp, NAME)
         {
-            this.by = by;
+            Source = source;
         }
     }
 }

@@ -159,7 +159,7 @@ namespace EddiJournalMonitor
                             case "Undocked":
                                 {
                                     string stationName = JsonParsing.getString(data, "StationName");
-                                    long marketId = JsonParsing.getLong(data, "MarketID");
+                                    long? marketId = JsonParsing.getLong(data, "MarketID");
                                     events.Add(new UndockedEvent(timestamp, stationName, marketId) { raw = line, fromLoad = fromLogLoad });
                                 }
                                 handled = true;
@@ -1276,14 +1276,21 @@ namespace EddiJournalMonitor
 
                                     data.TryGetValue("ShipID", out object val);
                                     int shipId = (int)(long)val;
-                                    string ship = JsonParsing.getString(data, "ShipType");
 
                                     string system = JsonParsing.getString(data, "System");
                                     decimal distance = JsonParsing.getDecimal(data, "Distance");
                                     long? price = JsonParsing.getOptionalLong(data, "TransferPrice");
                                     long? time = JsonParsing.getOptionalLong(data, "TransferTime");
 
-                                    events.Add(new ShipTransferInitiatedEvent(timestamp, ship, shipId, system, distance, price, time, fromMarketId, toMarketId) { raw = line, fromLoad = fromLogLoad });
+                                    var ship = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship monitor"))?.GetShip(shipId);
+                                    if (ship is null)
+                                    {
+                                        string shipEDModel = JsonParsing.getString(data, "ShipType");
+                                        ship = ShipDefinitions.FromEDModel(shipEDModel);
+                                        ship.LocalId = shipId;
+                                    }
+
+                                    events.Add(new ShipTransferInitiatedEvent(timestamp, ship, system, distance, price, time, fromMarketId, toMarketId) { raw = line, fromLoad = fromLogLoad });
 
                                     // Generate secondary event when the ship is arriving
                                     if (time.HasValue)
@@ -1295,7 +1302,7 @@ namespace EddiJournalMonitor
                                             string arrivalStation = EDDI.Instance.CurrentStation?.name ?? string.Empty;
                                             string arrivalSystem = EDDI.Instance.CurrentStarSystem?.systemname ?? string.Empty;
                                             await Task.Delay((int)time * 1000);
-                                            EDDI.Instance.enqueueEvent(new ShipArrivedEvent(DateTime.UtcNow, ship, shipId, arrivalSystem, distance, price, time, arrivalStation, fromMarketId, toMarketId) { fromLoad = fromLogLoad });
+                                            EDDI.Instance.enqueueEvent(new ShipArrivedEvent(DateTime.UtcNow, ship, arrivalSystem, distance, price, time, arrivalStation, fromMarketId, toMarketId) { fromLoad = fromLogLoad });
                                         }
                                     }
                                 }
@@ -1632,7 +1639,7 @@ namespace EddiJournalMonitor
                                     string interdictor = JsonParsing.getString(data, "Interdictor");
                                     bool iscommander = JsonParsing.getBool(data, "IsPlayer");
                                     data.TryGetValue("CombatRank", out object val);
-                                    CombatRating rating = (val == null ? null : CombatRating.FromRank((int)val));
+                                    CombatRating rating = (val == null ? null : CombatRating.FromRank(Convert.ToInt32(val)));
                                     string faction = getFactionName(data, "Faction");
                                     string power = JsonParsing.getString(data, "Power");
 
@@ -1756,7 +1763,8 @@ namespace EddiJournalMonitor
                                     string from = JsonParsing.getString(data, "From");
                                     string channel = JsonParsing.getString(data, "Channel");
                                     string message = JsonParsing.getString(data, "Message");
-                                    string source = "";
+                                    MessageChannel messageChannel;
+                                    MessageSource source;
 
                                     if (from == string.Empty && channel == "npc" && (message.StartsWith("$COMMS_entered") || message.StartsWith("$CHAT_Intro")))
                                     {
@@ -1777,32 +1785,49 @@ namespace EddiJournalMonitor
                                     )
                                     {
                                         // Give priority to player messages
-                                        source = channel == "squadron" ? "Squadron mate" : channel == "wing" ? "Wing mate" : channel == null ? "Crew mate" : "Commander";
-                                        channel = channel ?? "multicrew";
-                                        events.Add(new MessageReceivedEvent(timestamp, from, source, true, channel, message) { raw = line, fromLoad = fromLogLoad });
+                                        if (string.IsNullOrEmpty(channel))
+                                        {
+                                            // Multicrew messages omit the `channel` property
+                                            source = MessageSource.CrewMate;
+                                        }
+                                        else if (channel == "squadron")
+                                        {
+                                            source = MessageSource.SquadronMate;
+                                        }
+                                        else if (channel == "wing")
+                                        {
+                                            source = MessageSource.WingMate;
+                                        }
+                                        else
+                                        {
+                                            source = MessageSource.Commander;
+                                        }
+                                        messageChannel = MessageChannel.FromEDName(channel ?? "multicrew");
+                                        events.Add(new MessageReceivedEvent(timestamp, from, source, true, messageChannel, message) { raw = line, fromLoad = fromLogLoad });
                                     }
                                     else
                                     {
                                         // This is NPC speech.  What's the source?
                                         if (from.Contains("npc_name_decorate"))
                                         {
-                                            source = npcSpeechBy(from, message);
+                                            source = MessageSource.FromMessage(from, message);
                                             from = from.Replace("$npc_name_decorate:#name=", "").Replace(";", "");
                                         }
-                                        else if (from.Contains("ShipName_"))
+                                        else if (from.Contains("ShipName_") || from.Contains("_Scenario_"))
                                         {
-                                            source = npcSpeechBy(from, message);
+                                            source = MessageSource.FromMessage(from, message);
                                             from = JsonParsing.getString(data, "From_Localised");
                                         }
-                                        else if ((message.StartsWith("$STATION_")) || message.Contains("$Docking"))
+                                        else if (message.StartsWith("$STATION_") || message.Contains("$Docking"))
                                         {
-                                            source = "Station";
+                                            source = MessageSource.Station;
                                         }
                                         else
                                         {
-                                            source = "NPC";
+                                            source = MessageSource.NPC;
                                         }
-                                        events.Add(new MessageReceivedEvent(timestamp, from, source, false, channel, JsonParsing.getString(data, "Message_Localised")) { raw = line, fromLoad = fromLogLoad });
+                                        messageChannel = MessageChannel.FromEDName(channel);
+                                        events.Add(new MessageReceivedEvent(timestamp, from, source, false, messageChannel, JsonParsing.getString(data, "Message_Localised")) { raw = line, fromLoad = fromLogLoad });
 
                                         // See if we also want to spawn a specific event as well?
                                         if (message == "$STATION_NoFireZone_entered;")
@@ -1820,20 +1845,20 @@ namespace EddiJournalMonitor
                                         else if (message.Contains("_StartInterdiction"))
                                         {
                                             // Find out who is doing the interdicting
-                                            string by = npcSpeechBy(from, message);
+                                            MessageSource by = MessageSource.FromMessage(from, message);
 
                                             events.Add(new NPCInterdictionCommencedEvent(timestamp, by) { raw = line, fromLoad = fromLogLoad });
                                         }
                                         else if (message.Contains("_Attack") || message.Contains("_OnAttackStart") || message.Contains("AttackRun") || message.Contains("OnDeclarePiracyAttack"))
                                         {
                                             // Find out who is doing the attacking
-                                            string by = npcSpeechBy(from, message);
+                                            MessageSource by = MessageSource.FromMessage(from, message);
                                             events.Add(new NPCAttackCommencedEvent(timestamp, by) { raw = line, fromLoad = fromLogLoad });
                                         }
                                         else if (message.Contains("_OnStartScanCargo"))
                                         {
                                             // Find out who is doing the scanning
-                                            string by = npcSpeechBy(from, message);
+                                            MessageSource by = MessageSource.FromMessage(from, message);
                                             events.Add(new NPCCargoScanCommencedEvent(timestamp, by) { raw = line, fromLoad = fromLogLoad });
                                         }
                                     }
@@ -2344,7 +2369,8 @@ namespace EddiJournalMonitor
                                     {
                                         // This is a progress entry.
                                         Engineer engineer = parseEngineer(data);
-                                        Engineer lastEngineer = Engineer.FromNameOrId(engineer.name, engineer.id);
+                                        Engineer lastEngineer = Engineer.FromNameOrId(engineer.name, engineer.id).Copy();
+                                        Engineer.AddOrUpdate(engineer);
                                         if (engineer.stage != null && engineer.stage != lastEngineer?.stage)
                                         {
                                             events.Add(new EngineerProgressedEvent(timestamp, engineer, "Stage") { raw = line, fromLoad = fromLogLoad });
@@ -2353,7 +2379,6 @@ namespace EddiJournalMonitor
                                         {
                                             events.Add(new EngineerProgressedEvent(timestamp, engineer, "Rank") { raw = line, fromLoad = fromLogLoad });
                                         }
-                                        Engineer.AddOrUpdate(engineer);
                                     }
                                 }
                                 handled = true;
@@ -2783,59 +2808,11 @@ namespace EddiJournalMonitor
                                 break;
                             case "CommunityGoal":
                                 {
-
-                                    // There may be multiple goals in each event. We add them all to lists
-                                    data.TryGetValue("CurrentGoals", out object val);
-                                    List<object> goalsdata = (List<object>)val;
-
-                                    // Create empty lists
-                                    List<long> cgid = new List<long>();
-                                    List<string> name = new List<string>();
-                                    List<string> system = new List<string>();
-                                    List<string> station = new List<string>();
-                                    List<long> expiry = new List<long>();
-                                    List<DateTime> expiryDateTimes = new List<DateTime>();
-                                    List<bool> iscomplete = new List<bool>();
-                                    List<int> total = new List<int>();
-                                    List<int> contribution = new List<int>();
-                                    List<int> contributors = new List<int>();
-                                    List<decimal> percentileband = new List<decimal>();
-
-                                    List<int?> topranksize = new List<int?>();
-                                    List<bool?> toprank = new List<bool?>();
-
-                                    List<string> tier = new List<string>();
-                                    List<long?> tierreward = new List<long?>();
-
-                                    // Fill the lists
-                                    foreach (IDictionary<string, object> goaldata in goalsdata)
-                                    {
-                                        cgid.Add(JsonParsing.getLong(goaldata, "CGID"));
-                                        name.Add(JsonParsing.getString(goaldata, "Title"));
-                                        system.Add(JsonParsing.getString(goaldata, "SystemName"));
-                                        station.Add(JsonParsing.getString(goaldata, "MarketName"));
-                                        DateTime expiryDateTime = ((DateTime)goaldata["Expiry"]).ToUniversalTime();
-                                        expiryDateTimes.Add(expiryDateTime);
-                                        long expiryseconds = (long)(expiryDateTime - timestamp).TotalSeconds;
-                                        expiry.Add(expiryseconds);
-                                        iscomplete.Add(JsonParsing.getBool(goaldata, "IsComplete"));
-                                        total.Add(JsonParsing.getInt(goaldata, "CurrentTotal"));
-                                        contribution.Add(JsonParsing.getInt(goaldata, "PlayerContribution"));
-                                        contributors.Add(JsonParsing.getInt(goaldata, "NumContributors"));
-                                        percentileband.Add(JsonParsing.getDecimal(goaldata, "PlayerPercentileBand"));
-
-                                        // If the community goal is constructed with a fixed-size top rank (ie max reward for top 10 players)
-
-                                        topranksize.Add(JsonParsing.getOptionalInt(goaldata, "TopRankSize"));
-                                        toprank.Add(JsonParsing.getOptionalBool(goaldata, "PlayerInTopRank"));
-
-                                        // If the community goal has reached the first success tier
-
-                                        tier.Add(JsonParsing.getString(goaldata, "TierReached"));
-                                        tierreward.Add(JsonParsing.getOptionalLong(goaldata, "Bonus"));
-                                    }
-
-                                    events.Add(new CommunityGoalEvent(timestamp, cgid, name, system, station, expiry, expiryDateTimes, iscomplete, total, contribution, contributors, percentileband, topranksize, toprank, tier, tierreward) { raw = line, fromLoad = fromLogLoad });
+                                    // There may be multiple goals in each event.
+                                    data.TryGetValue("CurrentGoals", out object goalsVal);
+                                    string goalsJson = JsonConvert.SerializeObject(goalsVal);
+                                    List<CommunityGoal> goals = JsonConvert.DeserializeObject<List<CommunityGoal>>(goalsJson);
+                                    events.Add(new CommunityGoalsEvent(timestamp, goals) { raw = line, fromLoad = fromLogLoad });
                                 }
                                 handled = true;
                                 break;
@@ -3149,8 +3126,12 @@ namespace EddiJournalMonitor
                                         }
                                     }
 
-                                    bool repairedfully = JsonParsing.getBool(data, "FullyRepaired");
+                                    // There is an FDev bug that can set `FullyRepaired` to false even when the module health is full,
+                                    // so we work around this by relying on the `Health` property rather than the `FullyRepaired` property.
+                                    // This appears to be a unique problem with Module Reinforcement Packages.
+
                                     decimal health = JsonParsing.getDecimal(data, "Health");
+                                    bool repairedfully = health == 1M;
 
                                     events.Add(new ShipAfmuRepairedEvent(timestamp, item, repairedfully, health) { raw = line, fromLoad = fromLogLoad });
                                 }
@@ -3203,14 +3184,55 @@ namespace EddiJournalMonitor
                                 break;
                             case "RebootRepair":
                                 {
+                                    // This event returns a list of slots rather than actual module ednames.
                                     data.TryGetValue("Modules", out object val);
-                                    List<object> modulesJson = (List<object>)val;
+                                    List<object> slotsJson = (List<object>)val;
 
-                                    List<string> modules = new List<string>();
-                                    foreach (string module in modulesJson)
+                                    var ship = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship monitor"))?.GetCurrentShip();
+                                    List<Module> modules = new List<Module>();
+                                    foreach (string slot in slotsJson)
                                     {
-                                        modules.Add(module);
+                                        Module module = null;
+                                        if (slot.Contains("CargoHatch"))
+                                        {
+                                            module = ship.cargohatch;
+                                        }
+                                        else if (slot.Contains("FrameShiftDrive"))
+                                        {
+                                            module = ship.frameshiftdrive;
+                                        }
+                                        else if (slot.Contains("LifeSupport"))
+                                        {
+                                            module = ship.lifesupport;
+                                        }
+                                        else if (slot.Contains("MainEngines"))
+                                        {
+                                            module = ship.thrusters;
+                                        }
+                                        else if (slot.Contains("PowerDistributor"))
+                                        {
+                                            module = ship.powerdistributor;
+                                        }
+                                        else if (slot.Contains("PowerPlant"))
+                                        {
+                                            module = ship.powerplant;
+                                        }
+                                        else if (slot.Contains("Radar"))
+                                        {
+                                            module = ship.sensors;
+                                        }
+                                        else if (slot.Contains("Hardpoint"))
+                                        {
+                                            module = ship.hardpoints.SingleOrDefault(h => h.name == slot)?.module;
+                                        }
+                                        else if (slot.Contains("Slot") || slot.Contains("Military"))
+                                        {
+                                            module = ship.compartments.SingleOrDefault(c => c.name == slot)?.module;
+                                        }
+
+                                        if (module != null) { modules.Add(module); }
                                     }
+
                                     events.Add(new ShipRebootedEvent(timestamp, modules) { raw = line, fromLoad = fromLogLoad });
                                 }
                                 handled = true;
@@ -3513,6 +3535,7 @@ namespace EddiJournalMonitor
                                             int amount = JsonParsing.getInt(signal, "Count");
                                             hotspots.Add(new CommodityAmount(type, amount));
                                         }
+                                        hotspots = hotspots.OrderByDescending(h => h.amount).ToList();
                                         events.Add(new RingHotspotsEvent(timestamp, systemAddress, bodyName, bodyId, hotspots) { raw = line, fromLoad = fromLogLoad });
                                     }
                                     else
@@ -3528,6 +3551,7 @@ namespace EddiJournalMonitor
                                             int amount = JsonParsing.getInt(signal, "Count");
                                             surfaceSignals.Add(new SignalAmount(source, amount));
                                         }
+                                        surfaceSignals = surfaceSignals.OrderByDescending(s => s.amount).ToList();
                                         events.Add(new SurfaceSignalsEvent(timestamp, systemAddress, bodyName, bodyId, surfaceSignals) { raw = line, fromLoad = fromLogLoad });
                                     }
                                 }
@@ -3989,6 +4013,7 @@ namespace EddiJournalMonitor
                                 }
                                 handled = true;
                                 break;
+                            case "CargoTransfer":
                             case "CarrierBuy":
                             case "CarrierStats":
                             case "CarrierBankTransfer":
@@ -3999,7 +4024,7 @@ namespace EddiJournalMonitor
                             case "CarrierDockingPermission":
                             case "CarrierFinance":
                             case "CarrierModulePack":
-                            case "CarrierNameChanged":
+                            case "CarrierNameChange":
                             case "CarrierShipPack":
                             case "CarrierTradeOrder":
                             case "CodexDiscovery":
@@ -4273,130 +4298,6 @@ namespace EddiJournalMonitor
                 source.fallbackLocalizedName = JsonParsing.getString(data, "SignalName_Localised") ?? signalSource;
             }
             return source;
-        }
-
-
-
-        private static string npcSpeechBy(string from, string message)
-        {
-            string by;
-            if (message.StartsWith("$AmbushedPilot_"))
-            {
-                by = "Ambushed pilot";
-            }
-            else if (message.StartsWith("$BountyHunter"))
-            {
-                by = "Bounty hunter";
-            }
-            else if (message.StartsWith("$CapShip") || message.StartsWith("$FEDCapShip"))
-            {
-                by = "Capital ship";
-            }
-            else if (message.StartsWith("$CargoHunter"))
-            {
-                by = "Cargo hunter"; // Mission specific
-            }
-            else if (message.StartsWith("$Commuter"))
-            {
-                by = "Civilian pilot";
-            }
-            else if (message.StartsWith("$ConvoyExplorers"))
-            {
-                by = "Exploration convoy";
-            }
-            else if (message.StartsWith("$ConvoyWedding"))
-            {
-                by = "Wedding convoy";
-            }
-            else if (message.StartsWith("$CruiseLiner"))
-            {
-                by = "Cruise liner";
-            }
-            else if (message.StartsWith("$Escort"))
-            {
-                by = "Escort";
-            }
-            else if (message.StartsWith("$Hitman"))
-            {
-                by = "Hitman";
-            }
-            else if (message.StartsWith("$Messenger"))
-            {
-                by = "Messenger";
-            }
-            else if (message.StartsWith("$Military"))
-            {
-                by = "Military";
-            }
-            else if (message.StartsWith("$Miner"))
-            {
-                by = "Miner";
-            }
-            else if (message.StartsWith("$PassengerHunter"))
-            {
-                by = "Passenger hunter"; // Mission specific
-            }
-            else if (message.StartsWith("$PassengerLiner"))
-            {
-                by = "Passenger liner";
-            }
-            else if (message.StartsWith("$Pirate"))
-            {
-                by = "Pirate";
-            }
-            else if (message.StartsWith("$Police"))
-            {
-                // Police messages appear to be re-used by bounty hunters.  Check from to see if it really is police
-                if (from.Contains("Police"))
-                {
-                    by = "Police";
-                }
-                else
-                {
-                    by = "Bounty hunter";
-                }
-            }
-            else if (message.StartsWith("$PowersAssassin"))
-            {
-                by = "Rival power's agent";  // Power play specific
-            }
-            else if (message.StartsWith("$PowersPirate"))
-            {
-                by = "Rival power's agent"; // Power play specific
-            }
-            else if (message.StartsWith("$PowersSecurity"))
-            {
-                by = "Rival power's agent"; // Power play specific
-            }
-            else if (message.StartsWith("$Propagandist"))
-            {
-                by = "Propagandist";
-            }
-            else if (message.StartsWith("$Protester"))
-            {
-                by = "Protester";
-            }
-            else if (message.StartsWith("$Refugee"))
-            {
-                by = "Refugee";
-            }
-            else if (message.StartsWith("$Smuggler"))
-            {
-                by = "Civilian pilot";  // We shouldn't recognize a smuggler without a cargo scan
-            }
-            else if (message.StartsWith("$StarshipOne"))
-            {
-                by = "Starship One";
-            }
-            else if (message.Contains("_SearchandRescue_"))
-            {
-                by = "Search and rescue";
-            }
-            else
-            {
-                by = "NPC";
-            }
-            return by;
         }
 
         // Be sensible with health - round it unless it's very low
