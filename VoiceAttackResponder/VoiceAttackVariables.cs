@@ -421,6 +421,8 @@ namespace EddiVoiceAttackResponder
                 vaProxy.SetBoolean("cAPI active", CompanionAppService.Instance?.active ?? false);
                 vaProxy.SetBoolean("ipa active", !(SpeechService.Instance?.Configuration.DisableIpa ?? false));
                 vaProxy.SetBoolean("icao active", SpeechService.Instance?.Configuration.EnableIcao ?? false);
+                vaProxy.SetBoolean("horizons", EDDI.Instance.inHorizons);
+                vaProxy.SetBoolean("odyssey", EDDI.Instance.inOdyssey);
                 vaProxy.SetText("Environment", EDDI.Instance.Environment);
                 vaProxy.SetText("Vehicle", EDDI.Instance.Vehicle);
                 vaProxy.SetText("EDDI version", Constants.EDDI_VERSION.ToString());
@@ -522,6 +524,10 @@ namespace EddiVoiceAttackResponder
                 vaProxy.SetText("Empire rank", cmdr?.empirerating?.maleRank.localizedName);
                 vaProxy.SetInt("Federation rating", cmdr?.federationrating?.rank);
                 vaProxy.SetText("Federation rank", cmdr?.federationrating?.localizedName);
+                vaProxy.SetInt("Mercenary rating", cmdr?.mercenaryrating?.rank);
+                vaProxy.SetText("Mercenary rank", cmdr?.mercenaryrating?.localizedName);
+                vaProxy.SetInt("Exobiologist rating", cmdr?.exobiologistrating?.rank);
+                vaProxy.SetText("Exobiologist rank", cmdr?.exobiologistrating?.localizedName);
                 vaProxy.SetDecimal("Credits", cmdr?.credits);
                 vaProxy.SetText("Credits (spoken)", Translations.Humanize(cmdr?.credits));
                 vaProxy.SetDecimal("Debt", cmdr?.debt);
@@ -961,6 +967,12 @@ namespace EddiVoiceAttackResponder
                 vaProxy.SetText(prefix + " body name", status?.bodyname);
                 vaProxy.SetDecimal(prefix + " planet radius", status?.planetradius);
                 vaProxy.SetBoolean(prefix + " altitude from average radius", status?.altitude_from_average_radius);
+                vaProxy.SetBoolean(prefix + " on foot in station", status?.on_foot_in_station);
+                vaProxy.SetBoolean(prefix + " on foot on planet", status?.on_foot_on_planet);
+                vaProxy.SetBoolean(prefix + " aim down sight", status?.aim_down_sight);
+                vaProxy.SetBoolean(prefix + " low oxygen", status?.low_oxygen);
+                vaProxy.SetBoolean(prefix + " low health", status?.low_health);
+                vaProxy.SetText(prefix + " on foot temperature", status?.on_foot_temperature);
             }
             catch (Exception e)
             {

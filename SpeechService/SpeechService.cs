@@ -105,16 +105,7 @@ namespace EddiSpeechService
 
         public void Say(Ship ship, string message, int priority = 3, string voice = null, bool radio = false, string eventType = null, bool invokedFromVA = false, int volume = 0)
         {
-            if (message == null)
-            {
-                return;
-            }
-
-            if (ship == null)
-            {
-                // Provide basic ship definition
-                ship = ShipDefinitions.FromModel("Sidewinder");
-            }
+            if (message == null) { return; }
 
             //Check for out of range volume override values 
             if (volume < 0 || volume > 100) { volume = 0; }

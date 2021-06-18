@@ -79,15 +79,9 @@ namespace EddiInaraResponder
                 return;
             }
 
-            if (EDDI.Instance.inCQC)
+            if (EDDI.Instance.inTelepresence)
             {
                 // We don't do anything whilst in CQC
-                return;
-            }
-
-            if (EDDI.Instance.inCrew)
-            {
-                // We don't do anything whilst in multicrew
                 return;
             }
 
@@ -308,6 +302,18 @@ namespace EddiInaraResponder
                 {
                     handleCommunityGoalsEvent(communityGoalsEvent);
                 }
+                else if (theEvent is TouchdownEvent touchdownEvent)
+                {
+                    handleTouchdownEvent(touchdownEvent);
+                }
+                else if (theEvent is DropshipDeploymentEvent dropshipDeploymentEvent)
+                {
+                    handleDropshipDeploymentEvent(dropshipDeploymentEvent);
+                }
+                else if (theEvent is ShipLockerEvent shipLockerEvent)
+                {
+                    handleShipLockerEvent(shipLockerEvent);
+                }
             }
             catch (Exception ex)
             {
@@ -320,11 +326,73 @@ namespace EddiInaraResponder
             }
         }
 
+        private void handleShipLockerEvent(ShipLockerEvent @event) 
+        {
+            // To be sure you always start with a "clean slate" for journal events like 'ShipLockerMaterials' when
+            // no materials present, call 'resetCommanderInventory' event before calling 'setCommanderInventory'.
+            var resetEventData = new List<Dictionary<string, object>>();
+            foreach (var microResourceCategory in MicroResourceCategory.AllOfThem
+                .Where(c => c != MicroResourceCategory.Unknown))
+            {
+                resetEventData.Add(new Dictionary<string, object>()
+                {
+                    { "itemType", microResourceCategory.edname },
+                    { "itemLocation", "ShipLocker" }
+                });
+            }
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "resetCommanderInventory", resetEventData));
+
+            // Now we can set our data
+            var eventData = new List<Dictionary<string, object>>();
+            foreach (var microResourceAmount in @event.inventory)
+            {
+                var entry = new Dictionary<string, object>()
+                {
+                    { "itemName", microResourceAmount.edname },
+                    { "itemCount", microResourceAmount.amount },
+                    { "itemType", microResourceAmount.microResource?.Category?.edname },
+                    { "itemLocation", "ShipLocker" }
+                };
+                if (microResourceAmount.missionId != null)
+                {
+                    entry.Add("missionGameID", microResourceAmount.missionId);
+                }
+                // Whether is the item stolen or not. It is not used on Inara at this moment,
+                // but you can set it with the `isStolen` property if you'd like. 
+                eventData.Add(entry);
+            };
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderInventory", eventData));
+        }
+
+        private void handleDropshipDeploymentEvent(DropshipDeploymentEvent @event) 
+        {
+            var eventData = new Dictionary<string, object>()
+            {
+                { "starsystemName", @event.systemname },
+                { "starsystemBodyName", @event.bodyname }
+            };
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderTravelLand", eventData));
+        }
+
+        private void handleTouchdownEvent(TouchdownEvent @event) 
+        {
+            var eventData = new Dictionary<string, object>()
+            {
+                { "starsystemName", @event.systemname },
+                { "starsystemBodyName", @event.bodyname },
+                { "starsystemBodyCoords", new [] { @event.latitude, @event.longitude } }
+            };
+            inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderTravelLand", eventData));
+        }
+
         private void handleCarrierJumpedEvent(CarrierJumpedEvent @event)
         {
             var eventData = new Dictionary<string, object>()
             {
                 { "starsystemName", @event.systemname },
+                { "starsystemCoords", new [] { @event.x, @event.y, @event.z } },
+                { "stationName", @event.carriername },
+                { "marketID", @event.carrierId }
             };
             Ship currentShip = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship Monitor")).GetCurrentShip();
             if (!string.IsNullOrEmpty(currentShip?.EDName))
@@ -522,11 +590,15 @@ namespace EddiInaraResponder
                     { "stationName", @event.station },
                     { "marketID", @event.marketId }
                 };
-                Ship currentShip = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship Monitor")).GetCurrentShip();
-                if (!string.IsNullOrEmpty(currentShip?.EDName))
+
+                if (EDDI.Instance.Vehicle == Constants.VEHICLE_SHIP)
                 {
-                    eventData.Add("shipType", currentShip.EDName);
-                    eventData.Add("shipGameID", currentShip.LocalId);
+                    Ship currentShip = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship Monitor")).GetCurrentShip();
+                    if (!string.IsNullOrEmpty(currentShip?.EDName))
+                    {
+                        eventData.Add("shipType", currentShip.EDName);
+                        eventData.Add("shipGameID", currentShip.LocalId);
+                    }
                 }
                 inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderTravelDock", eventData));
             }
@@ -960,13 +1032,13 @@ namespace EddiInaraResponder
             {
                 { "starsystemName", EDDI.Instance.CurrentStarSystem.systemname }
             };
-            if (@event.commanders?.Count > 1)
+            if (@event.killers?.Count > 1)
             {
-                diedEventData.Add("wingOpponentNames", @event.commanders);
+                diedEventData.Add("wingOpponentNames", @event.killers.Select(k => k.name));
             }
-            else if (@event.commanders?.Count == 1)
+            else if (@event.killers?.Count == 1)
             {
-                diedEventData.Add("opponentName", @event.commanders[0]);
+                diedEventData.Add("opponentName", @event.killers[0].name);
             }
             inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderCombatDeath", diedEventData));
         }
@@ -1106,13 +1178,18 @@ namespace EddiInaraResponder
             var eventData = new Dictionary<string, object>()
                 {
                     { "starsystemName", @event.system },
+                    { "starsystemCoords", new [] { @event.x, @event.y, @event.z } },
                     { "jumpDistance", @event.distance }
                 };
-            Ship currentShip = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship Monitor")).GetCurrentShip();
-            if (!string.IsNullOrEmpty(currentShip?.EDName))
+
+            if (EDDI.Instance.Vehicle == Constants.VEHICLE_SHIP)
             {
-                eventData.Add("shipType", currentShip.EDName);
-                eventData.Add("shipGameID", currentShip.LocalId);
+                Ship currentShip = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship Monitor")).GetCurrentShip();
+                if (!string.IsNullOrEmpty(currentShip?.EDName))
+                {
+                    eventData.Add("shipType", currentShip.EDName);
+                    eventData.Add("shipGameID", currentShip.LocalId);
+                }
             }
             inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "addCommanderTravelFSDJump", eventData));
         }
@@ -1228,6 +1305,16 @@ namespace EddiInaraResponder
                 {
                     { "rankName", "cqc" },
                     { "rankProgress", @event.cqc / 100 }
+                },
+                new Dictionary<string, object>()
+                {
+                    { "rankName", "soldier" },
+                    { "rankProgress", @event.mercenary / 100 }
+                },
+                new Dictionary<string, object>()
+                {
+                    { "rankName", "exobiologist" },
+                    { "rankProgress", @event.exobiologist / 100 }
                 }
             };
             inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderRankPilot", eventData));
@@ -1268,6 +1355,16 @@ namespace EddiInaraResponder
                 {
                     { "rankName", "cqc" },
                     { "rankValue", @event.cqc?.rank }
+                },
+                new Dictionary<string, object>()
+                {
+                    { "rankName", "soldier" },
+                    { "rankValue", @event.mercenary?.rank }
+                },
+                new Dictionary<string, object>()
+                {
+                    { "rankName", "exobiologist" },
+                    { "rankValue", @event.exobiologist?.rank }
                 }
             };
             inaraService.EnqueueAPIEvent(new InaraAPIEvent(@event.timestamp, "setCommanderRankPilot", eventData));

@@ -69,12 +69,20 @@ namespace EddiInaraService
                             foreach (var pendingEvent in queuedAPIEvents.GetConsumingEnumerable(syncCancellationTS.Token))
                             {
                                 holdingQueue.Add(pendingEvent);
-                                if (holdingQueue.Count > 0 && queuedAPIEvents.Count == 0)
+
+                                if (queuedAPIEvents.Count == 0)
                                 {
-                                    var sendingQueue = holdingQueue.Copy();
-                                    holdingQueue = new List<InaraAPIEvent>();
-                                    await Task.Run(() => SendAPIEvents(sendingQueue), syncCancellationTS.Token).ConfigureAwait(false);
-                                    await Task.Delay(!tooManyRequests ? syncIntervalMilliSeconds : delayedSyncIntervalMilliSeconds, syncCancellationTS.Token).ConfigureAwait(false);
+                                    // Once we hit zero queued events, wait a couple more seconds for any concurrent events to register
+                                    await Task.Delay(2000, syncCancellationTS.Token).ConfigureAwait(false);
+                                    if (queuedAPIEvents.Count > 0) { continue; }
+                                    // No additional events registered, send any events we have in our holding queue
+                                    if (holdingQueue.Count > 0)
+                                    {
+                                        var sendingQueue = holdingQueue.Copy();
+                                        holdingQueue = new List<InaraAPIEvent>();
+                                        await Task.Run(() => SendAPIEvents(sendingQueue), syncCancellationTS.Token).ConfigureAwait(false);
+                                        await Task.Delay(!tooManyRequests ? syncIntervalMilliSeconds : delayedSyncIntervalMilliSeconds, syncCancellationTS.Token).ConfigureAwait(false);
+                                    }
                                 }
                             }
                         }
@@ -114,13 +122,9 @@ namespace EddiInaraService
                     {
                         header = new Dictionary<string, object>()
                         {
-                            // Per private conversation with Artie and per Inara API docs, the `isDeveloped` property
-                            // should (counterintuitively) be set to true when the an application is in development.
-                            // Quote: `it's "true" because the app "is (being) developed"`
-                            // Quote: `isDeveloped is meant as "the app is currently being developed and may be broken`
                             { "appName", "EDDI" },
                             { "appVersion", Constants.EDDI_VERSION.ToString() },
-                            { "isDeveloped", eddiIsBeta },
+                            { "isBeingDeveloped", eddiIsBeta },
                             { "commanderName", !string.IsNullOrEmpty(inaraConfiguration?.commanderName) ? inaraConfiguration.commanderName : (eddiIsBeta ? "TestCmdr" : null) },
                             { "commanderFrontierID", !string.IsNullOrEmpty(inaraConfiguration?.commanderFrontierID) ? inaraConfiguration.commanderFrontierID : null },
                             { "APIkey", !string.IsNullOrEmpty(inaraConfiguration?.apiKey) ? inaraConfiguration.apiKey : readonlyAPIkey }
@@ -174,7 +178,7 @@ namespace EddiInaraService
                 if (invalidAPIEvents.Contains(indexedEvent.eventName)) { continue; }
 
                 // Exclude and discard old / stale events
-                if (inaraConfiguration?.lastSync > indexedEvent.eventTimeStamp) { continue; }
+                if (inaraConfiguration?.lastSync > indexedEvent.eventTimestamp) { continue; }
 
                 // Inara will ignore the "setCommunityGoal" event while EDDI is in development mode (i.e. beta).
                 if (indexedEvent.eventName == "setCommunityGoal" && eddiIsBeta) { continue; }
@@ -282,7 +286,7 @@ namespace EddiInaraService
                 var responses = SendEventBatch(queue, inaraConfiguration);
                 if (responses != null && responses.Count > 0)
                 {
-                    inaraConfiguration.lastSync = queue.Max(e => e.eventTimeStamp);
+                    inaraConfiguration.lastSync = queue.Max(e => e.eventTimestamp);
                     inaraConfiguration.ToFile();
                 }
             }

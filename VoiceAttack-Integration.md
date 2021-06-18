@@ -37,6 +37,10 @@ EDDI makes a large number of values available to augment your existing scripts. 
   * {TXT:Empire rank}: the empire rating of the commander, from None to King
   * {INT:Federation rating}: the federation rating of the commander, with 0 being None and 14 being Admiral
   * {TXT:Federation rank}: the federation rating of the commander, from None to Admiral
+  * {INT:Mercenary rating}: the mercenary rating of the commander, with 0 being Defenceless and 8 being Elite
+  * {TXT:Mercenary rank}: the mercenary rating of the commander, from Defenceless to Elite
+  * {INT:Exobiologist rating}: the exobiologist rating of the commander, with 0 being Directionless and 8 being Elite
+  * {TXT:Exobiologist rank}: the exobiologist rating of the commander, from Directionless to Elite
   * {DEC:Credits}: the number of credits owned by the commander
   * {TXT:Credits (spoken)}: the number of credits owned by the commander as would be spoken (e.g. "just over 2 million")
   * {DEC:Debt}: the number of credits owed by the commander
@@ -87,6 +91,12 @@ EDDI makes a large number of values available to augment your existing scripts. 
   * {TXT:Status body name} the name of the current body (if landed or in an srv)
   * {DEC:Status planet radius} the radius of the current body (if landed or in an srv)
   * {BOOL:Status altitude from average radius} true if the altitude is computed relative to the average radius (which is used at higher altitudes) rather than surface directly below the srv
+  * {BOOL:Status on foot in station} true if you've disembarked at a station.
+  * {BOOL:Status on foot on planet} true if you've disembarked on a planet surface.
+  * {BOOL:Status aim down sight} true if you are on foot and aiming through a scope.
+  * {BOOL:Status low oxygen} true if you are on foot and oxygen is running low.
+  * {BOOL:Status low health} true if you are on foot and health is running low.
+  * {TXT:Status on foot temperature} the environment temperature when on foot. May be one of "very cold", "cold", "temperate", "hot", or "very hot".
 
 ## Ship Variables
 Note: "Tiny" hardpoints are utility slots.
@@ -320,6 +330,8 @@ Note: "Tiny" hardpoints are utility slots.
   * {BOOL:cAPI active}: true if the cAPI is currently active 
   * {BOOL:icao active}: true if use of ICAO text replacements are currently enabled 
   * {BOOL:ipa active}: true if phonetic speech ssml tags are currently enabled
+  * {BOOL:horizons}: true if the Horizons expansion is currently active
+  * {BOOL:odyssey}: true if the Odyssey expansion is currently active
   * {TXT:EDDI uri}: uri's for EDDB, EDShipyard, and EDSM are written here when the appropriate plugin command is invoked.
   * {BOOL:EDDI speaking}: true if EDDI is currently speaking
 

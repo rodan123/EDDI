@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "EDDI"
-#define MyAppVersion "3.7.3"
+#define MyAppVersion "4.0.0"
 #define MyAppPublisher "Elite Dangerous Community Developers (EDCD)"
 #define MyAppURL "https://github.com/EDCD/EDDI/"
 #define MyAppExeName "EDDI.exe"
@@ -20,7 +20,7 @@ AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 AppVerName={#MyAppName} {#MyAppVersion}
 AppVersion={#MyAppVersion}
-DefaultDirName={reg:HKCU\Software\VoiceAttack.com\VoiceAttack,InstallPath|{commonpf32}\VoiceAttack}\Apps\{#MyAppName}
+DefaultDirName={reg:HKCU\Software\VoiceAttack.com\VoiceAttack\LastRun,AppsFolder|{commonpf32}\VoiceAttack\Apps}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableDirPage=no
 DisableWelcomePage=no

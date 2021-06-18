@@ -28,6 +28,24 @@
       "name": "Asteroid prospected",
       "description": "Triggered when using a prospecting drone"
     },
+    "Backpack": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": null,
+      "default": true,
+      "name": "Backpack",
+      "description": "Lists the contents of your backpack when you disembark"
+    },
+    "Backpack changed": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": null,
+      "default": true,
+      "name": "Backpack changed",
+      "description": "Triggered when there is any change to the contents of the suit backpack"
+    },
     "Blueprint make report": {
       "enabled": true,
       "priority": 3,
@@ -140,6 +158,15 @@
       "name": "Bond redeemed",
       "description": "Se activa cuando canjeas un bono de combate"
     },
+    "Book transport": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": null,
+      "default": true,
+      "name": "Book transport",
+      "description": "Triggered when booking a taxi or deployment for on foot combat"
+    },
     "Bounty awarded": {
       "enabled": true,
       "priority": 5,
@@ -171,6 +198,15 @@
       "script": "{_ Context }\n{SetState('eddi_context_last_subject', 'bond')}\n{SetState('eddi_context_last_action', 'redeem')}\n{SetState('eddi_context_bond_amount', event.amount)}\n\n\n{OneOf(\"Otorgados\", \"Reclamados\")} \nbonos de combate por valor de {(event.amount)} créditos \n\n{Occasionally(2, \"\n  {if len(event.rewards) = 1 && len(event.rewards[0].faction) > 0:\n    de {P(event.rewards[0].faction)}\n  |else:\n    . \n    {set cur to 0}\n    {while cur < len(event.rewards):\n      {if len(event.rewards[cur].faction) > 0:\n        {if cur = 0:\n        |elif cur < len(event.rewards) - 1:\n            , \n        |else:\n            y\n        }\n        {(event.rewards[cur].amount)} créditos de \n        {P(event.rewards[cur].faction)} \n        {set cur to cur + 1}\n      } \n    } \n  } \n\")} \n\n{if event.brokerpercentage && event.brokerpercentage > 0:\n    después de deducir \n    {OneOf(\"un pago\", \"una recompensa\")} de\n    {round((event.amount / (100 - event.brokerpercentage)) * event.brokerpercentage, 0)} créditos\n}.",
       "name": "Bounty redeemed",
       "description": "Se activa cuando cobras una recompensa (TEST)"
+    },
+    "Cancel transport": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": null,
+      "default": true,
+      "name": "Cancel transport",
+      "description": "Triggered when canceling a taxi or deployment for on foot combat"
     },
     "Cargo depot": {
       "enabled": true,
@@ -274,14 +310,6 @@
       "name": "Cockpit breached",
       "description": "Se activa cuando se rompe la cabina de la nave"
     },
-    "Combat promotion": {
-      "enabled": true,
-      "priority": 3,
-      "responder": true,
-      "script": "{_ Context }\r\n{SetState('eddi_context_last_subject', 'rank')}\r\n{SetState('eddi_context_last_action', 'promotion')}\r\n{SetState('eddi_context_rank_name', 'combat')}\r\n{SetState('eddi_context_rank_amount', event.rating)}\r\n\r\n{F(\"Honorific\")}, se ha reconocido su habilidad de combate.",
-      "name": "Combat promotion",
-      "description": "Se activa cuando aumenta tu rango de combate."
-    },
     "Commander continued": {
       "enabled": true,
       "priority": 3,
@@ -297,6 +325,15 @@
       "script": null,
       "name": "Commander progress",
       "description": "Se activa cuando se informa de tu progreso"
+    },
+    "Commander promotion": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": "{_ Context }\r\n{SetState('eddi_context_last_subject', 'rank')}\r\n{SetState('eddi_context_last_action', 'promotion')}\r\n{SetState('eddi_context_rank_name', lower(event.rank_type))}\r\n{SetState('eddi_context_rank_amount', event.rating)}\r\n\r\n{if event.rank_type = \"Combat\":\r\n    You have been recognised for your valor as a combat pilot, {F(\"Honorific\")}.\r\n|elif event.rank_type = \"CQC\":\r\n    You have been recognised for your valor as a close quarters combat pilot, {F(\"Honorific\")}.\r\n|elif event.rank_type = \"Trade\":\r\n    You have been recognised for your trading acumen, {F(\"Honorific\")}.\r\n|elif event.rank_type = \"Exploration\":\r\n    You have been recognised for your work as an explorer, {F(\"Honorific\")}.\r\n|elif event.rank_type = \"Federation\":\r\n    {set plainHonorific to when(cmdr.gender = 'Female', 'Madam', 'Sir')}\r\n    Congratulations {OneOf('Commander {CommanderName()}', plainHonorific)}! You have\r\n    {OneOf('achieved', 'been promoted to', 'been granted')}\r\n    the rank of {event.rank}\r\n    {Occasionally(2, OneOf('within the Federal Navy', 'for your service to the Federation'))}.\r\n    {if event.rating = 3:\r\n        You now qualify to purchase the Federal Dropship.\r\n    |elif event.rating = 4:\r\n        This grants you access to the {P('Sol', 'starsystem')} system.\r\n    |elif event.rating = 5:\r\n        You now qualify to purchase the Federal Assault Ship, and have access to the {P('Vega', 'starsystem')} and {P('Beta Hydri', 'starsystem')} systems.\r\n    |elif event.rating = 6:\r\n        This grants you access to the {P('PLX 695', 'starsystem')} system.\r\n    |elif event.rating = 7:\r\n        You now qualify to purchase the Federal Gunship, and have access to the {P('Ross 128', 'starsystem')} system.\r\n    |elif event.rating = 8:\r\n        This grants you access to the {P('Exbeur', 'starsystem')} system.\r\n    |elif event.rating = 10:\r\n        This grants you access to the {P('Hors', 'starsystem')} system.\r\n    |elif event.rating = 12:\r\n        You now qualify to purchase the Federal Corvette.\r\n    |elif event.rating = 14:\r\n        This is the highest rank available to a member of the Federal Naval Reserve.\r\n    }   \r\n|elif event.rank_type = \"Empire\":\r\n    Congratulations {F(\"Empire honorific\")},\r\n    the Imperial Navy has \r\n    {OneOf(\"granted you a promotion\", \"promoted you\", \"advanced you\", \"named you\")}\r\n    to the rank of {event.rank}\r\n    {Occasionally(2, OneOf(\"within the Imperial Navy\", \"for your service to the Empire\"))}.\r\n    {if event.rating = 1:\r\n        You may now purchase the Imperial Eagle.\r\n    |elif event.rating = 3:\r\n        You may now purchase the Imperial Courier.\r\n    |elif event.rating = 4:\r\n        This grants you the honour of entering the {P(\"Achenar\", \"starsystem\")} system.\r\n    |elif event.rating = 7:\r\n        This allows you to purchase the Imperial Clipper, and the honour of entering the {P(\"Summerland\", \"starsystem\")} system.\r\n    |elif event.rating = 10:\r\n        This grants you the honour of entering the {P(\"Facece\", \"starsystem\")} system\r\n    |elif event.rating = 12:\r\n        You may now purchase the Imperial Cutter.\r\n    |elif event.rating = 14:\r\n        This is the highest {OneOf(\"rank\", \"honor\")} available to a member of the Imperial Naval Reserve.\r\n    }\r\n|elif event.rank_type = \"Mercenary\":\r\n    You have been recognised for your skills as a mercenary, {F(\"Honorific\")}.\r\n|elif event.rank_type = \"Exobiologist\":\r\n    You have been recognised for your work as an exobiologist, {F(\"Honorific\")}.\r\n}",
+      "default": true,
+      "name": "Commander promotion",
+      "description": "Triggered when one of your commander ranks increases"
     },
     "Commander ratings": {
       "enabled": true,
@@ -578,6 +615,14 @@
       "name": "Discovery scan",
       "description": "Triggered when performing a full system scan (honk)"
     },
+    "Disembark": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": null,
+      "name": "Disembark",
+      "description": "Triggered when you transition from a ship or SRV to on foot"
+    },
     "Docked": {
       "enabled": false,
       "priority": 3,
@@ -626,6 +671,22 @@
       "name": "Docking timed out",
       "description": "Se activa cuando tu solicitud de aterrizaje expira"
     },
+    "Dropship deployment": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": null,
+      "name": "Dropship deployment",
+      "description": "Triggered when exiting a military dropship at an on-foot conflict zone"
+    },
+    "Embark": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": "{if !event.tosrv && state.eddi_context_srv_deployed:\r\n    Your {Spacialise(\"SRV\")} is still deployed, {F('Honorific')}, and will be destroyed if abandoned.\r\n}",
+      "name": "Embark",
+      "description": "Triggered when you transition from on foot to a ship or SRV"
+    },
     "Empire honorific": {
       "enabled": true,
       "priority": 3,
@@ -633,14 +694,6 @@
       "script": "{_ Forms of address taken from <https://en.wikipedia.org/wiki/Forms_of_address_in_the_United_Kingdom>}\n{if cmdr.empirerating.rank <= 4: {_ Commoner }\n   Comandante\n|elif cmdr.empirerating.rank = 5: {_ Knight / Dame }\n    {if cmdr.gender = \"Hombre\": \n        señor\n    |elif cmdr.gender = \"Mujer\": \n        madám\n    |else: \n        Comandante\n    }\n|elif cmdr.empirerating.rank <= 11: {_ Peer / Peeress }\n    {if cmdr.gender = \"Hombre\": \n        {OneOf(\"señor\", \"su señoría\")}\n    |elif cmdr.gender = \"Mujer\": \n        {OneOf(\"madám\", \"su señoría\")}\n    |else: \n        Comandante\n    }\n|elif cmdr.empirerating.rank = 12:\n    su gracia\n|elif cmdr.empirerating.rank = 13:\n    su alteza real\n|elif cmdr.empirerating.rank = 14:\n    su majestad\n}\n",
       "name": "Empire honorific",
       "description": "Función para proporcionar un tratamiento honorífico a su Comandante cuando se alinee con el Imperio"
-    },
-    "Empire promotion": {
-      "enabled": true,
-      "priority": 3,
-      "responder": true,
-      "script": "Enhorabuena {F(\"Empire honorific\")}.\r\nHa sido\r\n{OneOf(\"ascendido\", \"nombrado\")} a  \r\n{when(cmdr.gender = \"Female\", event.femininerank, event.rank)}\r\n{Occasionally(2, OneOf(\"dentro de la Armada Imperial\", \"por sus servicios para el Imperio\"))}.\r\n\r\n{if event.rating = 1:\r\n    Se le ha concedido acceso para poder comprar una Eagle Imperial\r\n|elif event.rating = 3:\r\n    Se le ha concedido acceso para poder comprar una nave de Correo Imperial\r\n|elif event.rating = 4:\r\n    Se le ha concedido el honor de poder entrar en el sistema {P(\"Archenar\")}\r\n|elif event.rating = 7:\r\n    Se le ha concedido acceso para poder comprar la Clíper Imperial \r\n    y el honor de entrar en el sistema {P(\"Summer-land\")}\r\n|elif event.rating = 10:\r\n    Se le ha concedido el honor de poder entrar en el sistema {P(\"Facece\")}\r\n|elif event.rating = 12:\r\n    Se le ha concedido acceso para poder comprar la Cúter imperial\r\n|elif event.rating = 14:\r\n    Es el mayor {OneOf(\"rango\", \"honor\")} disponible para un miembro de la Federación de Pilotos.\r\n}.",
-      "name": "Empire promotion",
-      "description": "Se activa cuando asciende de rango en el Imperio"
     },
     "Engineer contributed": {
       "enabled": true,
@@ -705,22 +758,6 @@
       "script": "\r\nDatos de exploración de {len(event.systems)} sistema{if len(event.systems) > 1:s}, vendidos por {event.reward} créditos\n\n{if len(event.firsts) > 0:\n    , con una bonificación adicional de {event.bonus} créditos por\n    {if len(event.firsts) = 1:\n        un primer descubrimiento\n    |else:\n        {len(event.firsts)} sistemas descubiertos por primera vez\n    }\n}.",
       "name": "Exploration data sold",
       "description": "Se activa cuando vendes datos de exploración"
-    },
-    "Exploration promotion": {
-      "enabled": true,
-      "priority": 3,
-      "responder": true,
-      "script": "Ha sido recompensado por sus habilidades de exploración, {F(\"Honorific\")}.",
-      "name": "Exploration promotion",
-      "description": "Se activa cuando aumenta su rango de exploración"
-    },
-    "Federation promotion": {
-      "enabled": true,
-      "priority": 3,
-      "responder": true,
-      "script": "Enhorabuena {OneOf(\"Comandante {cmdr.name}\",\"Señor{if cmdr.gender = \"Female\":a}\")}! Ha sido\r\n{OneOf(\"ascendido\", \"nombrado\")} a \r\n{event.rank}\r\n{Occasionally(2, OneOf(\"dentro de la Armada Federal\", \"por sus servicios para la Federación\"))}\r\n\r\n{if event.rating= 3:\r\n    , y se le ha concedido acceso para poder comprar la Nave de Aescenso Federal\r\n|elif event.rating = 4:\r\n    , y el permiso para entrar en el sistema {P(\"Sol\")}\r\n|elif event.rating = 5:\r\n    , y se le ha concedido acceso para poder comprar la Nave de Asalto Federal \r\n    y los permisos para entrar en los sistemas {P(\"Vega\")} y {P(\"Beta Hydri\")}\r\n|elif event.rating = 6:\r\n    , y el permiso para entrar en el sistema PLX 695\r\n|elif event.rating = 7:\r\n    , y se le ha concedido acceso para poder comprar la Cañonera Federal \r\n    y el permiso para entrar en el sistema Ross 128\r\n|elif event.rating = 8:\r\n    , y el permiso para entrar en el sistema {P(\"Exbeur\")}\r\n|elif event.rating = 10:\r\n    , y el permiso para entrar en el sistema {P(\"Hors\")}\r\n|elif event.rating = 12:\r\n    , y se le ha concedido acceso para poder comprar la Corbeta Federal\r\n|elif event.rating = 14:\r\n    , el mayor {OneOf(\"rango\", \"honor\")} disponible para un miembro de la Federación de Pilotos\r\n}.\r\n",
-      "name": "Federation promotion",
-      "description": "Se activa cuando aumenta su rango con la Federación"
     },
     "Fighter docked": {
       "enabled": true,
@@ -1259,6 +1296,15 @@
       "script": "{_ Context }\n{SetState('eddi_context_last_subject', 'message')}\n{SetState('eddi_context_last_action', 'send')}\n{SetState('eddi_context_message_name', event.to)}\n{SetState('eddi_context_message_content', event.message)}\n\n{OneOf(\"Lanzando mensaje\", \"Mensaje enviado\", \"Enviado\")}.",
       "name": "Message sent",
       "description": "Se activa cuando envías un mensaje"
+    },
+    "Micro resources purchased": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": null,
+      "default": true,
+      "name": "Micro resources purchased",
+      "description": "Triggered when you buy micro resources"
     },
     "Mission abandoned": {
       "enabled": true,
@@ -1844,6 +1890,15 @@
       "name": "Ship loadout",
       "description": "Se activa cuando obtienes carga a tu nave"
     },
+    "Ship locker": {
+      "enabled": true,
+      "priority": 3,
+      "responder": true,
+      "script": null,
+      "default": true,
+      "name": "Ship locker",
+      "description": "Triggered when you obtain the contents of your ship's micro-resource materials locker"
+    },
     "Ship purchased": {
       "enabled": true,
       "priority": 3,
@@ -2195,14 +2250,6 @@
       "script": "{_ Context }\n{SetState('eddi_context_last_subject', 'tradedata')}\n{SetState('eddi_context_last_action', 'buy')}\n{SetState('eddi_context_tradedata_name', event.system)}\n\n{OneOf(\"Adquiridos datos de comercio del sistema {event.system}\",\n            \"Datos comerciales del sistema {event.system} disponibles\",\"Datos comerciales del sistema {event.system} recibidos correctamente\"\n            \"Recibidos datos comerciales del sistema {event.system} desde los servicios de la estación\",\n            \"Recepción de datos comerciales del sistema {event.system} confirmada\")}.",
       "name": "Trade data purchased",
       "description": "Se activa cuando compra datos de comercio"
-    },
-    "Trade promotion": {
-      "enabled": true,
-      "priority": 3,
-      "responder": true,
-      "script": "{F(\"Honorific\")}, se ha reconocido su habilidad como comerciante.",
-      "name": "Trade promotion",
-      "description": "Se activa cuando aumenta su rango de comercio"
     },
     "Trade voucher redeemed": {
       "enabled": true,

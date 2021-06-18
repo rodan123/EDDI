@@ -38,10 +38,11 @@ namespace EddiCore
         private static bool allowOutfittingUpdate = false;
         private static bool allowShipyardUpdate = false;
 
-        public bool inCQC { get; private set; } = false;
-        public bool inCrew { get; private set; } = false;
+        public bool inTelepresence { get; private set; } = false;
 
         public bool inHorizons { get; private set; } = true;
+        public bool inOdyssey { get; private set; } = true;
+
         public bool gameIsBeta { get; private set; } = false;
 
         static EDDI()
@@ -107,8 +108,8 @@ namespace EddiCore
         public Body CurrentStellarBody { get; private set; }
         public DateTime JournalTimeStamp { get; set; } = DateTime.MinValue;
 
-        // Information from the last jump we initiated (for reference)
-        public FSDEngagedEvent LastFSDEngagedEvent { get; private set; }
+        // Information from the last events of each type that we've received (for reference)
+        private SortedDictionary<string, Event> lastEvents { get; set; } = new SortedDictionary<string, Event>();
 
         // Current vehicle of player
         public string Vehicle { get; set; } = Constants.VEHICLE_SHIP;
@@ -119,6 +120,8 @@ namespace EddiCore
         // The event queue
         private BlockingCollection<Event> eventQueue { get; } = new BlockingCollection<Event>();
         private readonly CancellationTokenSource eventHandlerTS = new CancellationTokenSource();
+
+        private string multicrewVehicleHolder;
 
         private EDDI(bool safeMode)
         {
@@ -622,26 +625,6 @@ namespace EddiCore
                     {
                         passEvent = eventCommanderRatings(commanderRatingsEvent);
                     }
-                    else if (@event is CombatPromotionEvent combatPromotionEvent)
-                    {
-                        passEvent = eventCombatPromotion(combatPromotionEvent);
-                    }
-                    else if (@event is TradePromotionEvent tradePromotionEvent)
-                    {
-                        passEvent = eventTradePromotion(tradePromotionEvent);
-                    }
-                    else if (@event is ExplorationPromotionEvent explorationPromotionEvent)
-                    {
-                        passEvent = eventExplorationPromotion(explorationPromotionEvent);
-                    }
-                    else if (@event is FederationPromotionEvent federationPromotionEvent)
-                    {
-                        passEvent = eventFederationPromotion(federationPromotionEvent);
-                    }
-                    else if (@event is EmpirePromotionEvent empirePromotionEvent)
-                    {
-                        passEvent = eventEmpirePromotion(empirePromotionEvent);
-                    }
                     else if (@event is CrewJoinedEvent crewJoinedEvent)
                     {
                         passEvent = eventCrewJoined(crewJoinedEvent);
@@ -762,6 +745,22 @@ namespace EddiCore
                     {
                         passEvent = eventCarrierJumped(carrierJumpedEvent);
                     }
+                    else if (@event is DisembarkEvent disembarkEvent)
+                    {
+                        passEvent = eventDisembark(disembarkEvent);
+                    }
+                    else if (@event is EmbarkEvent embarkEvent)
+                    {
+                        passEvent = eventEmbark(embarkEvent);
+                    }
+                    else if (@event is CommanderPromotionEvent commanderPromotionEvent)
+                    {
+                        passEvent = eventCommanderPromotion(commanderPromotionEvent);
+                    }
+                    else if (@event is UnderAttackEvent underAttackEvent)
+                    {
+                        passEvent = eventUnderAttack(underAttackEvent);
+                    }
 
                     // Additional processing is over, send to the event responders if required
                     if (passEvent)
@@ -785,6 +784,111 @@ namespace EddiCore
                     Instance.ObtainResponder("EDDN responder").Handle(@event);
                 }
             }
+        }
+
+        private bool eventUnderAttack(UnderAttackEvent underAttackEvent)
+        {
+            bool passEvent = true;
+            // Suppress repetitious `Under attack` events when loading or
+            // when the target has already been reported as under attack within the last 10 seconds.
+            var lastEvent = lastEvents.TryGetValue(nameof(UnderAttackEvent), out Event ev) 
+                ? (UnderAttackEvent)ev 
+                : null;
+            if (underAttackEvent.fromLoad || (
+                lastEvent != null 
+                && lastEvent.target == underAttackEvent.target 
+                && (underAttackEvent.timestamp - lastEvent.timestamp).TotalSeconds < 10 
+                ))
+            {
+                passEvent = false;
+            }
+            lastEvents[nameof(UnderAttackEvent)] = underAttackEvent;
+            return passEvent;
+        }
+
+        private bool eventCommanderPromotion(CommanderPromotionEvent commanderPromotionEvent)
+        {
+            // Capture commander ratings and add them to the commander object
+            if (commanderPromotionEvent.ratingObject is CombatRating combatRating)
+            {
+                // There is a bug with the journal where it reports superpower increases in rank as combat increases
+                // Hence we check to see if this is a real event by comparing our known combat rating to the promoted rating
+                if (Cmdr?.combatrating == null || commanderPromotionEvent.rank != Cmdr.combatrating.localizedName)
+                {
+                    // Real event. 
+                    if (Cmdr != null) { Cmdr.combatrating = combatRating; }
+                    return true;
+                }
+                else
+                {
+                    // False event
+                    return false;
+                }
+            }
+            else if (commanderPromotionEvent.ratingObject is CQCRating cqcRating)
+            {
+                if (Cmdr != null) { Cmdr.cqcrating = cqcRating; }
+                return true;
+            }
+            else if (commanderPromotionEvent.ratingObject is EmpireRating empireRating)
+            {
+                if (Cmdr != null) { Cmdr.empirerating = empireRating; }
+                return true;
+            }
+            else if (commanderPromotionEvent.ratingObject is ExplorationRating explorationRating)
+            {
+                if (Cmdr != null) { Cmdr.explorationrating = explorationRating; }
+                return true;
+            }
+            else if (commanderPromotionEvent.ratingObject is ExobiologistRating exobiologistRating)
+            { 
+            
+            }
+            else if (commanderPromotionEvent.ratingObject is FederationRating federationRating)
+            {
+                if (Cmdr != null) { Cmdr.federationrating = federationRating; }
+                return true;
+            }
+            else if (commanderPromotionEvent.ratingObject is MercenaryRating mercenaryRating)
+            { 
+            
+            }
+            else if (commanderPromotionEvent.ratingObject is TradeRating tradeRating)
+            {
+                // Capture commander ratings and add them to the commander object
+                if (Cmdr != null) { Cmdr.traderating = tradeRating; }
+                return true;
+            }
+            return false;
+        }
+
+        private bool eventDisembark(DisembarkEvent disembarkEvent) 
+        {
+            Vehicle = Constants.VEHICLE_LEGS;
+            Logging.Info($"Disembarked to {Vehicle}");
+            return true;
+        }
+
+        private bool eventEmbark(EmbarkEvent embarkEvent) 
+        {
+            if (embarkEvent.tomulticrew)
+            {
+                Vehicle = Constants.VEHICLE_MULTICREW;
+            }
+            if (embarkEvent.toship)
+            {
+                Vehicle = Constants.VEHICLE_SHIP;
+            }
+            if (embarkEvent.tosrv)
+            {
+                Vehicle = Constants.VEHICLE_SRV;
+            }
+            if (embarkEvent.totransport)
+            {
+                Vehicle = Constants.VEHICLE_TAXI;
+            }
+            Logging.Info($"Embarked to {Vehicle}");
+            return true;
         }
 
         private bool eventCarrierJumpEngaged(CarrierJumpEngagedEvent @event)
@@ -962,8 +1066,12 @@ namespace EddiCore
                 }
 
                 // (When pledged) Powerplay information
-                CurrentStarSystem.Power = @event.Power ?? CurrentStarSystem.Power;
-                CurrentStarSystem.powerState = @event.powerState ?? CurrentStarSystem.powerState;
+                CurrentStarSystem.Power = @event.Power != null && @event.Power != Power.None
+                    ? @event.Power
+                    : CurrentStarSystem.Power;
+                CurrentStarSystem.powerState = @event.powerState != null && @event.powerState != PowerplayState.None
+                    ? @event.powerState
+                    : CurrentStarSystem.powerState;
 
                 // Update to most recent information
                 CurrentStarSystem.visitLog.Add(@event.timestamp);
@@ -1274,6 +1382,26 @@ namespace EddiCore
         {
             Logging.Info("Location StarSystem: " + theEvent.systemname);
 
+            // Set our vehicle
+            if (theEvent.taxi)
+            {
+                Vehicle = Constants.VEHICLE_TAXI;
+            }
+            else if (theEvent.multicrew)
+            {
+                Vehicle = Constants.VEHICLE_MULTICREW;
+            }
+            else if (theEvent.inSRV)
+            {
+                Vehicle = Constants.VEHICLE_SRV;
+            }
+            else if (theEvent.onFoot)
+            {
+                Vehicle = Constants.VEHICLE_LEGS;
+            }
+            // If none of these are true we may either be in our ship or in a fighter.
+            Logging.Info($"Vehicle mode is {Vehicle}");
+
             updateCurrentSystem(theEvent.systemname);
             // Our data source may not include the system address
             CurrentStarSystem.systemAddress = theEvent.systemAddress;
@@ -1343,9 +1471,11 @@ namespace EddiCore
 
                 if (theEvent.docked)
                 {
-                    // We are docked and in the ship
+                    // We are docked
                     Environment = Constants.ENVIRONMENT_DOCKED;
-                    Vehicle = Constants.VEHICLE_SHIP;
+
+                    // If we're not in a taxi or multicrew then we're in our own ship.
+                    if (!theEvent.taxi && !theEvent.multicrew) { Vehicle = Constants.VEHICLE_SHIP; }
 
                     // Update station properties known from this event
                     station.marketId = theEvent.marketId;
@@ -1403,6 +1533,7 @@ namespace EddiCore
 
         private bool eventDockingRequested(DockingRequestedEvent theEvent)
         {
+            bool passEvent = !string.IsNullOrEmpty(theEvent.station);
             Station station = CurrentStarSystem.stations.Find(s => s.name == theEvent.station);
             if (station == null)
             {
@@ -1417,12 +1548,12 @@ namespace EddiCore
                 CurrentStarSystem.stations.Add(station);
             }
             station.Model = theEvent.stationDefinition;
-            return true;
+            return passEvent;
         }
 
         private bool eventDocked(DockedEvent theEvent)
         {
-            bool passEvent = true;
+            bool passEvent = !string.IsNullOrEmpty(theEvent.station);
             updateCurrentSystem(theEvent.system);
 
             // Upon docking, allow manual station updates once
@@ -1453,11 +1584,10 @@ namespace EddiCore
                 }
             }
 
-            // We are docked and in the ship
+            // We are docked
             if (station != null)
             {
                 Environment = Constants.ENVIRONMENT_DOCKED;
-                Vehicle = Constants.VEHICLE_SHIP;
 
                 // Not all stations in our database will have a system address or market id, so we set them here
                 station.systemAddress = theEvent.systemAddress;
@@ -1496,7 +1626,6 @@ namespace EddiCore
         private bool eventUndocked(UndockedEvent theEvent)
         {
             Environment = Constants.ENVIRONMENT_NORMAL_SPACE;
-            Vehicle = Constants.VEHICLE_SHIP;
 
             // Call refreshProfile() to ensure that our ship is up-to-date
             refreshProfile();
@@ -1506,21 +1635,62 @@ namespace EddiCore
 
         private bool eventTouchdown(TouchdownEvent theEvent)
         {
-            // Only pass on this event if our location is set
+            updateCurrentSystem(theEvent.systemname);
+            updateCurrentStellarBody(theEvent.bodyname, theEvent.systemname, theEvent.systemAddress);
+
+            if (theEvent.taxi != null && theEvent.taxi == true)
+            {
+                Vehicle = Constants.VEHICLE_TAXI;
+            }
+            else if (theEvent.multicrew != null && theEvent.multicrew == true)
+            {
+                Vehicle = Constants.VEHICLE_MULTICREW;
+            }
+
+            // Only pass on this event if our longitude and lattitude are set
             // (if not then this is probably being written prior to a `Location` event))
             if (theEvent.latitude != null && theEvent.longitude != null)
             {
                 Environment = Constants.ENVIRONMENT_LANDED;
-                Vehicle = theEvent.playercontrolled ? Constants.VEHICLE_SHIP : Constants.VEHICLE_SRV;
+                if (theEvent.taxi != null && theEvent.taxi == true)
+                {
+                    Vehicle = Constants.VEHICLE_TAXI;
+                }
+                else if (theEvent.multicrew != null && theEvent.multicrew == true)
+                {
+                    Vehicle = Constants.VEHICLE_MULTICREW;
+                }
+                else if (theEvent.playercontrolled)
+                {
+                    Vehicle = Constants.VEHICLE_SHIP;
+                }
+                else
+                {
+                    Vehicle = Constants.VEHICLE_SRV;
+                }
+                Logging.Info($"Touchdown in {Vehicle}");
                 return true;
             }
+            Logging.Info($"Touchdown in {Vehicle}");
             return false;
         }
 
         private bool eventLiftoff(LiftoffEvent theEvent)
         {
+            updateCurrentSystem(theEvent.systemname);
+            updateCurrentStellarBody(theEvent.bodyname, theEvent.systemname, theEvent.systemAddress);
+
             Environment = Constants.ENVIRONMENT_NORMAL_SPACE;
-            if (theEvent.playercontrolled)
+
+            if (theEvent.taxi != null && theEvent.taxi == true)
+            {
+                Vehicle = Constants.VEHICLE_TAXI;
+            }
+            else if (theEvent.multicrew != null && theEvent.multicrew == true)
+            {
+                Vehicle = Constants.VEHICLE_MULTICREW;
+            }
+            else if (theEvent.playercontrolled)
             {
                 Vehicle = Constants.VEHICLE_SHIP;
             }
@@ -1528,6 +1698,7 @@ namespace EddiCore
             {
                 Vehicle = Constants.VEHICLE_SRV;
             }
+            Logging.Info($"Liftoff in {Vehicle}");
             return true;
         }
 
@@ -1536,8 +1707,11 @@ namespace EddiCore
             // Don't proceed if we've already viewed the market while docked or when loading pre-existing logs
             if (!allowMarketUpdate || theEvent.fromLoad) { return false; }
 
+            // Don't proceed if the event data isn't what we expect
+            if (theEvent.system != CurrentStarSystem?.systemname || theEvent.marketId != CurrentStation?.marketId) { return false; }
+
             // Post an update event for new market data
-            enqueueEvent(new MarketInformationUpdatedEvent(theEvent.info.timestamp, theEvent.system, theEvent.station, theEvent.marketId, theEvent.info.Items, null, null, null, inHorizons));
+            enqueueEvent(new MarketInformationUpdatedEvent(theEvent.info.timestamp, theEvent.system, theEvent.station, theEvent.marketId, theEvent.info.Items, null, null, null, inHorizons, inOdyssey));
 
             // Update the current station commodities
             if (CurrentStation != null && CurrentStation?.marketId == theEvent.marketId)
@@ -1558,8 +1732,11 @@ namespace EddiCore
             // Don't proceed if we've already viewed outfitting while docked or when loading pre-existing logs
             if (!allowOutfittingUpdate || theEvent.fromLoad) { return false; }
 
+            // Don't proceed if the event data isn't what we expect
+            if (theEvent.system != CurrentStarSystem?.systemname || theEvent.marketId != CurrentStation?.marketId) { return false; }
+
             // Post an update event for new outfitting data
-            enqueueEvent(new MarketInformationUpdatedEvent(theEvent.info.timestamp, theEvent.system, theEvent.station, theEvent.marketId, null, null, theEvent.info.Items.Select(i => i.edName).ToList(), null, inHorizons));
+            enqueueEvent(new MarketInformationUpdatedEvent(theEvent.info.timestamp, theEvent.system, theEvent.station, theEvent.marketId, null, null, theEvent.info.Items.Select(i => i.edName).ToList(), null, inHorizons, inOdyssey));
 
             var modules = theEvent.info.Items
                 .Select(i => EddiDataDefinitions.Module.FromOutfittingInfo(i))
@@ -1588,8 +1765,11 @@ namespace EddiCore
             // Don't proceed if we've already viewed outfitting while docked or when loading pre-existing logs
             if (!allowShipyardUpdate || theEvent.fromLoad) { return false; }
 
+            // Don't proceed if the event data isn't what we expect
+            if (theEvent.system != CurrentStarSystem?.systemname || theEvent.marketId != CurrentStation?.marketId) { return false; }
+
             // Post an update event for new shipyard data
-            enqueueEvent(new MarketInformationUpdatedEvent(theEvent.info.timestamp, theEvent.system, theEvent.station, theEvent.marketId, null, null, null, theEvent.info.PriceList.Select(s => s.edModel).ToList(), inHorizons, theEvent.info.AllowCobraMkIV));
+            enqueueEvent(new MarketInformationUpdatedEvent(theEvent.info.timestamp, theEvent.system, theEvent.station, theEvent.marketId, null, null, null, theEvent.info.PriceList.Select(s => s.edModel).ToList(), inHorizons, inOdyssey, theEvent.info.AllowCobraMkIV));
 
             var ships = theEvent.info.PriceList
                 .Select(s => Ship.FromShipyardInfo(s))
@@ -1693,10 +1873,7 @@ namespace EddiCore
             {
                 Environment = Constants.ENVIRONMENT_WITCH_SPACE;
             }
-
-            // We are in the ship
-            Vehicle = Constants.VEHICLE_SHIP;
-
+            
             // Remove information about the current station and stellar body 
             CurrentStation = null;
             CurrentStellarBody = null;
@@ -1705,7 +1882,7 @@ namespace EddiCore
             updateCurrentSystem(@event.system);
 
             // Save a copy of this event for later reference
-            LastFSDEngagedEvent = @event;
+            lastEvents[nameof(FSDEngagedEvent)] = @event;;
 
             return true;
         }
@@ -1760,6 +1937,19 @@ namespace EddiCore
                 ?? CurrentStarSystem.bodies.Find(b => b.distance == 0);
             CurrentStarSystem.conflicts = theEvent.conflicts;
 
+            if (theEvent.taxi is true)
+            {
+                Vehicle = Constants.VEHICLE_TAXI;
+            }
+            else if (theEvent.multicrew is true)
+            {
+                Vehicle = Constants.VEHICLE_MULTICREW;
+            }
+            else
+            {
+                Vehicle = Constants.VEHICLE_SHIP;
+            }
+
             // Update system faction data if available
             if (theEvent.factions != null)
             {
@@ -1798,7 +1988,10 @@ namespace EddiCore
                 {
                     bodyname = theEvent.star,
                     bodyType = BodyType.FromEDName("Star"),
-                    stellarclass = LastFSDEngagedEvent?.stellarclass,
+                    stellarclass = (lastEvents.TryGetValue(nameof(FSDEngagedEvent), out Event ev) 
+                        ? (FSDEngagedEvent)ev 
+                        : null)
+                        ?.stellarclass,
                 };
                 CurrentStarSystem.AddOrUpdateBody(CurrentStellarBody);
             }
@@ -1826,11 +2019,23 @@ namespace EddiCore
             Environment = Constants.ENVIRONMENT_SUPERCRUISE;
             updateCurrentSystem(theEvent.system);
 
+            if (theEvent.systemAddress != null) { CurrentStarSystem.systemAddress = theEvent.systemAddress; }
+
             // No longer in 'station instance'
             CurrentStation = null;
 
-            // We are in the ship
-            Vehicle = Constants.VEHICLE_SHIP;
+            if (theEvent.taxi is true)
+            {
+                Vehicle = Constants.VEHICLE_TAXI;
+            }
+            else if (theEvent.multicrew is true)
+            {
+                Vehicle = Constants.VEHICLE_MULTICREW;
+            }
+            else
+            {
+                Vehicle = Constants.VEHICLE_SHIP;
+            }
 
             return true;
         }
@@ -1859,20 +2064,37 @@ namespace EddiCore
                 updateCurrentStellarBody(theEvent.bodyname, theEvent.systemname, theEvent.systemAddress);
             }
             updateCurrentSystem(theEvent.systemname);
+
+            if (theEvent.taxi is true)
+            {
+                Vehicle = Constants.VEHICLE_TAXI;
+            }
+            else if (theEvent.multicrew is true)
+            {
+                Vehicle = Constants.VEHICLE_MULTICREW;
+            }
+            else
+            {
+                Vehicle = Constants.VEHICLE_SHIP;
+            }
+
             return true;
         }
 
         private bool eventCrewJoined(CrewJoinedEvent theEvent)
         {
-            inCrew = true;
+            inTelepresence = true;
+            multicrewVehicleHolder = Vehicle;
+            Vehicle = Constants.VEHICLE_MULTICREW;
             Logging.Info("Entering multicrew session");
             return true;
         }
 
         private bool eventCrewLeft(CrewLeftEvent theEvent)
         {
-            inCrew = false;
-            Logging.Info("Leaving multicrew session");
+            inTelepresence = false;
+            Vehicle = multicrewVehicleHolder;
+            Logging.Info($"Leaving multicrew session to vehicle {Vehicle}");
             return true;
         }
 
@@ -1891,7 +2113,11 @@ namespace EddiCore
         private bool eventCommanderContinued(CommanderContinuedEvent theEvent)
         {
             // Set Vehicle state for commander from ship model
-            if (theEvent.shipEDModel == "TestBuggy" || theEvent.shipEDModel == "SRV")
+            if (theEvent.shipEDModel.Contains("Suit"))
+            {
+                Vehicle = Constants.VEHICLE_LEGS;
+            }
+            else if (theEvent.shipEDModel == "TestBuggy" || theEvent.shipEDModel == "SRV")
             {
                 Vehicle = Constants.VEHICLE_SRV;
             }
@@ -1899,6 +2125,7 @@ namespace EddiCore
             {
                 Vehicle = Constants.VEHICLE_SHIP;
             }
+            Logging.Debug($"Commander Continued: vehicle is {Vehicle}");
 
             // Set Environment state for the ship if 'startlanded' is present in the event
             if (theEvent.startlanded ?? false)
@@ -1910,8 +2137,8 @@ namespace EddiCore
                 Environment = Constants.ENVIRONMENT_NORMAL_SPACE;
             }
 
-            // If we see this it means that we aren't in CQC
-            inCQC = false;
+            // If we see this it means that we aren't in Telepresence
+            inTelepresence = false;
 
             // Set our commander name and ID
             if (Cmdr.name != theEvent.commander)
@@ -1921,8 +2148,9 @@ namespace EddiCore
             }
             Cmdr.EDID = theEvent.frontierID;
 
-            // Set game version
+            // Identify active game version
             inHorizons = theEvent.horizons;
+            inOdyssey = theEvent.odyssey;
 
             return true;
         }
@@ -1938,66 +2166,6 @@ namespace EddiCore
                 Cmdr.cqcrating = theEvent.cqc;
                 Cmdr.empirerating = theEvent.empire;
                 Cmdr.federationrating = theEvent.federation;
-            }
-            return true;
-        }
-
-        private bool eventCombatPromotion(CombatPromotionEvent theEvent)
-        {
-            // There is a bug with the journal where it reports superpower increases in rank as combat increases
-            // Hence we check to see if this is a real event by comparing our known combat rating to the promoted rating
-            if ((Cmdr == null || Cmdr.combatrating == null) || theEvent.rating != Cmdr.combatrating.localizedName)
-            {
-                // Real event. Capture commander ratings and add them to the commander object
-                if (Cmdr != null)
-                {
-                    Cmdr.combatrating = CombatRating.FromName(theEvent.rating);
-                }
-                return true;
-            }
-            else
-            {
-                // False event
-                return false;
-            }
-        }
-
-        private bool eventTradePromotion(TradePromotionEvent theEvent)
-        {
-            // Capture commander ratings and add them to the commander object
-            if (Cmdr != null)
-            {
-                Cmdr.traderating = TradeRating.FromName(theEvent.rating);
-            }
-            return true;
-        }
-
-        private bool eventExplorationPromotion(ExplorationPromotionEvent theEvent)
-        {
-            // Capture commander ratings and add them to the commander object
-            if (Cmdr != null)
-            {
-                Cmdr.explorationrating = ExplorationRating.FromName(theEvent.rating);
-            }
-            return true;
-        }
-
-        private bool eventFederationPromotion(FederationPromotionEvent theEvent)
-        {
-            // Capture commander ratings and add them to the commander object
-            if (Cmdr != null)
-            {
-                Cmdr.federationrating = FederationRating.FromName(theEvent.rank);
-            }
-            return true;
-        }
-
-        private bool eventEmpirePromotion(EmpirePromotionEvent theEvent)
-        {
-            // Capture commander ratings and add them to the commander object
-            if (Cmdr != null)
-            {
-                Cmdr.empirerating = EmpireRating.FromName(theEvent.rank);
             }
             return true;
         }
@@ -2147,8 +2315,8 @@ namespace EddiCore
 
         private bool eventEnteredCQC(EnteredCQCEvent theEvent)
         {
-            // In CQC we don't want to report anything, so set our CQC flag
-            inCQC = true;
+            // In CQC we don't want to report anything, so set our Telepresence flag
+            inTelepresence = true;
             return true;
         }
 
@@ -2642,7 +2810,7 @@ namespace EddiCore
                                 Profile stationProfile = CompanionAppService.Instance.Station(CurrentStarSystem.systemAddress, CurrentStarSystem.systemname);
 
                                 // Post an update event
-                                Event @event = new MarketInformationUpdatedEvent(profile.timestamp, stationProfile.CurrentStarSystem.systemName, stationProfile.LastStation.name, stationProfile.LastStation.marketId, stationProfile.LastStation.eddnCommodityMarketQuotes, stationProfile.LastStation.prohibitedCommodities?.Select(p => p.Value).ToList(), stationProfile.LastStation.outfitting?.Select(m => m.edName).ToList(), stationProfile.LastStation.ships?.Select(s => s.edModel).ToList(), profile.contexts.inHorizons, profile.contexts.allowCobraMkIV);
+                                Event @event = new MarketInformationUpdatedEvent(profile.timestamp, stationProfile.CurrentStarSystem.systemName, stationProfile.LastStation.name, stationProfile.LastStation.marketId, stationProfile.LastStation.eddnCommodityMarketQuotes, stationProfile.LastStation.prohibitedCommodities?.Select(p => p.Value).ToList(), stationProfile.LastStation.outfitting?.Select(m => m.edName).ToList(), stationProfile.LastStation.ships?.Select(s => s.edModel).ToList(), profile.contexts.inHorizons, profile.contexts.inOdyssey, profile.contexts.allowCobraMkIV);
                                 enqueueEvent(@event);
 
                                 // See if we need to update our current station

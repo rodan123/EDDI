@@ -36,6 +36,21 @@ namespace EddiSpeechService
             }
         }
 
+        public List<int?> priorities => PreparePrioritiesList();
+
+        private List<int?> PreparePrioritiesList()
+        {
+            List<int?> result = new List<int?>();
+            for (int i = 1; i <= priorityQueues.Count - 1; i++)
+            {
+                if (i > 0)
+                {
+                    result.Add(i);
+                }
+            }
+            return result;
+        }
+
         private void PrepareSpeechQueues()
         {
             priorityQueues = new List<ConcurrentQueue<EddiSpeech>>();
@@ -124,10 +139,20 @@ namespace EddiSpeechService
             // List EDDI event types of where stale event data should be removed in favor of more recent data
             string[] eventTypes = new string[]
                 {
+                    "Cargo scoop",
+                    "Docking denied",
+                    "Docking requested",
+                    "Glide",
+                    "Hardpoints",
                     "Next jump",
                     "Heat damage",
                     "Heat warning",
                     "Hull damaged",
+                    "Landing gear",
+                    "Lights",
+                    "Near surface",
+                    "Silent running",
+                    "SRV turret deployable",
                     "Under attack"
                 };
 

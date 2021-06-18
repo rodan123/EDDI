@@ -48,7 +48,7 @@ namespace EddiSpeechResponder.Service
         public int priority(string name)
         {
             scripts.TryGetValue(name, out Script script);
-            return script?.Priority ?? 5;
+            return script?.Priority ?? 3;
         }
 
         /// <summary> From a custom dictionary of variable values in the default store </summary>
@@ -157,6 +157,7 @@ namespace EddiSpeechResponder.Service
                 ["destinationdistance"] = EDDI.Instance.DestinationDistanceLy,
                 ["environment"] = EDDI.Instance.Environment,
                 ["horizons"] = EDDI.Instance.inHorizons,
+                ["odyssey"] = EDDI.Instance.inOdyssey,
                 ["va_active"] = App.FromVA,
                 ["vehicle"] = EDDI.Instance.Vehicle,
                 ["icao_active"] = SpeechService.Instance.Configuration.EnableIcao,

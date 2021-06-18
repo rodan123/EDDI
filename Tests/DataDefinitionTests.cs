@@ -337,6 +337,8 @@ namespace UnitTests
                 cqcrating = CQCRating.FromRank(2),
                 empirerating = EmpireRating.FromRank(2),
                 federationrating = FederationRating.FromRank(1),
+                mercenaryrating = MercenaryRating.Defenceless,
+                exobiologistrating = ExobiologistRating.Directionless,
                 crimerating = 0,
                 servicerating = 0,
                 powerrating = 2,
@@ -352,6 +354,8 @@ namespace UnitTests
                 cqcrating = CQCRating.FromRank(2),
                 empirerating = EmpireRating.FromRank(4),
                 federationrating = FederationRating.FromRank(2),
+                mercenaryrating = MercenaryRating.Rookie,
+                exobiologistrating = ExobiologistRating.Directionless,
                 crimerating = 2,
                 servicerating = 2,
                 powerrating = 3,
@@ -367,6 +371,8 @@ namespace UnitTests
                 cqcrating = CQCRating.FromRank(0),
                 empirerating = EmpireRating.FromRank(1),
                 federationrating = FederationRating.FromRank(2),
+                mercenaryrating = MercenaryRating.Defenceless,
+                exobiologistrating = ExobiologistRating.Geneticist,
                 crimerating = 1,
                 servicerating = 1,
                 powerrating = 7,
@@ -391,6 +397,8 @@ namespace UnitTests
             Assert.AreEqual(2, test1.cqcrating.rank);
             Assert.AreEqual(4, test1.empirerating.rank);
             Assert.AreEqual(2, test1.federationrating.rank);
+            Assert.AreEqual(2, test1.mercenaryrating.rank);
+            Assert.AreEqual(0, test1.exobiologistrating.rank);
             Assert.AreEqual(2, test1.crimerating);
             Assert.AreEqual(2, test1.servicerating);
             // Since the journal timestamp is greater than the api timestamp, power rating is based off of the journal timestamp
@@ -417,6 +425,8 @@ namespace UnitTests
             Assert.AreEqual(2, test3.cqcrating.rank);
             Assert.AreEqual(2, test3.empirerating.rank);
             Assert.AreEqual(1, test3.federationrating.rank);
+            Assert.AreEqual(0, test3.mercenaryrating.rank);
+            Assert.AreEqual(0, test3.exobiologistrating.rank);
             Assert.AreEqual(0, test3.crimerating);
             Assert.AreEqual(0, test3.servicerating);
             Assert.AreEqual(2, test3.powerrating);
@@ -551,6 +561,101 @@ namespace UnitTests
             Assert.AreEqual(1, events.Count);
             var @event = (JumpedEvent)events[0];
             Assert.IsTrue(@event.controllingfaction.DeepEquals(expectedSystemFaction));
+        }
+
+        [DataTestMethod]
+        [DataRow("citizensuitai_admin", "Administrator", 1)]
+        [DataRow("citizensuitai_industrial", "Worker", 1)]
+        [DataRow("citizensuitai_scientific", "Scientist", 1)]
+        [DataRow("assaultsuitai_class1", "Commando", 1)]
+        [DataRow("assaultsuitai_class3", "Commando", 3)]
+        [DataRow("closesuitai_class2", "Striker", 2)]
+        [DataRow("lightassaultsuitai_class4", "Scout", 4)]
+        [DataRow("rangedsuitai_class5", "Sharpshooter", 5)]
+        public void TestNpcSuitLoadout(string input, string expectedInvariant, int expectedGrade)
+        {
+            var result = NpcSuitLoadout.FromEDName(input);
+            Assert.AreEqual(expectedInvariant, result.invariantName);
+            Assert.AreEqual(expectedGrade, result.grade);
+        }
+
+        [DataTestMethod]
+        [DataRow("ExplorationSuit_Class1", "Artemis Suit", 1)]
+        [DataRow("FlightSuit", "Flight Suit", 1)]
+        [DataRow("TacticalSuit_Class2", "Dominator Suit", 2)]
+        [DataRow("UtilitySuit_Class3", "Maverick Suit", 3)]
+        public void TestSuit(string input, string expectedInvariant, int expectedGrade)
+        {
+            var result = Suit.FromEDName(input);
+            Assert.AreEqual(expectedInvariant, result.invariantName);
+            Assert.AreEqual(expectedGrade, result.grade);
+        }
+
+        [DataTestMethod]
+        [DataRow("ChemicalInventory", "Chemical Inventory", "Data")]
+        [DataRow("$CompactLibrary_Name;", "Compact Library", "Goods")]
+        [DataRow("$healthpack_name;", "Medkit", "Consumables")]
+        public void TestMicroResources(string input, string expectedInvariantName, string expectedInvariantCategory)
+        {
+            var result = MicroResource.FromEDName(input);
+            Assert.AreEqual(expectedInvariantName, result.invariantName);
+            Assert.AreEqual(expectedInvariantCategory, result.Category.invariantName);
+        }
+
+        [TestMethod]
+        public void TestEngineerNullLocation()
+        {
+            // Test that we can gracefully handle situations where we want to look up an engineer location and not all known engineers have a known location.
+            Engineer.AddOrUpdate(new Engineer("NoSuchEngineer", 999999, "Known", null, null));
+            try
+            {
+                var engineer = Engineer.FromSystemName("NoSuchSystem");
+                Assert.IsNull(engineer);
+            }
+            catch (Exception)
+            {
+                Assert.Fail();
+            }
+        }
+
+        [TestMethod]
+        public void TestMicroResourceInfo()
+        {
+            var json = TestBase.DeserializeJsonResource<string>(Resources.shipLocker);
+            var data = Deserializtion.DeserializeData(json);
+            var info = new MicroResourceInfo().FromData(data);
+
+            Assert.AreEqual(38, info.Items.Count);
+            Assert.AreEqual("WeaponSchematic", info.Items[0].edname);
+            Assert.AreEqual(1, info.Items[0].amount);
+            Assert.AreEqual("Item", info.Items[0].microResource.Category.edname);
+            Assert.AreEqual(770652507, info.Items[0].missionId);
+            Assert.AreEqual(0, info.Items[0].ownerId);
+            Assert.AreEqual(null, info.Items[0].price);
+
+            Assert.AreEqual(33, info.Components.Count);
+            Assert.AreEqual("Graphene", info.Components[1].edname);
+            Assert.AreEqual(55, info.Components[1].amount);
+            Assert.AreEqual("Component", info.Components[1].microResource.Category.edname);
+            Assert.AreEqual(null, info.Components[1].missionId);
+            Assert.AreEqual(0, info.Components[1].ownerId);
+            Assert.AreEqual(null, info.Components[1].price);
+
+            Assert.AreEqual(6, info.Consumables.Count);
+            Assert.AreEqual("HealthPack", info.Consumables[0].edname);
+            Assert.AreEqual(56, info.Consumables[0].amount);
+            Assert.AreEqual("Consumable", info.Consumables[0].microResource.Category.edname);
+            Assert.AreEqual(null, info.Consumables[0].missionId);
+            Assert.AreEqual(0, info.Consumables[0].ownerId);
+            Assert.AreEqual(null, info.Consumables[0].price);
+
+            Assert.AreEqual(70, info.Data.Count);
+            Assert.AreEqual("InternalCorrespondence", info.Data[0].edname);
+            Assert.AreEqual(5, info.Data[0].amount);
+            Assert.AreEqual("Data", info.Data[0].microResource.Category.edname);
+            Assert.AreEqual(null, info.Data[0].missionId);
+            Assert.AreEqual(0, info.Data[0].ownerId);
+            Assert.AreEqual(null, info.Data[0].price);
         }
     }
 }

@@ -60,6 +60,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BackpackChangedEvent.cs" />
+    <Compile Include="ShipLockerEvent.cs" />
+    <Compile Include="CancelTransportEvent.cs" />
+    <Compile Include="BookTransportEvent.cs" />
+    <Compile Include="BackpackEvent.cs" />
     <Compile Include="AsteroidProspectedEvent.cs" />
     <Compile Include="AsteroidCrackedEvent.cs" />
     <Compile Include="CarrierJumpCancelledEvent.cs" />
@@ -67,6 +72,12 @@
     <Compile Include="CarrierPadsLockedEvent.cs" />
     <Compile Include="CarrierJumpEngagedEvent.cs" />
     <Compile Include="CarrierCooldownEvent.cs" />
+    <Compile Include="CommanderPromotionEvent.cs" />
+    <Compile Include="DropshipDeploymentEvent.cs" />
+    <Compile Include="SuitPurchasedEvent.cs" />
+    <Compile Include="MicroResourcesPurchasedEvent.cs" />
+    <Compile Include="DisembarkEvent.cs" />
+    <Compile Include="EmbarkEvent.cs" />
     <Compile Include="CommanderReputationEvent.cs" />
     <Compile Include="CarrierJumpedEvent.cs" />
     <Compile Include="PowerplayEvent.cs" />
@@ -120,8 +131,6 @@
     <Compile Include="DataVoucherRedeemedEvent.cs" />
     <Compile Include="MaterialInventoryEvent.cs" />
     <Compile Include="FSDEngagedEvent.cs" />
-    <Compile Include="EmpirePromotionEvent.cs" />
-    <Compile Include="FederationPromotionEvent.cs" />
     <Compile Include="TradeVoucherRedeemedEvent.cs" />
     <Compile Include="SettlementApproachedEvent.cs" />
     <Compile Include="EnteredCQCEvent.cs" />
@@ -185,11 +194,8 @@
     <Compile Include="BodyScannedEvent.cs" />
     <Compile Include="StarScannedEvent.cs" />
     <Compile Include="CockpitBreachedEvent.cs" />
-    <Compile Include="ExplorationPromotionEvent.cs" />
     <Compile Include="ScreenshotEvent.cs" />
     <Compile Include="MusicEvent.cs" />
-    <Compile Include="TradePromotionEvent.cs" />
-    <Compile Include="CombatPromotionEvent.cs" />
     <Compile Include="EnteredNormalSpaceEvent.cs" />
     <Compile Include="EnteredSupercruiseEvent.cs" />
     <Compile Include="CommanderContinuedEvent.cs" />

@@ -1,0 +1,381 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" id="root">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace"/>
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0"/>
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string"/>
+              <xsd:attribute name="type" type="xsd:string"/>
+              <xsd:attribute name="mimetype" type="xsd:string"/>
+              <xsd:attribute ref="xml:space"/>
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string"/>
+              <xsd:attribute name="name" type="xsd:string"/>
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1"/>
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2"/>
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1"/>
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3"/>
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4"/>
+              <xsd:attribute ref="xml:space"/>
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1"/>
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required"/>
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  
+  
+  <data name="Amm_Grenade_EMP" xml:space="preserve">
+    <value>Schildunterbrecher</value>
+    <comment>A deployable device that temporarily disrupts shields with an electromagnetic pulse.</comment>
+  </data>
+  <data name="Amm_Grenade_Frag" xml:space="preserve">
+    <value>Splittergranate</value>
+    <comment>An explosive weapon that damages nearby targets upon detonation.</comment>
+  </data>
+  <data name="Amm_Grenade_Shield" xml:space="preserve">
+    <value>Schildgenerator</value>
+    <comment>A deployable device that generates a barrier designed to absorb incoming attacks.</comment>
+  </data>
+  
+  
+  
+  
+  
+  <data name="Bypass" xml:space="preserve">
+    <value>E-Breach</value>
+    <comment>A single-use device used to circumvent security systems.</comment>
+  </data>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <data name="EnergyCell" xml:space="preserve">
+    <value>Energiezelle</value>
+    <comment>A single-use item that restores energy to suit batteries.</comment>
+  </data>
+  
+  
+  
+  
+  
+  
+  
+  <data name="HealthPack" xml:space="preserve">
+    <value>Medikit</value>
+    <comment>A portable medical kit used to treat wounds.</comment>
+  </data>
+  
+  
+  
+  
+  
+  <data name="LargeCapacityPowerRegulator" xml:space="preserve">
+    <value>Energieregulator</value>
+    <comment>A complex device designed to regulate the energy generated by a settlement's power reactor.</comment>
+  </data>
+  
+  
+  <data name="MaintenanceLogs" xml:space="preserve">
+    <value>Wartungslogs</value>
+    <comment>Records of routine tasks to maintain settlement equipment or infrastructure.</comment>
+  </data>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <data name="UniversalTranslator" xml:space="preserve">
+    <value>Universalübersetzer</value>
+    <comment>A wearable device capable of instantaneously translating any of the most common human languages.</comment>
+  </data>
+  
+  <data name="VaccineResearch" xml:space="preserve">
+    <value>Impfstoffforschung</value>
+    <comment>Results of clinical experiments and efficacy tests of a particular vaccine.</comment>
+  </data>
+  
+  <data name="VisitorRegister" xml:space="preserve">
+    <value>Besucherregister</value>
+    <comment>A list of non-employee personnel logged at a settlement within a certain time period.</comment>
+  </data>
+  <data name="WeaponInventory" xml:space="preserve">
+    <value>Waffeninventar</value>
+    <comment>A comprehensive record of all weaponry and ammunition stored at a facility.</comment>
+  </data>
+  <data name="PersonalDocuments" xml:space="preserve">
+    <value>Persönliche Dokumente</value>
+    <comment>An assortment of personal data.</comment>
+  </data>
+  <data name="TacticalPlans" xml:space="preserve">
+    <value>Taktische Pläne</value>
+    <comment>An outline for a military or security operation intended to achieve a stated objective.</comment>
+  </data>
+  
+  
+  <data name="WeaponSchematic" xml:space="preserve">
+    <value>Waffenschema</value>
+    <comment>A technical blueprint detailing the design and mechanism of a personal firearm.</comment>
+  </data>
+  <data name="Californium" xml:space="preserve">
+    <value>Kalifornium</value>
+    <comment>A highly radioactive chemical element.</comment>
+  </data>
+  <data name="SuitSchematic" xml:space="preserve">
+    <value>Anzugschema</value>
+    <comment>A technical blueprint detailing the design of a protective suit.</comment>
+  </data>
+  
+  
+  
+  <data name="SurveillanceEquipment" xml:space="preserve">
+    <value>Überlebensausrüstung</value>
+    <comment>An assortment of audio-visual and biometric monitoring devices.</comment>
+  </data>
+  
+  
+  
+  <data name="Virus" xml:space="preserve">
+    <value>Virus</value>
+    <comment>A program designed to infect digital networks and cause targeted or systemic damage.</comment>
+  </data>
+  <data name="ChemicalSample" xml:space="preserve">
+    <value>Chemische Probe</value>
+    <comment>An unidentified chemical compound.</comment>
+  </data>
+  
+  
+  <data name="CarbonFibrePlating" xml:space="preserve">
+    <value>Kohlefaserbeschichtung</value>
+    <comment>A flexible, lightweight material made of organic polymers.</comment>
+  </data>
+  
+  <data name="TitaniumPlating" xml:space="preserve">
+    <value>Titanbeschichtung</value>
+    <comment>A strong, low-density metal that is highly resistant to corrosion.</comment>
+  </data>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+</root>

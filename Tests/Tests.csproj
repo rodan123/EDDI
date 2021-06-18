@@ -84,6 +84,7 @@
     <Compile Include="CapiTests.cs" />
     <Compile Include="BgsDataTests.cs" />
     <Compile Include="HumanizeTests.cs" />
+    <Compile Include="CustomFunctions.cs" />
     <Compile Include="UtilityTests.cs" />
     <Compile Include="InaraTests.cs" />
     <Compile Include="CrimeMonitorTests.cs" />
@@ -254,12 +255,14 @@
     <EmbeddedResource Include="Properties\bgsEddbSystem.json" />
     <EmbeddedResource Include="Properties\market.json" />
     <None Include="Properties\Libby Horizons.json" />
+    <None Include="Properties\shipLocker.json" />
     <None Include="Properties\Sol.json" />
     <None Include="Properties\SolBodies.json" />
     <None Include="Properties\SolFactions.json" />
     <None Include="Properties\SolStations.json" />
     <None Include="Properties\sphereAroundSol.json" />
     <EmbeddedResource Include="Properties\sqlStarSystem5.json" />
+    <EmbeddedResource Include="Properties\sqlStarSystem6.json" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\starsystems.txt" />
@@ -423,11 +426,11 @@
   <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>xcopy /y "$(SolutionDir)SpeechResponder\EDDI.json" "$(ProjectDir)$(OutDir)"
-xcopy /y "$(SolutionDir)SpeechResponder\Help.md" "$(ProjectDir)$(OutDir)\Wiki\"
-xcopy /y "$(SolutionDir)SpeechResponder\Variables.md" "$(ProjectDir)$(OutDir)\Wiki\"
-xcopy /y "$(SolutionDir)VoiceAttack-Integration.md" "$(ProjectDir)$(OutDir)\Wiki\"
-xcopy /y "$(SolutionDir)images\*.*" "$(ProjectDir)$(OutDir)\Wiki\images\"</PostBuildEvent>
+    <PostBuildEvent>xcopy /y "$(SolutionDir)SpeechResponder\EDDI.json" "$(SolutionDir)$(OutDir)"
+xcopy /y "$(SolutionDir)SpeechResponder\Help.md" "$(SolutionDir)$(OutDir)\Wiki\"
+xcopy /y "$(SolutionDir)SpeechResponder\Variables.md" "$(SolutionDir)$(OutDir)\Wiki\"
+xcopy /y "$(SolutionDir)VoiceAttack-Integration.md" "$(SolutionDir)$(OutDir)\Wiki\"
+xcopy /y "$(SolutionDir)images\*.*" "$(SolutionDir)$(OutDir)\Wiki\images\"</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

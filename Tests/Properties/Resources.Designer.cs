@@ -243,6 +243,16 @@ namespace Tests.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        public static byte[] shipLocker {
+            get {
+                object obj = ResourceManager.GetObject("shipLocker", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         public static byte[] shipMonitor {
             get {
                 object obj = ResourceManager.GetObject("shipMonitor", resourceCulture);
@@ -346,6 +356,16 @@ namespace Tests.Properties {
         public static byte[] sqlStarSystem5 {
             get {
                 object obj = ResourceManager.GetObject("sqlStarSystem5", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] sqlStarSystem6 {
+            get {
+                object obj = ResourceManager.GetObject("sqlStarSystem6", resourceCulture);
                 return ((byte[])(obj));
             }
         }

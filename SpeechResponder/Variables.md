@@ -13,8 +13,9 @@ Details of the objects available are as follows:
 Information on game state is available at the top level i.e. these values can be accessed directly.
 
     - `environment` the commander's current environment.  Can be one of "Docked", "Landed", "Normal space", "Supercruise" or "Witch space"
-    - `horizons` true when the game version is 'Horizons'
-    - `vehicle` the vehicle that is under the commander's control.  Can be one of "Ship", "SRV" or "Fighter"
+    - `horizons` true when the game version includes 'Horizons' content
+    - `odyssey` true when the game version includes 'Odyssey' content
+    - `vehicle` the vehicle that is under the commander's control.  Can be one of "Ship", "SRV", "Fighter", "Taxi", "Multicrew", or "On Foot"
 
 ## EDDI states
 
@@ -38,6 +39,8 @@ Any values might be missing, depending on EDDI's configuration.
     - `explorationrating` the exploration combat rating of the commander (this is a Rating object)
     - `empirerating` the current Empire rating of the commander (this is a Rating object)
     - `federationrating` the current Federation rating of the commander (this is a Rating object)
+    - `mercenaryrating` the current Mercenary rating of the commander (this is a Rating object)
+    - `exobiologistrating` the current Exobiologist rating of the commander (this is a Rating object)
     - `credits` the number of credits the commander owns
     - `debt` the amount of debt the commander owes
     - `gender` the gender of the commander, as selected in EDDI's configuration (string, either 'Male', 'Female' or 'Neither')
@@ -721,7 +724,7 @@ Information about your current status is available under the `status` object.
 
 Any values might be missing, depending on EDDI's configuration.
 
-    - `vehicle` the vehicle that is under the commander's control.  Can be one of "Ship", "SRV" or "Fighter"
+    - `vehicle` the vehicle that is under the commander's control.  Can be one of "Ship", "SRV", "Fighter", "On Foot", "Taxi", and "Multicrew"
     - `being_interdicted` a boolean value indicating whether the commander is currently being interdicted
     - `in_danger` a boolean value indicating whether the commander is currently in danger
     - `near_surface` a boolean value indicating whether the commander is near a landable surface (within it's gravity well)
@@ -783,8 +786,14 @@ Any values might be missing, depending on EDDI's configuration.
     - `bodyname` the name of the current body (if landed or in an srv)
     - `planetradius` the radius of the current body (if landed or in an srv)
     - `altitude_from_average_radius` true if the altitude is computed relative to the average radius (which is used at higher altitudes) rather than surface directly below the srv
-    - `hyperspace` true if jumping between star systems
+    - `hyperspace` true if jumping between star systems.
     - `srv_highbeam` true if the lights in your SRV are set to the high beam mode.
+    - `on_foot_in_station` true if you've disembarked at a station.
+    - `on_foot_on_planet` true if you've disembarked on a planet surface.
+    - `aim_down_sight` true if you are on foot and aiming through a scope.
+    - `low_oxygen` true if you are on foot and oxygen is running low.
+    - `low_health` true if you are on foot and health is running low.
+    - `on_foot_temperature` the environment temperature when on foot. May be one of "very cold", "cold", "temperate", "hot", or "very hot".
 
 ---
 ## Traffic

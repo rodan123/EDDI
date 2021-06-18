@@ -2,14 +2,81 @@
 
 Full details of the variables available for each noted event, and VoiceAttack integrations, are available in the individual [event pages](https://github.com/EDCD/EDDI/wiki/Events).
 
-### 3.7.4-b1
+### 4.0.1-b1
+  * Speech Responder
+    * Scripts
+      * Updated the `Embark`, `SRV docked`, `SRV launched`, and `Vehicle destroyed` events to fix a bug with th the SRV deployed warning.
+  * VoiceAttack Responder
+    * Fixed scripts invoked from the VoiceAttack `speech` context having priority 5 rather than priority 3 by default.
+
+### 4.0.0
   * Core
+    * Promote 4.0.0-rc1 to final
+
+### 4.0.0-rc1
+  * Inara Responder
+    * Incorporated Inara API updates for Odyssey (except suit loadouts will be implemented later)
+  * Speech Responder
+    * Events
+      * `Backpack` event added
+      * `Backpack changed` event added
+      * `Disembark` event, revised the `fromtaxi` property to `fromtransport` (since it will be true for both Apex taxis and Frontline dropships)
+      * `Dropship deployment` event added
+      * `Embark` event, revised the `totaxi` property to `totransport` (since it will be true for both Apex taxis and Frontline dropships)
+      * `Mission accepted` event variables updated to include micro-resources (on foot items)
+      * `Mission completed` event variables updated to include micro-resources (on foot items)
+      * `Ship locker` event added
+    * Functions
+      * `Emphasize()` function tweaked to try to improve compatibility with more voices.
+      * `Play()` function revised to permit a wide variety of audio formats, permit asynchronous playback, and permit custom volumes.
+    * Scripts
+      * `Carrier jumped` script, revised to correct missing "Information:" verbiage when the engineer report is the only applicable report.
+      * `Crime report` script, updated to resolve scripting errors.
+      * `Engineer report` script, revised to refine grammar.
+      * `Jumped` script, revised to correct missing "Information:" verbiage when the engineer report is the only applicable report.
+      * `Mission check system` script, fixed a bug that could prevent the station model from being referenced.
+      * `Mission completed` script, updated to include micro-resources (on foot items)
+      * `System report` script, updated to indicate the security level of the system.
+    * User Interface
+      * The current script selection is now remembered after accepting an edited script.
+
+### 4.0.0-b3
+  * Core
+    * Fixed a bug that caused EDDI to fail to look up engineer systems after new engineers were added to the game.
+    * Added new microbiologist and mercenary ranks
+  * Speech Responder
+    * Events
+      * `Commander promotion` event added
+      * `Combat promotion` event removed (obsolete)
+      * `Empire promotion` event removed (obsolete)
+      * `Exploration promotion` event removed (obsolete)
+      * `Federation promotion` event removed (obsolete)
+      * `Trade promotion` event removed (obsolete)
+    * Scripts
+      * `Engineer report` script updated to more gracefully handle engineers without defined specialties.
+
+### 4.0.0-b2
+  * Inara Responder
+    * Fixed a missing .dll file that caused the Inara Responder not to load. 
+  * Speech Responder
+    * Events
+      * `Suit purchased` event added
+
+### 4.0.0-b1
+  * Core
+    * Added 3 new vehicle types:
+      * On Foot
+      * MultiCrew
+      * Taxi
     * EDDI beta releases no longer send to test endpoints for EDDN or the EDSM Responder.
     * Fixed a bug that could double-count signal sources when re-logging. 
     * Fixed a bug that could cause undockable approached settlements to be counted as stations.
     * Fixed a bug that had broken access to the `category` property in material objects. 
     * "Conflict zone" signal sources are no longer described as "Combat zone" signal sources.
     * `Starsystem` object properties updated to add `scannedbodies` and `mappedbodies` counts.
+  * Crime Monitor
+    * Fixed a bug that caused us to forget the names of known factions when we couldn't connect to a server providing faction data.
+    * Fixed a parsing error that could occur when trying to parse data for new factions not present in EDDB data dumps. 
   * Galnet Monitor
     * Reduced Galnet article polling from 30s / 2min to 5min / 15min.
     * Delayed active monitoring until 5 minutes after we become active in game rather than 5 minutes after EDDI is launched.
@@ -21,29 +88,59 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Fixed a bug that temporarily stripped community goal missions from the mission list.
     * Fixed a bug that prevented community goal missions from sometimes being identified as community goal missions. 
   * Speech Responder
+    * Events
+      * `Book transport` event added
+      * `Cancel transport` event added
+      * `Commander continued` event, new properties added from Odyssey data
+      * `Died` event, revised properties structure
+      * `Disembark` event added
+      * `Embark` event added
+      * `Liftoff` event, new properties added from Odyssey data
+      * `Location` event, new properties added from Odyssey data
+      * `Micro resources purchased` event added
+      * `Touchdown` event, new properties added from Odyssey data
     * Functions
       * Revised the `EngineerDetails` function to accept a system name as an input.
-      * Updated the ShipName() function to document its second argument (which is optional).
+      * Updated the ShipCallSign() function to improve formatting and use an optional second parameter to customize the response.
+      * Updated the ShipName() function to provide appropriate responses when in a taxi or similar, and to document its second argument (which is optional).
     * Personalities
       * Portuguese default personality updated (thanks to @Kenjiro). 
     * Scripts
+      * `Bond awarded` script revised to more gracefully handle Odyssey contexts.
+      * `Bounty awarded` script revised to more gracefully handle Odyssey contexts.
       * `Carrier jumped` script updated to announce engineer systems.
       * `Community goal` script revised and re-enabled. The event is now written only in response to specific changes in community goal status.
       * `Community goals` script added, updated whenever the game provides updated information on community goals.
+      * `Died` script revised to more gracefully handle Odyssey contexts.
       * `Engineer report` script added.
       * `Entered normal space` script updated to provide easier access to invariant bodytype names and to correct a bug around filtering unknown station types.
+      * `Fuel check` script revised to more gracefully handle Odyssey contexts.
+      * `Jumped` script updated to announce engineer systems.
       * `Material threshold` script updated for expanded triggering conditions.
       * `Message received` script and properties updated to better support localization.
       * `Mission check galaxy` script updated to more gracefully handle community goals.
       * `Mission check station` script updated to more gracefully handle community goals.
       * `Mission check system` script updated to more gracefully handle community goals.
-      * `Jumped` script updated to announce engineer systems.
+      * `Ring hotspots detected` script updated to correct a bug preventing the script from triggering for miners.
       * `Ship arrived` event updated to use the `ShipName()` function and provide improved phonetics. 
       * `Ship rebooted` event updated to provide localized and invariant module names rather than ship slots.
       * `Signal detected` script revised to reference `conflict zone` signal sources rather than `combat zone` signal sources.
+      * `SRV docked` script revised to add a context variable.
+      * `SRV launched` script revised to add a context variable.
       * `Swapout check` script revised to clarify that swapping out the module will reduce your re-buy.
+    * User Interface
+      * It is now possible to sort scripts by priority and enabled status.
+      * It is now possible to search script names, descriptions, and contents with a new filter box.
+      * It is now possible to disable all scripts at once (either when copying a personality or by accessing a context menu on the `Enabled` column header)
+      * Fixed the selected personality combo box losing track of the current selected item when a personality was deleted.
+    * Variables
+      * Added boolean values for `odyssey` and `horizons` game states.
+  * Status Monitor
+    * Updated the Status Monitor for Odyssey data and 
+    * Updated status documentation in Variables.md
   * VoiceAttack
     * Added system variables `{INT:System scanned bodies}` and `{INT:System mapped bodies}`.
+    * Added boolean values for `odyssey` and `horizons` game states.
 
 ### 3.7.3
   * Treat alpha game clients just the same as beta game clients, i.e. do not upload data to live endpoints.

@@ -90,6 +90,19 @@ namespace EddiDataDefinitions
         public static readonly Engineer EtienneDorn = new Engineer(300290, "Etienne Dorn", "Los", 11887629902418, "Kraken's Retreat", 128681351, new HashSet<EngineerSpecialty> { EngineerSpecialty.PlasmaAccelerators, EngineerSpecialty.Sensors, EngineerSpecialty.SurfaceScanners, EngineerSpecialty.LifeSupportSystems, EngineerSpecialty.PowerPlants, EngineerSpecialty.PowerDistributors, EngineerSpecialty.RailGuns}, new HashSet<EngineerSpecialty> { EngineerSpecialty.Scanners});
         public static readonly Engineer ChloeSedesi = new Engineer(300300, "Chloe Sedesi", "Shenve", 594676730147, "Cinder Dock", 128954244, new HashSet<EngineerSpecialty> { EngineerSpecialty.Thrusters }, new HashSet<EngineerSpecialty> { EngineerSpecialty.FrameShiftDrives } );
 
+        public static readonly Engineer JudeNavarro = new Engineer(400001, "Jude Navarro", "Aurai", 7268024067513, "Marshall's Drift", 128972903, new HashSet<EngineerSpecialty>(), new HashSet<EngineerSpecialty>());
+        public static readonly Engineer DominoGreen = new Engineer(400002, "Domino Green", "Orishis", 5068464399785, "The Jackrabbit", 128973159, new HashSet<EngineerSpecialty>(), new HashSet<EngineerSpecialty>());
+        public static readonly Engineer HeroFerrari = new Engineer(400003, "Hero Ferrari", "Siris", 7269634614689, "Nevermore Terrace", 128973415, new HashSet<EngineerSpecialty>(), new HashSet<EngineerSpecialty>());
+        public static readonly Engineer KitFowler = new Engineer(400004, "Kit Fowler", "Capoya", 2827975936355, "The Last Call", 128973671, new HashSet<EngineerSpecialty>(), new HashSet<EngineerSpecialty>());
+        
+        public static readonly Engineer TerraVelasquez = new Engineer(400006, "Terra Velasquez", "Shou Xing", 3721329101171, "Rascal's Choice", 128974183, new HashSet<EngineerSpecialty>(), new HashSet<EngineerSpecialty>());
+
+        // Needs engineerId
+        // public static readonly Engineer UmaLaszlo = new Engineer(null, "Uma Laszlo", "Xuane", 16065190962585, "Laszlo's Resolve", 128974439, new HashSet<EngineerSpecialty>(), new HashSet<EngineerSpecialty>());
+        // public static readonly Engineer WellingtonBeck = new Engineer(null, "Wellington Beck", "Jolapa", 2832832893634, "Beck Facility", 128973927, new HashSet<EngineerSpecialty>(), new HashSet<EngineerSpecialty>());
+        // public static readonly Engineer OdenGeiger = new Engineer(null, "Oden Geiger", "Candiaei", 8879744226018, "Ankh's Promise", 128974695, new HashSet<EngineerSpecialty>(), new HashSet<EngineerSpecialty>());
+        // public static readonly Engineer YardenBond = new Engineer(null, "Yarden Bond", null, null, null, null, new HashSet<EngineerSpecialty>(), new HashSet<EngineerSpecialty>());
+
         public static Engineer FromName(string from)
         {
             if (string.IsNullOrEmpty(from)) { return null; }
@@ -104,7 +117,7 @@ namespace EddiDataDefinitions
         public static Engineer FromSystemName(string from)
         {
             if (string.IsNullOrEmpty(from)) { return null; }
-            Engineer result = ENGINEERS.FirstOrDefault(v => v.systemname.Equals(from, StringComparison.InvariantCultureIgnoreCase));
+            Engineer result = ENGINEERS.FirstOrDefault(v => v.systemname?.Equals(from, StringComparison.InvariantCultureIgnoreCase) ?? false);
             if (result == null)
             {
                 Logging.Debug("Unknown Engineer system name " + from);
