@@ -692,9 +692,6 @@ namespace EddiVoiceAttackResponder
 
                 string speech = SpeechFromScript(script);
 
-<<<<<<< HEAD
-                SpeechService.Instance.Say(((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship monitor")).GetCurrentShip(), speech, (int)priority, voice, true, null, true, (int)volume);
-=======
                 Ship ship = null;
                 if (EDDI.Instance.Vehicle == Constants.VEHICLE_SHIP)
                 {
@@ -702,7 +699,6 @@ namespace EddiVoiceAttackResponder
                 }
 
                 SpeechService.Instance.Say(ship, speech, (int)priority, voice, true, null, true);
->>>>>>> origin/develop
             }
             catch (Exception e)
             {
