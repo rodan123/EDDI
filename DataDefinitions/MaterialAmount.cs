@@ -3,18 +3,19 @@ using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
+using Utilities;
 
 namespace EddiDataDefinitions
 {
     public class MaterialAmount : INotifyPropertyChanged
     {
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-        [DefaultValue(null)]
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate), DefaultValue(null)]
         public string edname { get; private set; }
 
         [JsonIgnore]
         private string _material;
-        [JsonIgnore]
+
+        [PublicAPI, JsonIgnore]
         public string material
         {
             get
@@ -28,7 +29,7 @@ namespace EddiDataDefinitions
                     Material My_material = Material.FromName(value) ?? Material.FromEDName(value);
                     _material = My_material?.localizedName ?? value;
                     edname = My_material?.edname ?? value;
-                    Category = My_material?.Category.localizedName;
+                    category = My_material?.Category.localizedName;
                     NotifyPropertyChanged("material");
                 }
             }
@@ -36,6 +37,8 @@ namespace EddiDataDefinitions
 
         [JsonIgnore]
         private int _amount;
+
+        [PublicAPI]
         public int amount
         {
             get
@@ -54,6 +57,8 @@ namespace EddiDataDefinitions
 
         [JsonIgnore]
         private int? _minimum;
+
+        [PublicAPI]
         public int? minimum
         {
             get
@@ -72,6 +77,8 @@ namespace EddiDataDefinitions
 
         [JsonIgnore]
         private int? _desired;
+
+        [PublicAPI]
         public int? desired
         {
             get
@@ -90,6 +97,8 @@ namespace EddiDataDefinitions
 
         [JsonIgnore]
         private int? _maximum;
+
+        [PublicAPI]
         public int? maximum
         {
             get
@@ -108,8 +117,9 @@ namespace EddiDataDefinitions
 
         [JsonIgnore]
         private string _Category;
-        [JsonIgnore]
-        public string Category
+        
+        [PublicAPI, JsonIgnore]
+        public string category
         {
             get
             {
@@ -157,7 +167,7 @@ namespace EddiDataDefinitions
             this.minimum = minimum;
             this.desired = desired;
             this.maximum = maximum;
-            this.Category = My_material?.Category.localizedName;
+            this.category = My_material?.Category.localizedName;
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

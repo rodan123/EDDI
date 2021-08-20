@@ -3,17 +3,20 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
+using JetBrains.Annotations;
 using Utilities;
 
 namespace EddiCompanionAppService
 {
-    public partial class CompanionAppService : IDisposable
+    public partial class CompanionAppService : IDisposable, INotifyPropertyChanged
     {
         // Implementation instructions from Frontier: https://hosting.zaonce.net/docs/oauth2/instructions.html
         private static readonly string LIVE_SERVER = "https://companion.orerve.net";
@@ -55,6 +58,7 @@ namespace EddiCompanionAppService
                 State oldState = _currentState;
                 _currentState = value;
                 StateChanged?.Invoke(oldState, _currentState);
+                OnPropertyChanged();
             }
         }
         public delegate void StateChangeHandler(State oldState, State newState);
@@ -105,6 +109,7 @@ namespace EddiCompanionAppService
 
             try
             {
+                // Our access token may have expired. Use our refresh token to obtain a new access token.
                 RefreshToken();
             }
             catch (Exception)
@@ -427,6 +432,7 @@ namespace EddiCompanionAppService
             DateTime expiry = Credentials?.tokenExpiry.AddSeconds(-60) ?? DateTime.MinValue;
             if (DateTime.UtcNow > expiry)
             {
+                // Our access token has expired. Use our refresh token to obtain a new access token.
                 RefreshToken();
             }
 
@@ -538,6 +544,14 @@ namespace EddiCompanionAppService
             }
             Logging.Debug("Response is " + JsonConvert.SerializeObject(response));
             return response;
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        [NotifyPropertyChangedInvocator]
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null) 
+        { 
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)); 
         }
     }
 }

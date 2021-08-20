@@ -6,7 +6,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
+using Tests.Properties;
 using UnitTests;
 
 namespace IntegrationTests
@@ -174,30 +176,33 @@ namespace UnitTests
         [TestMethod]
         public void TestRingCurrentBody()
         {
-            string line = @"{ ""timestamp"":""2018-12-02T07:59:04Z"", ""event"":""SupercruiseExit"", ""StarSystem"":""HIP 17704"", ""SystemAddress"":246119654564, ""Body"":""HIP 17704 4 A Ring"", ""BodyID"":18, ""BodyType"":""PlanetaryRing"" }";
+            string line = @"{ ""timestamp"":""2018-12-02T07:59:04Z"", ""event"":""SupercruiseExit"", ""StarSystem"":""HR 6421"", ""SystemAddress"":27076330676, ""Body"":""HR 6421 4 A Ring"", ""BodyID"":18, ""BodyType"":""PlanetaryRing"" }";
             List<Event> events = JournalMonitor.ParseJournalEntry(line);
-            Assert.AreEqual(1, events.Count);
             EnteredNormalSpaceEvent @event = (EnteredNormalSpaceEvent)events[0];
-            Assert.IsNotNull(@event);
             Assert.IsInstanceOfType(@event, typeof(EnteredNormalSpaceEvent));
 
+            var system = DeserializeJsonResource<StarSystem>(Resources.sqlStarSystem5);
             PrivateObject privateObject = new PrivateObject(EDDI.Instance);
+            privateObject.SetFieldOrProperty("CurrentStarSystem", system);
+
             privateObject.Invoke("updateCurrentStellarBody", new object[] { @event.bodyname, @event.systemname, @event.systemAddress });
-            Assert.AreEqual("HIP 17704 4", EDDI.Instance.CurrentStellarBody?.bodyname);
+            Assert.AreEqual("HR 6421 4", EDDI.Instance.CurrentStellarBody?.bodyname);
         }
 
         [TestMethod]
         public void TestRingMappedCurrentBody()
         {
             string line = @"{ ""timestamp"":""2018-12-16T23:04:38Z"", ""event"":""SAAScanComplete"", ""BodyName"":""BD-01 2784 10 A Ring"", ""SystemAddress"":2282942960346, ""BodyID"":42, ""ProbesUsed"":1, ""EfficiencyTarget"":0 }";
+
+            PrivateObject privateObject = new PrivateObject(EDDI.Instance);
+            privateObject.Invoke("updateCurrentSystem", new object[] { "BD-01 2784" });
+
             List<Event> events = JournalMonitor.ParseJournalEntry(line);
             Assert.AreEqual(1, events.Count);
             Assert.IsInstanceOfType(events[0], typeof(RingMappedEvent));
             RingMappedEvent @event = (RingMappedEvent)events[0];
             Assert.IsNotNull(@event);
 
-            PrivateObject privateObject = new PrivateObject(EDDI.Instance);
-            privateObject.Invoke("updateCurrentSystem", new object[] { "BD-01 2784" });
             privateObject.Invoke("eventRingMapped", new object[] { @event });
             Assert.AreEqual("BD-01 2784 10", EDDI.Instance.CurrentStellarBody?.bodyname);
         }

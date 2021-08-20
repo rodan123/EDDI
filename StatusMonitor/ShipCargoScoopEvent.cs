@@ -1,23 +1,16 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
+﻿using System;
+using Utilities;
 
 namespace EddiEvents
 {
+    [PublicAPI]
     public class ShipCargoScoopEvent : Event
     {
         public const string NAME = "Cargo scoop";
         public const string DESCRIPTION = "Triggered when you deploy or retract your cargo scoop";
         public const string SAMPLE = null;
 
-        public static Dictionary<string, string> VARIABLES = new Dictionary<string, string>();
-
-        static ShipCargoScoopEvent()
-        {
-            VARIABLES.Add("deployed", "A boolean value. True if your cargo scoop is deployed.");
-        }
-
-        [JsonProperty("deployed")]
+        [PublicAPI("A boolean value. True if your cargo scoop is deployed.")]
         public bool deployed { get; private set; }
 
         public ShipCargoScoopEvent(DateTime timestamp, bool deployed) : base(timestamp, NAME)

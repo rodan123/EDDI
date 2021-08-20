@@ -2,12 +2,84 @@
 
 Full details of the variables available for each noted event, and VoiceAttack integrations, are available in the individual [event pages](https://github.com/EDCD/EDDI/wiki/Events).
 
+### 4.0.1
+  * Core
+    * Promote 4.0.1-rc1 to 4.0.1
+
+### 4.0.1-rc1
+  * Core
+    * Promote 4.0.1-b5 to rc1
+
+### 4.0.1-b5
+  * Core
+    * Improve speech service detection of older Windows versions. 
+
+### 4.0.1-b4
+  * Core
+    * Added a speculative fix for a bug that could prevent speech when the same voice is available from multiple speech synthesizers.
+    * Refactored to try to improve compatibility with older Windows versions.    
+
+### 4.0.1-b3
+  * Core
+    * Fixed a bug that would cause speech volume for some voices to be either 0% or 100%.
+
+### 4.0.1-b2
+  * Core
+    * Unlocked *most* previously unavailable Windows voices.
+    * Added support for custom user lexicons (to learn more, search the wiki for "lexicons").
+    * Fixed a bug that might in some instances make EDDI slow to respond to events.
+  * Crime Monitor
+    * Fines are now converted to bounties when a bounty is incurred.
+    * Improved handling of fines and bounties, particularly with various respawn scenarios. 
+  * Mission Monitor
+    * Fixed a bug that inverted community goal progression reports when moving between tiers.
+    * Replaced the mission `type` property with a list of mission `tags`. 
+    * Updated missions list to provide the mission name and to provide additional row details by clicking an item on the list.
+  * Ship monitor
+    * Fixed a bug that would cause ship roles to not be remembered correctly in 4.0.1-b1.
+  * Speech Responder
+    * Events
+      * `Respawned` event added.
+      * `Mission completed` event updated to record faction effects.
+      * `Safe` event added.
+      * `Ship repurchased` event removed (folded into the new `Respawned` event).
+    * Functions
+      * P() function - Touched up star system and body pronunciations
+    * Scripts
+      * `Body report` script updated to key on the invariant reserve level
+      * `Bond awarded` script updated to reduce verbosity.
+      * `Bounty awarded` script updated to reduce verbosity.
+      * `Bounty incurred` script updated to reduce verbosity.
+      * `Crime check station` script updated to more intelligent suggestions about paying off fines and bounties.
+      * `Crime check system` script updated to reduce verbosity.
+      * `Entered supercruise` script updated to report any changes to pending fines, bounties, or claims.
+      * `Fine incurred` script updated to reduce verbosity.
+      * `Respawned` script added.
+      * `Mission abandoned` script revised to use mission tags.
+      * `Mission accepted` script revised to use mission tags.
+      * `Mission check station` script revised to use mission tags.
+      * `Mission check system` script revised to use mission tags.
+      * `Mission completed` script revised to use mission tags.
+      * `Mission expired` script revised to use mission tags.
+      * `Mission failed` script revised to use mission tags.
+      * `Mission redirected` script revised to use mission tags.
+      * `Mission warning` script revised to use mission tags.
+      * `Route details` script revised to use mission tags.
+
 ### 4.0.1-b1
+  * Core
+    * Richer event variable documentation (for both the Speech Responder and VoiceAttack).
+  * Mission Monitor
+    * Added a tool tip to display the name of each mission.
+    * Revised mission expiration timers to improve sorting with longer missions and to use a more universal format.
   * Speech Responder
     * Scripts
       * Updated the `Embark`, `SRV docked`, `SRV launched`, and `Vehicle destroyed` events to fix a bug with th the SRV deployed warning.
   * VoiceAttack Responder
+    * Added a new plugin context 'volume' to allow commanders to set the text to speech volume from VoiceAttack.
+    * Event object data is now documented and accessible.
     * Fixed scripts invoked from the VoiceAttack `speech` context having priority 5 rather than priority 3 by default.
+    * Standard variables (e.g. current system variables) are updated immediately after a change rather than with the next event.
 
 ### 4.0.0
   * Core

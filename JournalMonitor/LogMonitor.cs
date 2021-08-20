@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using Utilities;
 
 namespace EddiJournalMonitor
@@ -67,7 +68,7 @@ namespace EddiJournalMonitor
                 if (fileInfo == null)
                 {
                     // A player journal file could not be found. Sleep until a player journal file is found.
-                    Logging.Error("Error locating Elite Dangerous player journal. Journal monitor is not active. Have you installed and run Elite Dangerous previously? ");
+                    Logging.Warn("Error locating Elite Dangerous player journal. Journal monitor is not active. Have you installed and run Elite Dangerous previously? ");
                     while (fileInfo == null)
                     {
                         Thread.Sleep(500);
@@ -187,13 +188,15 @@ namespace EddiJournalMonitor
 
                 if (lastLoadLine != null)
                 {
-                    for (int i = lastLoadLine.lineNumber; i < lines.Count(); i++)
-                    {
-                        if (lines[i] != "")
+                    Task.Run(() => {
+                        for (int i = lastLoadLine.lineNumber; i < lines.Count(); i++)
                         {
-                            Callback(lines[i], isLoadEvent);
+                            if (lines[i] != "")
+                            {
+                                Callback(lines[i], isLoadEvent);
+                            }
                         }
-                    }
+                    });
                 }
             }
         }

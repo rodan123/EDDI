@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Resources;
+using Utilities;
 
 namespace EddiDataDefinitions
 {
@@ -27,32 +28,37 @@ namespace EddiDataDefinitions
             COMPOSITIONS.Add("silicate vapour", "Silicate vapour");
             COMPOSITIONS.Add("water", "Water");
         }
+        
+        [PublicAPI, JsonIgnore, Obsolete("Please use localizedType or invariantType")]
+        public string type => localizedType;
+
+        [PublicAPI, JsonIgnore, Obsolete("Please use localizedComposition or invariantComposition")]
+        public string composition => localizedComposition;
+
+        [PublicAPI, JsonIgnore, Obsolete("Please use localizedAmount or invariantAmount")]
+        public string amount => localizedAmount;
+
+        // Not intended to be user facing
 
         public static readonly ResourceManager resourceManager;
-
-        // Translation of composition of volcanism 
-        private static readonly IDictionary<string, string> COMPOSITIONS = new Dictionary<string, string>();
 
         [JsonProperty("type")]
         public string edType { get; set; } // Geysers/Magma
         public string invariantType => GetInvariantString(edType);
         public string localizedType => GetLocalizedString(edType);
-        [JsonIgnore, Obsolete("Please use localizedType or invariantType")]
-        public string type => localizedType;
 
         [JsonProperty("composition")]
         public string edComposition { get; set; } // Iron, Silicate, etc.
         public string invariantComposition => GetInvariantString(edComposition);
         public string localizedComposition => GetLocalizedString(edComposition);
-        [JsonIgnore, Obsolete("Please use localizedComposition or invariantComposition")]
-        public string composition => localizedComposition;
 
         [JsonProperty("amount")]
         public string edAmount { get; set; } // Minor, Major, null (for normal)
         public string invariantAmount => GetInvariantString(edAmount);
         public string localizedAmount => GetLocalizedString(edAmount);
-        [JsonIgnore, Obsolete("Please use localizedAmount or invariantAmount")]
-        public string amount => localizedAmount;
+
+        // Translation of composition of volcanism 
+        private static readonly IDictionary<string, string> COMPOSITIONS = new Dictionary<string, string>();
 
         private string GetInvariantString(string name)
         {

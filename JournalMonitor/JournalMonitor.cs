@@ -2102,15 +2102,11 @@ namespace EddiJournalMonitor
                                 break;
                             case "Resurrect":
                                 {
-                                    string option = JsonParsing.getString(data, "Option");
-                                    long price = JsonParsing.getLong(data, "Cost");
-
-                                    if (option == "rebuy")
-                                    {
-                                        events.Add(new ShipRepurchasedEvent(timestamp, price) { raw = line, fromLoad = fromLogLoad });
-                                        handled = true;
-                                    }
+                                    var option = JsonParsing.getString(data, "Option");
+                                    var price = JsonParsing.getLong(data, "Cost");
+                                    events.Add(new RespawnedEvent(timestamp, option, price) { raw = line, fromLoad = fromLogLoad });
                                 }
+                                handled = true;
                                 break;
                             case "NavBeaconScan":
                                 {
@@ -2178,7 +2174,7 @@ namespace EddiJournalMonitor
                                     StarSystem system = EDDI.Instance?.CurrentStarSystem;
                                     Body body = null;
 
-                                    if (bodyName.EndsWith(" Ring"))
+                                    if (system != null && bodyName.EndsWith(" Ring"))
                                     {
                                         // We've mapped a ring. 
                                         Ring ring = null;
@@ -2374,7 +2370,7 @@ namespace EddiJournalMonitor
                                             {
                                                 // Used could be a material or a commodity
                                                 CommodityDefinition commodity = CommodityDefinition.FromEDName(used.Key);
-                                                if (commodity.category != null)
+                                                if (commodity.Category != null)
                                                 {
                                                     // This is a real commodity
                                                     commodities.Add(new CommodityAmount(commodity, (int)(long)used.Value));
@@ -2732,8 +2728,17 @@ namespace EddiJournalMonitor
                                     decimal? brokerpercentage = JsonParsing.getOptionalDecimal(data, "BrokerPercentage");
                                     bool allBounties = JsonParsing.getOptionalBool(data, "AllFines") ?? false;
                                     string faction = getFactionName(data, "Faction");
-                                    data.TryGetValue("ShipID", out val);
-                                    int shipId = (int)(long)val;
+                                    int shipId = 0;
+                                    var shipIdLong = JsonParsing.getLong(data, "ShipID");
+                                    if (shipIdLong > 4293000000)
+                                    {
+                                        // This is a suit loadout ID. Use a null value since bounties associated with the commander, rather than the ship, are being paid.
+                                        shipIdLong = -1;
+                                    }
+                                    else
+                                    {
+                                        shipId = (int)shipIdLong;
+                                    }
 
                                     events.Add(new BountyPaidEvent(timestamp, amount, brokerpercentage, allBounties, faction, shipId) { raw = line, fromLoad = fromLogLoad });
                                 }
@@ -2746,8 +2751,17 @@ namespace EddiJournalMonitor
                                     decimal? brokerpercentage = JsonParsing.getOptionalDecimal(data, "BrokerPercentage");
                                     bool allFines = JsonParsing.getOptionalBool(data, "AllFines") ?? false;
                                     string faction = getFactionName(data, "Faction");
-                                    data.TryGetValue("ShipID", out val);
-                                    int shipId = (int)(long)val;
+                                    int shipId = 0;
+                                    var shipIdLong = JsonParsing.getLong(data, "ShipID");
+                                    if (shipIdLong >= 4293000000)
+                                    {
+                                        // This is a suit loadout ID. Use a -1 value to signal that fines associated with the commander, rather than the ship, are being paid.
+                                        shipIdLong = -1;
+                                    }
+                                    else
+                                    {
+                                        shipId = (int)shipIdLong;
+                                    }
 
                                     events.Add(new FinePaidEvent(timestamp, amount, brokerpercentage, allFines, faction, shipId) { raw = line, fromLoad = fromLogLoad });
                                 }
@@ -2916,7 +2930,7 @@ namespace EddiJournalMonitor
                                     data.TryGetValue("Reward", out object val);
                                     long reward = (val == null ? 0 : (long)val);
 
-                                    events.Add(new MissionCompletedEvent(timestamp, cgid, "MISSION_CommunityGoal", name, null, null, null, true, reward, null, null, null, null, 0) { raw = line, fromLoad = fromLogLoad });
+                                    events.Add(new MissionCompletedEvent(timestamp, cgid, "MISSION_CommunityGoal", name, null, null, null, true, reward, null, null, null, null, null, 0) { raw = line, fromLoad = fromLogLoad });
                                 }
                                 handled = true;
                                 break;
@@ -3169,7 +3183,47 @@ namespace EddiJournalMonitor
                                         }
                                     }
 
-                                    events.Add(new MissionCompletedEvent(timestamp, missionid, name, faction, microResource, commodity, amount, false, reward, permitsAwarded, commodityrewards, materialsrewards, microResourceRewards, donation) { raw = line, fromLoad = fromLogLoad });
+                                    var missionFactionEffects = new List<MissionFactionEffect>();
+                                    data.TryGetValue("FactionEffects", out val);
+                                    var missionFactionEffectsData = (List<object>)val;
+                                    if (missionFactionEffectsData != null)
+                                    {
+                                        foreach (Dictionary<string, object> missionFactionEffectData in missionFactionEffectsData)
+                                        {
+                                            var effectFaction = JsonParsing.getString(missionFactionEffectData, "Faction");
+                                            var reputationPlusses = JsonParsing.getString(missionFactionEffectData, "Reputation");
+
+                                            var effects = new List<MissionEffect>();
+                                            missionFactionEffectData.TryGetValue("Effects", out val);
+                                            var effectsData = (List<object>)val;
+                                            if (effectsData != null)
+                                            {
+                                                foreach (Dictionary<string, object> effectData in effectsData)
+                                                {
+                                                    var edEffect = JsonParsing.getString(effectData, "Effect");
+                                                    var localizedEffect = JsonParsing.getString(effectData, "Effect_Localised");
+                                                    effects.Add(new MissionEffect(edEffect, localizedEffect));
+                                                }
+                                            }
+
+                                            var influences = new List<MissionInfluence>();
+                                            missionFactionEffectData.TryGetValue("Influence", out val);
+                                            var influencesData = (List<object>)val;
+                                            if (influencesData != null)
+                                            {
+                                                foreach (Dictionary<string, object> influenceData in influencesData)
+                                                {
+                                                    var influencedSystemAddress = JsonParsing.getOptionalLong(influenceData, "SystemAddress");
+                                                    var influencePlusses = JsonParsing.getString(influenceData, "Influence");
+                                                    influences.Add(new MissionInfluence(influencedSystemAddress, influencePlusses));
+                                                }
+                                            }
+                                            
+                                            missionFactionEffects.Add(new MissionFactionEffect(effectFaction, effects, influences, reputationPlusses));
+                                        }
+                                    }
+
+                                    events.Add(new MissionCompletedEvent(timestamp, missionid, name, faction, microResource, commodity, amount, false, reward, permitsAwarded, commodityrewards, materialsrewards, microResourceRewards, missionFactionEffects, donation) { raw = line, fromLoad = fromLogLoad });
                                 }
                                 handled = true;
                                 break;
@@ -4224,24 +4278,34 @@ namespace EddiJournalMonitor
                             case "Backpack":
                             case "ShipLocker":
                                 {
-                                    var info = new MicroResourceInfo().FromFile($"{edType}.json");
-
-                                    // Flatten the list
-                                    var inventory = new List<MicroResourceAmount>();
-                                    inventory.AddRange(info.Components);
-                                    inventory.AddRange(info.Consumables);
-                                    inventory.AddRange(info.Data);
-                                    inventory.AddRange(info.Items);
-
-                                    if (edType == "Backpack")
+                                    MicroResourceInfo info = null;
+                                    try
                                     {
-                                        events.Add(new BackpackEvent(timestamp, inventory) { raw = line, fromLoad = fromLogLoad });
-                                        handled = true;
+                                        info = new MicroResourceInfo().FromFile($"{edType}.json");
                                     }
-                                    else if (edType == "ShipLocker")
+                                    catch (JsonReaderException jsonEx)
                                     {
-                                        events.Add(new ShipLockerEvent(timestamp, inventory) { raw = line, fromLoad = fromLogLoad });
-                                        handled = true;
+                                        Logging.Warn($"Failed to read malformed {edType}.json", jsonEx);
+                                    }
+                                    if (info != null)
+                                    {
+                                        // Flatten the list
+                                        var inventory = new List<MicroResourceAmount>();
+                                        inventory.AddRange(info.Components);
+                                        inventory.AddRange(info.Consumables);
+                                        inventory.AddRange(info.Data);
+                                        inventory.AddRange(info.Items);
+
+                                        if (edType == "Backpack")
+                                        {
+                                            events.Add(new BackpackEvent(timestamp, inventory) { raw = line, fromLoad = fromLogLoad });
+                                            handled = true;
+                                        }
+                                        else if (edType == "ShipLocker")
+                                        {
+                                            events.Add(new ShipLockerEvent(timestamp, inventory) { raw = line, fromLoad = fromLogLoad });
+                                            handled = true;
+                                        }
                                     }
                                 }
                                 break;
@@ -4320,8 +4384,10 @@ namespace EddiJournalMonitor
                             case "DiscoveryScan":
                             case "DropItems":
                             case "EngineerLegacyConvert":
+                            case "FssBodySignals":
                             case "LoadoutEquipModule":
                             case "LoadoutRemoveModule":
+                            case "ModuleBuyAndStore":
                             case "NavRoute":
                             case "RenameSuitLoadout":
                             case "ReservoirReplenished":

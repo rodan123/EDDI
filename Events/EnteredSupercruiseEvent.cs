@@ -1,30 +1,22 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
+﻿using System;
+using Utilities;
 
 namespace EddiEvents
 {
+    [PublicAPI]
     public class EnteredSupercruiseEvent : Event
     {
         public const string NAME = "Entered supercruise";
         public const string DESCRIPTION = "Triggered when your ship enters supercruise";
-        public const string SAMPLE = "{\"timestamp\":\"2016-06-10T14:32:03Z\",\"event\":\"SupercruiseEntry\",\"StarSystem\":\"Yuetu\"}";
-        public static Dictionary<string, string> VARIABLES = new Dictionary<string, string>();
+        public const string SAMPLE = "{ \"timestamp\":\"2021-07-19T05:28:08Z\", \"event\":\"SupercruiseEntry\", \"Taxi\":false, \"Multicrew\":false, \"StarSystem\":\"Azaladshu\", \"SystemAddress\":9467852826025 }";
 
-        static EnteredSupercruiseEvent()
-        {
-            VARIABLES.Add("system", "The system at which the commander has entered supercruise");
-            VARIABLES.Add("taxi", "True if the ship is an Apex taxi");
-            VARIABLES.Add("multicrew", "True if the ship is belongs to another player");
-        }
-
-        [JsonProperty("system")]
+        [PublicAPI("The system at which the commander has entered supercruise")]
         public string system { get; private set; }
 
-        [JsonProperty("taxi")]
+        [PublicAPI("True if the ship is a transport (e.g. taxi or dropship)")]
         public bool? taxi { get; private set; }
 
-        [JsonProperty("multicrew")]
+        [PublicAPI("True if the ship is belongs to another player")]
         public bool? multicrew { get; private set; }
 
         // Not intended to be user facing

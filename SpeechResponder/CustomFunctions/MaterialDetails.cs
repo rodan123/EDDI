@@ -1,8 +1,8 @@
 ﻿using Cottle.Functions;
 using Cottle.Values;
 using EddiDataDefinitions;
-using EddiSpeechResponder.Service;
 using EddiDataProviderService;
+using EddiSpeechResponder.Service;
 using JetBrains.Annotations;
 
 namespace EddiSpeechResponder.CustomFunctions
@@ -22,8 +22,8 @@ namespace EddiSpeechResponder.CustomFunctions
                 if (starSystem != null)
                 {
                     Body body = Material.highestPercentBody(result.edname, starSystem.bodies);
-                    result.bodyname = body.bodyname;
-                    result.bodyshortname = body.shortname;
+                    result.bodyname = body?.bodyname;
+                    result.bodyshortname = body?.shortname;
                 }
             }
             return new ReflectionValue(result ?? new object());

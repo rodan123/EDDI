@@ -1,5 +1,6 @@
-﻿using System;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
+using System;
+using System.Linq;
 using Utilities;
 
 namespace EddiDataDefinitions
@@ -46,7 +47,7 @@ namespace EddiDataDefinitions
         public TopTier TopTier { get; set; }
 
         [JsonIgnore]
-        public int toptier => TopTier?.Name == null ? 0 : int.Parse(TopTier.Name.Replace("Tier ", ""));
+        public int toptier => TopTier?.Name == null ? 0 : int.Parse(TopTier.Name.Last().ToString());
 
         [JsonIgnore]
         public string toptierreward => TopTier?.Bonus;
@@ -63,8 +64,8 @@ namespace EddiDataDefinitions
         [JsonProperty("TierReached")]
         public string Tier { get; set; }
 
-        [JsonIgnore]
-        public int tier => Tier == null ? 0 : int.Parse(Tier.Replace("Tier ", ""));
+        [JsonIgnore] // The name may be in the format "Tier 8" with "Tier" being localized.
+        public int tier => Tier == null ? 0 : int.Parse(Tier.Last().ToString());
 
         [JsonProperty("Bonus")]
         public long? tierreward { get; set; }

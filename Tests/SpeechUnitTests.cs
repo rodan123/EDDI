@@ -4,6 +4,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using EddiSpeechService.SpeechPreparation;
 
 namespace UnitTests
 {
@@ -273,8 +274,8 @@ namespace UnitTests
         [TestMethod]
         public void TestSectorTranslations()
         {
-            Assert.AreEqual("Swoiwns N Y dash B a 95 dash 0", Translations.GetTranslation("Swoiwns NY-B a95-0"));
-            Assert.AreEqual("P P M 5 2 8 7", Translations.GetTranslation("PPM 5287"));
+            Assert.AreEqual("Swoiwns <say-as interpret-as=\"characters\">N</say-as> <say-as interpret-as=\"characters\">Y</say-as> dash <say-as interpret-as=\"characters\">B</say-as> <say-as interpret-as=\"characters\">a</say-as> 95 dash 0", Translations.GetTranslation("Swoiwns NY-B a95-0"));
+            Assert.AreEqual("<say-as interpret-as=\"characters\">P</say-as> <say-as interpret-as=\"characters\">P</say-as> <say-as interpret-as=\"characters\">M</say-as> 5 2 8 7", Translations.GetTranslation("PPM 5287"));
         }
 
         [TestMethod]
@@ -315,7 +316,7 @@ namespace UnitTests
         {
             // Test escaping for invalid ssml.
             var line = @"<invalid>test</invalid> <invalid withattribute='attribute'>test2</invalid>";
-            var result = SpeechService.escapeSsml(line);
+            var result = SpeechFormatter.EscapeSSML(line);
             Assert.AreEqual("&lt;invalid&gt;test&lt;/invalid&gt; &lt;invalid withattribute='attribute'&gt;test2&lt;/invalid&gt;", result);
         }
 
@@ -324,7 +325,7 @@ namespace UnitTests
         {
             // Test escaping for double quotes, single quotes, and <phoneme> ssml commands. XML characters outside of ssml elements are escaped.
             var line = @"<phoneme alphabet=""ipa"" ph=""ʃɪnˈrɑːrtə"">Shinrarta</phoneme> <phoneme alphabet='ipa' ph='ˈdezɦrə'>Dezhra</phoneme> & Co's shop";
-            var result = SpeechService.escapeSsml(line);
+            var result = SpeechFormatter.EscapeSSML(line);
             Assert.AreEqual("<phoneme alphabet=\"ipa\" ph=\"ʃɪnˈrɑːrtə\">Shinrarta</phoneme> <phoneme alphabet='ipa' ph='ˈdezɦrə'>Dezhra</phoneme> &amp; Co&apos;s shop", result);
         }
 
@@ -333,7 +334,7 @@ namespace UnitTests
         {
             // Test escaping for <break> elements. XML characters outside of ssml elements are escaped.
             var line = @"<break time=""100ms""/>He said ""Foo"".";
-            var result = SpeechService.escapeSsml(line);
+            var result = SpeechFormatter.EscapeSSML(line);
             Assert.AreEqual("<break time=\"100ms\"/>He said &quot;Foo&quot;.", result);
         }
 
@@ -342,7 +343,7 @@ namespace UnitTests
         {
             // Test escaping for Cereproc unique <usel> and <spurt> elements
             var line = @"<spurt audio='g0001_004'>cough</spurt> This is a <usel variant=""1"">test</usel> sentence.";
-            var result = SpeechService.escapeSsml(line);
+            var result = SpeechFormatter.EscapeSSML(line);
             Assert.AreEqual(line, result);
         }
 
@@ -351,7 +352,7 @@ namespace UnitTests
         {
             // Test escaping for characters included in the escape sequence ('X' in this case)
             var line = @"Brazilian armada <say-as interpret-as=""characters"">X</say-as>";
-            var result = SpeechService.escapeSsml(line);
+            var result = SpeechFormatter.EscapeSSML(line);
             Assert.AreEqual(line, result);
         }
 
@@ -360,10 +361,7 @@ namespace UnitTests
         {
             // Test removal of <phoneme> tags (and only phenome tags) when the user has indicated that they would like to disable phonetic speech
             var line = @"<break time=""100ms""/><phoneme alphabet=""ipa"" ph=""ʃɪnˈrɑːrtə"">Shinrarta</phoneme> <phoneme alphabet='ipa' ph='ˈdezɦrə'>Dezhra</phoneme> & Co's shop";
-
-            var service = new PrivateType(typeof(SpeechService));
-            var result = service.InvokeStatic("DisableIPA", line)?.ToString();
-
+            var result = SpeechFormatter.DisableIPA(line);
             Assert.AreEqual(@"<break time=""100ms""/>Shinrarta Dezhra & Co's shop", result);
         }
     }

@@ -2,17 +2,20 @@
 using CSCore.Codecs.WAV;
 using CSCore.SoundOut;
 using EddiDataDefinitions;
+using EddiSpeechService.SpeechPreparation;
+using EddiSpeechService.SpeechSynthesizers;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
-using System.Security;
-using System.Speech.Synthesis;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Tasks;
 using Utilities;
 
 namespace EddiSpeechService
@@ -21,16 +24,32 @@ namespace EddiSpeechService
     public partial class SpeechService : INotifyPropertyChanged, IDisposable
     {
         private const float ActiveSpeechFadeOutMilliseconds = 250;
-        public SpeechServiceConfiguration Configuration;
+
+        public SpeechServiceConfiguration Configuration
+        {
+            get => configuration;
+            set
+            {
+                if (configuration != value)
+                {
+                    configuration = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+        private SpeechServiceConfiguration configuration;
+
+        private readonly SystemSpeechSynthesizer systemSpeechSynth;
+        private readonly WindowsMediaSynthesizer windowsMediaSynth;
+
+        public List<VoiceDetails> allVoices { get; }
+        public List<string> allvoices => allVoices.Select(v => v.name).ToList();
 
         private static readonly object activeSpeechLock = new object();
         private ISoundOut _activeSpeech;
         private ISoundOut activeSpeech
         {
-            get
-            {
-                return _activeSpeech;
-            }
+            get => _activeSpeech;
             set
             {
                 eddiSpeaking = value != null;
@@ -38,25 +57,19 @@ namespace EddiSpeechService
             }
         }
         private int activeSpeechPriority;
-        
-        private static readonly object synthLock = new object();
-        public SpeechSynthesizer synth { get; private set; } = new SpeechSynthesizer();
 
-        public SpeechQueue speechQueue = SpeechQueue.Instance;
+        public readonly SpeechQueue speechQueue = SpeechQueue.Instance;
 
         private static bool _eddiSpeaking;
         public bool eddiSpeaking
         {
-            get
-            {
-                return _eddiSpeaking;
-            }
+            get => _eddiSpeaking;
             set
             {
                 if (_eddiSpeaking != value)
                 {
                     _eddiSpeaking = value;
-                    Instance.NotifyPropertyChanged("eddiSpeaking");
+                    OnPropertyChanged();
                 }
             }
         }
@@ -82,11 +95,6 @@ namespace EddiSpeechService
             }
         }
 
-        private SpeechService()
-        {
-            Configuration = SpeechServiceConfiguration.FromFile();
-        }
-
         public void Dispose()
         {
             Dispose(true);
@@ -99,8 +107,35 @@ namespace EddiSpeechService
         {
             if (disposing)
             {
-                synth?.Dispose();
+                systemSpeechSynth?.Dispose();
+                windowsMediaSynth?.Dispose();
             }
+        }
+
+        private SpeechService()
+        {
+            Configuration = SpeechServiceConfiguration.FromFile();
+            var voiceStore = new HashSet<VoiceDetails>(); // Use a Hashset to ensure no duplicates
+
+            // Windows.Media.SpeechSynthesis isn't available on older Windows versions so we must check if we have access
+            try
+            {
+                if (OSInfo.TryGetWindowsVersion(out var osVersion) && osVersion.Major >= 10)
+                {
+                    // Prep the Windows.Media.SpeechSynthesis synthesizer
+                    windowsMediaSynth = new WindowsMediaSynthesizer(ref voiceStore);
+                }
+            }
+            catch (Exception e)
+            {
+                Logging.Warn($"Unable to initialize Windows.Media.SpeechSynthesis.SpeechSynthesizer, {RuntimeInformation.OSDescription}", e);
+            }
+            
+            // Prep the System.Speech synthesizer
+            systemSpeechSynth = new SystemSpeechSynthesizer(ref voiceStore);
+            
+            // Sort results alphabetically by voice name
+            allVoices = voiceStore.OrderBy(v => v.name).ToList();
         }
 
         public void Say(Ship ship, string message, int priority = 3, string voice = null, bool radio = false, string eventType = null, bool invokedFromVA = false, int volume = 0)
@@ -147,7 +182,7 @@ namespace EddiSpeechService
             StopCurrentSpeech();
         }
 
-        public void Speak(EddiSpeech speech)
+        public static void Speak(EddiSpeech speech)
         {
             Instance.Speak(speech.message, speech.voice, speech.echoDelay, speech.distortionLevel, speech.chorusLevel, speech.reverbLevel, speech.compressionLevel, speech.radio, speech.priority, speech.volume);
         }
@@ -159,7 +194,7 @@ namespace EddiSpeechService
             // If the user wants to disable IPA then we remove any IPA phoneme tags here
             if (Configuration.DisableIpa && speech.Contains("<phoneme"))
             {
-                speech = DisableIPA(speech);
+                speech = SpeechFormatter.DisableIPA(speech);
             }
 
             if (string.IsNullOrWhiteSpace(voice))
@@ -167,34 +202,29 @@ namespace EddiSpeechService
                 voice = Configuration.StandardVoice;
             }
 
-            // Identify any statements that need to be separated into their own speech streams (e.g. audio or special voice effects)
-            string[] separators =
-            {
-                        @"(<audio.*?>)",
-                        @"(<transmit.*?>.*<\/transmit>)",
-                        @"(<voice.*?>.*<\/voice>)",
-                    };
-            List<string> statements = SeparateSpeechStatements(speech, string.Join("|", separators));
+            List<string> statements = SpeechFormatter.SeparateSpeechStatements(speech);
 
             foreach (string Statement in statements)
             {
                 string statement = Statement;
 
                 bool isAudio = statement.Contains("<audio"); // This is an audio file, we will disable voice effects processing
-                bool isRadio = statement.Contains("<transmit") || radio; // This is a radio transmission, we will enable radio voice effects processing
-
                 if (isAudio)
                 {
-                    statement = Regex.Replace(statement, "^.*<audio", "<audio");
-                    statement = Regex.Replace(statement, ">.*$", ">");
-                }
-                else if (isRadio)
-                {
-                    statement = statement.Replace("<transmit>", "");
-                    statement = statement.Replace("</transmit>", "");
+                    statement = SpeechFormatter.FormatAudioTags(statement);
                 }
 
+                bool isRadio = statement.Contains("<transmit") || radio; // This is a radio transmission, we will enable radio voice effects processing
+                if (isRadio)
+                {
+                    statement = SpeechFormatter.StripRadioTags(statement);
+                }
+
+<<<<<<< HEAD
                 using (MemoryStream stream = getSpeechStream(voice, statement, volume))
+=======
+                using (Stream stream = getSpeechStream(voice, statement))
+>>>>>>> origin/develop
                 {
                     if (stream == null)
                     {
@@ -224,39 +254,6 @@ namespace EddiSpeechService
             }
         }
 
-        private static string DisableIPA(string speech)
-        {
-            // User has disabled IPA so remove all IPA phoneme tags
-            Logging.Debug("Phonetic speech is disabled, removing.");
-            speech = Regex.Replace(speech, @"<phoneme.*?>", string.Empty);
-            speech = Regex.Replace(speech, @"<\/phoneme>", string.Empty);
-            return speech;
-        }
-
-        private static List<string> SeparateSpeechStatements(string speech, string separators)
-        {
-            // Separate speech into statements that can be handled differently & sequentially by the speech service
-            List<string> statements = new List<string>();
-
-            Match match = Regex.Match(speech, separators);
-            if (match.Success)
-            {
-                string[] splitSpeech = new Regex(separators).Split(speech);
-                foreach (string split in splitSpeech)
-                {
-                    if (Regex.Match(split, @"\S").Success) // Trim out non-word statements; match only words
-                    {
-                        statements.Add(split);
-                    }
-                }
-            }
-            else
-            {
-                statements.Add(speech);
-            }
-            return statements;
-        }
-
         // Play a source
         private void play(IWaveSource source, int priority)
         {
@@ -280,6 +277,7 @@ namespace EddiSpeechService
                         Logging.Warn($"Failed to speak; {ce.Source} not registered. Installation may be corrupt or Windows version may be incompatible.", ce);
                         return;
                     }
+                    // ReSharper disable once AccessToDisposedClosure
                     soundOut.Stopped += (s, e) => waitHandle.Set();
 
                     TimeSpan waitTime = source.GetTime(source.Length);
@@ -302,35 +300,67 @@ namespace EddiSpeechService
         }
 
         // Obtain the speech memory stream
+<<<<<<< HEAD
         private MemoryStream getSpeechStream(string voice, string speech, int volume)
         {
             try
             {
                 MemoryStream stream = new MemoryStream();
                 speak(stream, voice, speech, volume);
+=======
+        private Stream getSpeechStream(string voice, string speech)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(voice))
+                {
+                    voice = windowsMediaSynth?.voice;
+                }
+>>>>>>> origin/develop
 
+                if (string.IsNullOrEmpty(voice))
+                {
+                    voice = systemSpeechSynth?.voice;
+                }
+
+                if (string.IsNullOrEmpty(voice))
+                {
+                    Logging.Error("Could not obtain a voice for speaking.");
+                }
+
+                var stream = speak(voice, speech);
                 if (stream.Length == 0)
                 {
                     // Try again, with speech devoid of SSML
+<<<<<<< HEAD
                     speak(stream, voice, Regex.Replace(speech, "<.*?>", string.Empty), volume);
+=======
+                    stream = speak(voice, Regex.Replace(speech, "<.*?>", string.Empty));
+>>>>>>> origin/develop
                 }
+
                 return stream;
             }
             catch (Exception ex)
             {
                 Logging.Warn("Speech failed (" + Encoding.Default.EncodingName + ")", ex);
             }
+
             return null;
         }
 
+<<<<<<< HEAD
         // Speak using the Windows SAPI speech synthesizer
         private void speak(MemoryStream stream, string voice, string speech, int volume)
+=======
+        private Stream speak(string voice, string speech)
+>>>>>>> origin/develop
         {
-            lock (synthLock)
+            // Get the voice we will use for speaking
+            VoiceDetails voiceDetails = null;
+            if (!string.IsNullOrEmpty(voice))
             {
-                if (synth == null) { synth = new SpeechSynthesizer(); };
-                var synthThread = new Thread(() =>
-            {
+<<<<<<< HEAD
                 try
                 {
                     if (voice != null)
@@ -408,46 +438,24 @@ namespace EddiSpeechService
                 synthThread.Start();
                 synthThread.Join();
                 stream.Position = 0;
+=======
+                voiceDetails = allVoices.SingleOrDefault(v => string.Equals(v.name, voice, StringComparison.InvariantCultureIgnoreCase));
+>>>>>>> origin/develop
             }
+            return speak(voiceDetails, speech);
         }
 
-        private void selectVoice(string voice)
+        private Stream speak(VoiceDetails voiceDetails, string speech)
         {
-            if (synth.Voice.Name == voice)
+            if (voiceDetails?.synthType is nameof(System.Speech.Synthesis))
             {
-                return;
+                return systemSpeechSynth?.Speak(voiceDetails, speech, Configuration);
             }
-            foreach (InstalledVoice vc in synth.GetInstalledVoices())
+            else if (voiceDetails?.synthType is nameof(Windows.Media.SpeechSynthesis))
             {
-                if (vc.VoiceInfo.Name == voice && !vc.VoiceInfo.Name.Contains("Microsoft Server Speech Text to Speech Voice"))
-                {
-                    if (vc.Enabled) { synth.SelectVoice(voice); }
-                }
+                return windowsMediaSynth?.Speak(voiceDetails, speech, Configuration);
             }
-        }
-
-        private string bestGuessCulture()
-        {
-            string guess = "en-US";
-            if (synth != null)
-            {
-                if (synth.Voice != null)
-                {
-                    if (synth.Voice.Name.Contains("CereVoice"))
-                    {
-                        /// Cereproc voices do not support the normal xml:lang attribute country/region codes (like en-GB) 
-                        /// (see https://www.cereproc.com/files/CereVoiceCloudGuide.pdf), 
-                        /// but it does support two letter country codes so we will use those instead
-                        guess = synth.Voice.Culture.Parent.Name;
-                    }
-                    else
-                    {
-                        // Trust the voice's information (with the complete country/region code)
-                        guess = synth.Voice.Culture.Name;
-                    }
-                }
-            }
-            return guess;
+            return null;
         }
 
         private void StartSpeech(ref ISoundOut soundout, int priority)
@@ -475,58 +483,6 @@ namespace EddiSpeechService
             }
         }
 
-        public static string escapeSsml(string text)
-        {
-            // Our input text might have SSML elements in it but the rest needs escaping
-            string result = text;
-
-            // We need to make sure file names for the play function include a "/" (e.g. C:/)
-            result = Regex.Replace(result, "(<.+?src=\")(.:)(.*?" + @"\/>)", "$1" + "$2%SSS%" + "$3");
-
-            // Our valid SSML elements are audio, break, emphasis, play, phoneme, & prosody so encode these differently for now
-            // Also escape any double quotes or single quotes inside the elements
-            result = Regex.Replace(result, "(<[^>]*)\"", "$1%ZZZ%");
-            result = Regex.Replace(result, "(<[^>]*)\"", "$1%ZZZ%");
-            result = Regex.Replace(result, "(<[^>]*)\"", "$1%ZZZ%");
-            result = Regex.Replace(result, "(<[^>]*)\"", "$1%ZZZ%");
-            result = Regex.Replace(result, "(<[^>]*)\'", "$1%WWW%");
-            result = Regex.Replace(result, "(<[^>]*)\'", "$1%WWW%");
-            result = Regex.Replace(result, "(<[^>]*)\'", "$1%WWW%");
-            result = Regex.Replace(result, "(<[^>]*)\'", "$1%WWW%");
-            result = Regex.Replace(result, "<(audio.*?)>", "%XXX%$1%YYY%");
-            result = Regex.Replace(result, "<(break.*?)>", "%XXX%$1%YYY%");
-            result = Regex.Replace(result, "<(play.*?)>", "%XXX%$1%YYY%");
-            result = Regex.Replace(result, "<(phoneme.*?)>", "%XXX%$1%YYY%");
-            result = Regex.Replace(result, "<(/phoneme)>", "%XXX%$1%YYY%");
-            result = Regex.Replace(result, "<(prosody.*?)>", "%XXX%$1%YYY%");
-            result = Regex.Replace(result, "<(/prosody)>", "%XXX%$1%YYY%");
-            result = Regex.Replace(result, "<(emphasis.*?)>", "%XXX%$1%YYY%");
-            result = Regex.Replace(result, "<(/emphasis)>", "%XXX%$1%YYY%");
-            result = Regex.Replace(result, "<(transmit.*?)>", "%XXX%$1%YYY%");
-            result = Regex.Replace(result, "<(/transmit)>", "%XXX%$1%YYY%");
-            result = Regex.Replace(result, "<(voice.*?)>", "%XXX%$1%YYY%");
-            result = Regex.Replace(result, "<(/voice)>", "%XXX%$1%YYY%");
-            result = Regex.Replace(result, "<(say-as.*?)>", "%XXX%$1%YYY%");
-            result = Regex.Replace(result, "<(/say-as)>", "%XXX%$1%YYY%");
-
-            // Cereproc uses some additional custom SSML tags (documented in https://www.cereproc.com/files/CereVoiceCloudGuide.pdf)
-            result = Regex.Replace(result, "<(usel.*?)>", "%XXX%$1%YYY%");
-            result = Regex.Replace(result, "<(/usel)>", "%XXX%$1%YYY%");
-            result = Regex.Replace(result, "<(spurt.*?)>", "%XXX%$1%YYY%");
-            result = Regex.Replace(result, "<(/spurt)>", "%XXX%$1%YYY%");
-
-            // Now escape anything that is still present
-            result = SecurityElement.Escape(result) ?? "";
-
-            // Put back the characters we hid
-            result = Regex.Replace(result, "%XXX%", "<");
-            result = Regex.Replace(result, "%YYY%", ">");
-            result = Regex.Replace(result, "%ZZZ%", "\"");
-            result = Regex.Replace(result, "%WWW%", "\'");
-            result = Regex.Replace(result, "%SSS%", @"\");
-            return result;
-        }
-
         public void StopCurrentSpeech()
         {
             lock (activeSpeechLock)
@@ -544,7 +500,7 @@ namespace EddiSpeechService
             }
         }
 
-        public void FadeOutCurrentSpeech()
+        private void FadeOutCurrentSpeech()
         {
             if (activeSpeech?.PlaybackState == PlaybackState.Playing)
             {
@@ -555,16 +511,6 @@ namespace EddiSpeechService
                     Thread.Sleep(10);
                 }
             }
-        }
-
-        private void WaitForCurrentSpeech()
-        {
-            Logging.Debug("Waiting for current speech to end");
-            while (activeSpeech != null)
-            {
-                Thread.Sleep(10);
-            }
-            Logging.Debug("Current speech ended");
         }
 
         private ISoundOut GetSoundOut()
@@ -579,7 +525,7 @@ namespace EddiSpeechService
             }
         }
 
-        public void StartOrContinueSpeaking()
+        private void StartOrContinueSpeaking()
         {
             if (!eddiSpeaking)
             {
@@ -592,7 +538,7 @@ namespace EddiSpeechService
                         {
                             try
                             {
-                                Instance.Speak(speech);
+                                Speak(speech);
                             }
                             catch (Exception ex)
                             {
@@ -632,9 +578,143 @@ namespace EddiSpeechService
 
         public event PropertyChangedEventHandler PropertyChanged;
 
-        public void NotifyPropertyChanged(string propName)
+        [JetBrains.Annotations.NotifyPropertyChangedInvocator]
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+
+    [PublicAPI]
+    public class VoiceDetails : IEquatable<VoiceDetails>
+    {
+        [PublicAPI]
+        public string name { get; }
+
+        [PublicAPI]
+        public string gender { get; }
+
+        [PublicAPI]
+        public string culturecode { get; }
+
+        public string synthType { get; }
+
+        [PublicAPI]
+        public string cultureinvariantname => Culture.EnglishName;
+
+        [PublicAPI]
+        public string culturename => Culture.NativeName;
+
+        public CultureInfo Culture { get; }
+
+        internal VoiceDetails(string displayName, string gender, CultureInfo Culture, string synthType)
+        {
+            this.name = displayName;
+            this.gender = gender;
+            this.Culture = Culture;
+            this.synthType = synthType;
+
+            culturecode = BestGuessCulture();
+        }
+
+        public HashSet<string> GetLexicons()
+        {
+            var result = new HashSet<string>();
+            HashSet<string> GetLexiconsFromDirectory(string directory, bool createIfMissing = false)
+            {
+                // When multiple lexicons are referenced, their precedence goes from lower to higher with document order.
+                // Precedence means that a token is first looked up in the lexicon with highest precedence.
+                // Only if not found in that lexicon, the next lexicon is searched and so on until a first match or until all lexicons have been used for lookup. (https://www.w3.org/TR/2004/REC-speech-synthesis-20040907/#S3.1.4).
+
+                if (string.IsNullOrEmpty(directory) || string.IsNullOrEmpty(culturecode)) { return null; }
+                DirectoryInfo dir = new DirectoryInfo(directory);
+                if (dir.Exists)
+                {
+                    // Find two letter language code lexicons (these will have lower precedence than any full language code lexicons)
+                    foreach (var file in dir.GetFiles("*.pls", SearchOption.AllDirectories)
+                        .Where(f => $"{f.Name.ToLowerInvariant()}" == $"{Culture.TwoLetterISOLanguageName.ToLowerInvariant()}.pls"))
+                    {
+                        CheckAndAdd(file);
+                    }
+                    // Find full language code lexicons
+                    foreach (var file in dir.GetFiles("*.pls", SearchOption.AllDirectories)
+                        .Where(f => $"{f.Name.ToLowerInvariant()}" == $"{Culture.IetfLanguageTag.ToLowerInvariant()}.pls"))
+                    {
+                        CheckAndAdd(file);
+                    }
+                }
+                else if (createIfMissing)
+                {
+                    dir.Create();
+                }
+                return result;
+            }
+
+            void CheckAndAdd(FileInfo file)
+            {
+                if (IsValidXML(file.FullName))
+                {
+                    result.Add(file.FullName);
+                }
+                else
+                {
+                    file.MoveTo($"{file.FullName}.malformed");
+                }
+            }
+
+            // When multiple lexicons are referenced, their precedence goes from lower to higher with document order (https://www.w3.org/TR/2004/REC-speech-synthesis-20040907/#S3.1.4) 
+
+            // Add lexicons from our installation directory
+            result.UnionWith(GetLexiconsFromDirectory(new FileInfo(System.Reflection.Assembly.GetExecutingAssembly().Location).DirectoryName + @"\lexicons"));
+
+            // Add lexicons from our user configuration (allowing these to overwrite any prior lexeme values)
+            result.UnionWith(GetLexiconsFromDirectory(Constants.DATA_DIR + @"\lexicons"));
+
+            return result;
+        }
+
+        private bool IsValidXML(string filename)
+        {
+            // Check whether the file is valid .xml (.pls is an xml-based format)
+            try
+            {
+                var _ = System.Xml.Linq.XDocument.Load(filename);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logging.Warn($"Could not load .pls file from {filename}.", ex);
+                return false;
+            }
+        }
+
+        private string BestGuessCulture()
+        {
+            string guess;
+            if (name.Contains("CereVoice"))
+            {
+                // Cereproc voices do not support the normal xml:lang attribute country/region codes (like en-GB) 
+                // (see https://www.cereproc.com/files/CereVoiceCloudGuide.pdf), 
+                // but it does support two letter country codes so we will use those instead
+                guess = Culture.Parent.Name;
+            }
+            else
+            {
+                // Trust the voice's information (with the complete country/region code)
+                guess = Culture.Name;
+            }
+            Logging.Debug($"Best guess culture for {name} is {guess}"); return guess;
+        }
+
+        // Implement IEquatable
+        public bool Equals(VoiceDetails other)
+        {
+            return name == other?.name;
+        }
+
+        public override int GetHashCode()
+        {
+            return name.GetHashCode();
         }
     }
 }

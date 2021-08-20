@@ -150,9 +150,7 @@
   <data name="header_status" xml:space="preserve">
     <value>Estado</value>
   </data>
-  <data name="header_type" xml:space="preserve">
-    <value>Tipo</value>
-  </data>
+  
   <data name="mission_monitor_desc" xml:space="preserve">
     <value>Rastrea la información de tus misiones.</value>
   </data>
@@ -186,4 +184,11 @@
   <data name="update_route_button_text" xml:space="preserve">
     <value>Actualizar ruta:</value>
   </data>
+  
+  
+  
+  
+  
+  
+  
 </root>

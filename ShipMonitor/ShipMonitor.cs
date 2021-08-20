@@ -201,10 +201,6 @@ namespace EddiShipMonitor
             {
                 handleShipRepairDroneEvent((ShipRepairDroneEvent)@event);
             }
-            else if (@event is ShipRepurchasedEvent)
-            {
-                handleShipRepurchasedEvent((ShipRepurchasedEvent)@event);
-            }
             else if (@event is ShipRestockedEvent)
             {
                 handleShipRestockedEvent((ShipRestockedEvent)@event);
@@ -262,11 +258,12 @@ namespace EddiShipMonitor
         // Set the ship name conditionally, avoiding filtered names
         private void setShipName(Ship ship, string name)
         {
+            if (ship is null) { return; }
             if (string.IsNullOrEmpty(name))
             {
                 ship.name = null;
             }
-            else if (name != null && !name.Contains("***"))
+            else if (!name.Contains("***"))
             {
                 ship.name = name;
             }
@@ -275,6 +272,7 @@ namespace EddiShipMonitor
         // Set the ship ident conditionally, avoiding filtered idents
         private void setShipIdent(Ship ship, string ident)
         {
+            if (ship is null) { return; }
             if (string.IsNullOrEmpty(ident))
             {
                 ship.ident = null;
@@ -770,27 +768,30 @@ namespace EddiShipMonitor
 
         private void handleShipRepairedEvent(ShipRepairedEvent @event)
         {
-            // This doesn't give us enough information at present to do anything useful
+            if (@event.itemEDNames.Contains("Wear"))
+            {
+                var currentShip = GetCurrentShip();
+                currentShip.health = 100M;
+            }
+            if (!@event.fromLoad) { writeShips(); }
         }
 
         private void handleShipRepairDroneEvent(ShipRepairDroneEvent @event)
         {
-            // This doesn't give us enough information at present to do anything useful
+            // This event does not report the percentage of hull repaired.
+            // It reports the integrity repaired (which we can't use since we do not calculate integrity).
+            // Set ship hull and module health with a profile refresh.
+            EDDI.Instance?.refreshProfile();
         }
 
         private void handleShipRefuelledEvent(ShipRefuelledEvent @event)
         {
-            // We do not keep track of current fuel level so nothing to do here
+            // We use status to track current fuel level so nothing to do here
         }
 
         private void handleShipRestockedEvent(ShipRestockedEvent @event)
         {
             // TODO
-        }
-
-        private void handleShipRepurchasedEvent(ShipRepurchasedEvent @event)
-        {
-            // We don't do anything here as this is followed by a full ship loadout event
         }
 
         private void handleModulePurchasedEvent(ModulePurchasedEvent @event)
@@ -1871,7 +1872,7 @@ namespace EddiShipMonitor
 
         private bool inTaxi(string edModel)
         {
-            return edModel.Contains("adder_taxi");
+            return edModel.Contains("_taxi");
         }
 
         private Task _refreshProfileDelayed;
@@ -1906,7 +1907,10 @@ namespace EddiShipMonitor
 
         public class JumpDetail
         {
+            [PublicAPI]
             public decimal distance { get; private set; }
+
+            [PublicAPI]
             public int jumps { get; private set; }
 
             public JumpDetail() { }

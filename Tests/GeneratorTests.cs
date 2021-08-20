@@ -1,4 +1,5 @@
-﻿using EddiEvents;
+﻿using Cottle.Stores;
+using EddiEvents;
 using EddiSpeechResponder.Service;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
@@ -6,7 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using Cottle.Stores;
+using Utilities;
 
 namespace GeneratorTests
 {
@@ -24,7 +25,7 @@ namespace GeneratorTests
         }
 
         [TestCleanup]
-        public void RestoreOutuptDirectory()
+        public void RestoreOutputDirectory()
         {
             Directory.SetCurrentDirectory(initialCurrentDirectory);
         }
@@ -36,64 +37,89 @@ namespace GeneratorTests
             {
                 List<string> output = new List<string>
                 {
-                    Events.DESCRIPTIONS[entry.Key] + "."
+                    Events.DESCRIPTIONS[entry.Key] + ".",
+                    ""
                 };
 
-                if (Events.VARIABLES.TryGetValue(entry.Key, out IDictionary<string, string> variables))
+                var vars = new MetaVariables(entry.Value).Results;
+                var CottleVars = vars.AsCottleVariables();
+                var VoiceAttackVars = vars.AsVoiceAttackVariables("EDDI", entry.Key);
+
+                if (!vars.Any())
                 {
-                    if (variables.Count == 0)
-                    {
-                        output.Add("This event has no variables.");
-                        output.Add("To respond to this event in VoiceAttack, create a command entitled ((EDDI " + entry.Key.ToLowerInvariant() + ")).");
-                    }
-                    else
-                    {
-                        output.Add("When using this event in the [Speech responder](Speech-Responder) the information about this event is available under the `event` object.  The available variables are as follows");
-                        output.Add("");
-                        output.Add("");
-                        foreach (KeyValuePair<string, string> variable in Events.VARIABLES[entry.Key])
-                        {
-                            output.Add("  * `" + variable.Key + "` " + variable.Value);
-                            output.Add("");
-                        }
-
-                        output.Add("To respond to this event in VoiceAttack, create a command entitled ((EDDI " + entry.Key.ToLowerInvariant() + ")). The event information can be accessed using the following VoiceAttack variables");
-                        output.Add("");
-                        output.Add("");
-                        foreach (KeyValuePair<string, string> variable in variables.OrderBy(i => i.Key))
-                        {
-                            System.Reflection.MethodInfo method = entry.Value.GetMethod("get_" + variable.Key);
-                            if (method != null)
-                            {
-                                Type returnType = method.ReturnType;
-                                if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Nullable<>))
-                                {
-                                    returnType = Nullable.GetUnderlyingType(returnType);
-                                }
-
-                                if (returnType == typeof(string))
-                                {
-                                    output.Add("  * `{TXT:EDDI " + entry.Key.ToLowerInvariant() + " " + variable.Key + "}` " + variable.Value);
-                                }
-                                else if (returnType == typeof(int))
-                                {
-                                    output.Add("  * `{INT:EDDI " + entry.Key.ToLowerInvariant() + " " + variable.Key + "}` " + variable.Value);
-                                }
-                                else if (returnType == typeof(bool))
-                                {
-                                    output.Add("  * `{BOOL:EDDI " + entry.Key.ToLowerInvariant() + " " + variable.Key + "}` " + variable.Value);
-                                }
-                                else if (returnType == typeof(decimal) || returnType == typeof(double) || returnType == typeof(long))
-                                {
-                                    output.Add("  * `{DEC:EDDI " + entry.Key.ToLowerInvariant() + " " + variable.Key + "}` " + variable.Value);
-                                }
-                            }
-                        }
-                        output.Add("");
-                        output.Add("");                    }
-                        output.Add("For more details on VoiceAttack integration, see https://github.com/EDCD/EDDI/wiki/VoiceAttack-Integration.");
+                    output.Add("This event has no variables.");
+                    output.Add("To respond to this event in VoiceAttack, create a command entitled ((EDDI " + entry.Key.ToLowerInvariant() + ")).");
+                    output.Add("");
                 }
-                output.Add("");
+
+                if (vars.Any(v => v.keysPath.Any(k => k.Contains(@"<index"))))
+                {
+                    output.Add("Where values are indexed (the compartments on a ship for example), the index will be represented by '*\\<index\\>*'.");
+                    if (VoiceAttackVars.Any(v => v.key.Contains(@"<index")))
+                    {
+                        output.Add("For VoiceAttack, a variable with the root name of the indexed array shall identify the total number of entries in the array. For example, if compartments 1 and 2 are available then the value of the corresponding 'compartments' variable will be 2.");
+                    }
+                    output.Add("");
+                }
+
+                if (CottleVars.Any())
+                {
+                    output.Add("When using this event in the [Speech responder](Speech-Responder) the information about this event is available under the `event` object.  The available variables are as follows:");
+                    output.Add("");
+                    output.Add("");
+
+                    foreach (var cottleVariable in CottleVars.OrderBy(i => i.key))
+                    {
+                        var description = !string.IsNullOrEmpty(cottleVariable.description) ? $" - {cottleVariable.description}" : "";
+                        output.Add($"  - *{{event.{cottleVariable.key}}}* {description}");
+                        output.Add("");
+                    }
+                }
+
+                if (VoiceAttackVars.Any())
+                {
+                    output.Add("");
+                    output.Add("To respond to this event in VoiceAttack, create a command entitled ((EDDI " + entry.Key.ToLowerInvariant() + ")). VoiceAttack variables will be generated to allow you to access the event information.");
+                    output.Add("");
+                    output.Add("The following VoiceAttack variables are available for this event:");
+                    output.Add("");
+                    output.Add("");
+
+                    void WriteVariableToOutput(VoiceAttackVariable variable)
+                    {
+                        var description = !string.IsNullOrEmpty(variable.description) ? $" - {variable.description}" : "";
+                        if (variable.variableType == typeof(string))
+                        {
+                            output.Add($"  - *{{TXT:{variable.key}}}* {description}");
+                        }
+                        else if (variable.variableType == typeof(int))
+                        {
+                            output.Add($"  - *{{INT:{variable.key}}}* {description}");
+                        }
+                        else if (variable.variableType == typeof(bool))
+                        {
+                            output.Add($"  - *{{BOOL:{variable.key}}}* {description}");
+                        }
+                        else if (variable.variableType == typeof(decimal))
+                        {
+                            output.Add($"  - *{{DEC:{variable.key}}}* {description}");
+                        }
+                        else if (variable.variableType == typeof(DateTime))
+                        {
+                            output.Add($"  - *{{DATE:{variable.key}}}* {description}");
+                        }
+                        output.Add("");
+                    }
+
+                    foreach (var variable in VoiceAttackVars.OrderBy(i => i.key))
+                    {
+                        WriteVariableToOutput(variable);
+                    }
+
+                    output.Add("");
+                    output.Add("For more details on VoiceAttack integration, see https://github.com/EDCD/EDDI/wiki/VoiceAttack-Integration.");
+                    output.Add("");
+                }
                 Directory.CreateDirectory(@"Wiki\events\");
                 File.WriteAllLines(@"Wiki\events\" + entry.Key.Replace(" ", "-") + "-event.md", output);
             }
@@ -128,11 +154,13 @@ namespace GeneratorTests
         public void TestGenerateEventVariables()
         {
             SortedSet<string> eventVars = new SortedSet<string>();
-            foreach (IDictionary<string, string> variableList in Events.VARIABLES.Values)
+
+            foreach (var type in Events.TYPES)
             {
-                foreach (string variableName in variableList.Keys)
+                var vars = new MetaVariables(type.Value).Results;
+                foreach (var key in vars.SelectMany(v => v.keysPath))
                 {
-                    eventVars.Add(variableName);
+                    eventVars.Add(key);
                 }
             }
 
@@ -203,5 +231,43 @@ namespace GeneratorTests
             File.WriteAllLines(@"Wiki\Help.md", help);
             File.WriteAllLines(@"Wiki\Functions.md", functions);
         }
+
+        //[TestMethod]
+        //public void GenerateIvonaPronunciations()
+        //{
+        //    var output = new List<string>();
+        //    var MyResourceClass = new System.Resources.ResourceManager(typeof(EddiSpeechService.Properties.Phonetics));
+
+        //    var resourceSet = MyResourceClass
+        //        .GetResourceSet(System.Globalization.CultureInfo.InvariantCulture, true, true);
+
+        //    foreach (System.Collections.DictionaryEntry entry in resourceSet)
+        //    {
+        //        string key = entry.Key.ToString();
+        //        string value = entry.Value.ToString();
+        //        output.Add($"{key}\t\"<speak><phoneme alphabet=\\\"ipa\\\" ph=\\\"{value}\\\">{key}</phoneme></speak>\"");
+        //    }
+
+        //    File.WriteAllLines(@"C:\Ivona.lex", output);
+        //}
+
+        //[TestMethod]
+        //public void GenerateCereprocPronunciations()
+        //{
+        //    var output = new List<string>();
+        //    var MyResourceClass = new System.Resources.ResourceManager(typeof(EddiSpeechService.Properties.Phonetics));
+
+        //    var resourceSet = MyResourceClass
+        //        .GetResourceSet(System.Globalization.CultureInfo.InvariantCulture, true, true);
+
+        //    foreach (System.Collections.DictionaryEntry entry in resourceSet)
+        //    {
+        //        string key = entry.Key.ToString();
+        //        string value = entry.Value.ToString();
+        //        output.Add($"{key} {value}");
+        //    }
+
+        //    File.WriteAllLines(@"C:\user_lexicon.txt", output);
+        //}
     }
 }

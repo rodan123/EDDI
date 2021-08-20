@@ -1,26 +1,19 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
+﻿using System;
+using Utilities;
 
 namespace EddiEvents
 {
+    [PublicAPI]
     public class SquadronStatusEvent : Event
     {
         public const string NAME = "Squadron status";
         public const string DESCRIPTION = "Triggered when your status with a squadron has changed";
         public const string SAMPLE = null;
-        public static Dictionary<string, string> VARIABLES = new Dictionary<string, string>();
 
-        static SquadronStatusEvent()
-        {
-            VARIABLES.Add("name", "The squadron name");
-            VARIABLES.Add("status", "The squadron status (`applied`, `created`, `disbanded`, `invited`, `joined`, `kicked`, `left`)");
-        }
-
-        [JsonProperty("name")]
+        [PublicAPI("The squadron name")]
         public string name { get; private set; }
 
-        [JsonProperty("status")]
+        [PublicAPI("The squadron status (`applied`, `created`, `disbanded`, `invited`, `joined`, `kicked`, `left`)")]
         public string status { get; private set; }
 
         public SquadronStatusEvent(DateTime timestamp, string name, string status) : base(timestamp, NAME)

@@ -95,7 +95,7 @@ namespace EddiDataDefinitions
         [JsonIgnore]
         public readonly string basename;
 
-        [JsonIgnore]
+        [PublicAPI, JsonIgnore]
         public string invariantName => resourceManager.GetString(basename, CultureInfo.InvariantCulture) ?? basename;
 
         [JsonIgnore]
@@ -104,8 +104,7 @@ namespace EddiDataDefinitions
         [JsonIgnore]
         public string localizedName => resourceManager.GetString(basename) ?? fallbackLocalizedName ?? basename;
 
-        [JsonIgnore]
-        [Obsolete("Please be explicit and use localizedName or invariantName")]
+        [PublicAPI, JsonIgnore, Obsolete("Please be explicit and use localizedName or invariantName")]
         public string name => localizedName;
 
         public override string ToString()

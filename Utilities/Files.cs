@@ -63,6 +63,10 @@ namespace Utilities
             }
             catch (FileNotFoundException ex)
             {
+                if (fileName.Contains(@"\EDDI\personalities\"))
+                {
+                    Logging.Warn("Personality " + fileName + " not found", ex);
+                }
                 if (!ignoreMissing)
                 {
                     Logging.Error("File " + fileName + " not found", ex);
@@ -146,7 +150,7 @@ namespace Utilities
             }
             catch (UnauthorizedAccessException ex)
             {
-                Logging.Error("Not allowed to write to " + fileName, ex);
+                Logging.Warn("Not allowed to write to " + fileName, ex);
             }
             catch (NotSupportedException ex)
             {

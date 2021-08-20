@@ -120,9 +120,7 @@
   <data name="Altruism" xml:space="preserve">
     <value>Donazione</value>
   </data>
-  <data name="AltruismCredits" xml:space="preserve">
-    <value>Donazione</value>
-  </data>
+  
   <data name="Assassinate" xml:space="preserve">
     <value>Assassinio</value>
   </data>
@@ -177,9 +175,6 @@
   <data name="MiningWing" xml:space="preserve">
     <value>Estrazione di Minerali in Gruppo</value>
   </data>
-  <data name="None" xml:space="preserve">
-    <value>Nessuno</value>
-  </data>
   <data name="PassengerBulk" xml:space="preserve">
     <value>Trasporta</value>
   </data>
@@ -189,9 +184,7 @@
   <data name="Piracy" xml:space="preserve">
     <value>Pirateria</value>
   </data>
-  <data name="Rescue" xml:space="preserve">
-    <value>Salvataggio</value>
-  </data>
+  
   <data name="Salvage" xml:space="preserve">
     <value>Recupero</value>
   </data>
@@ -210,4 +203,33 @@
   <data name="StartZone" xml:space="preserve">
     <value>Area di Partenza</value>
   </data>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 </root>

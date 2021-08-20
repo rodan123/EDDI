@@ -18,16 +18,17 @@ namespace EddiDataDefinitions
         public int LocalId { get; set; }
 
         /// <summary>the manufacturer of the ship (Lakon, CoreDynamics etc.)</summary>
-        [JsonIgnore]
+        [PublicAPI, JsonIgnore]
         public string manufacturer { get; set; }
 
         /// <summary>the spoken manufacturer of the ship (Lakon, CoreDynamics etc.) (rendered using ssml and IPA)</summary>
-        [JsonIgnore]
+        [PublicAPI, JsonIgnore]
         public string phoneticmanufacturer => SpokenManufacturer();
 
         /// <summary>the spoken model of the ship (Python, Anaconda, etc.) (rendered using ssml and IPA)</summary>
-        [JsonIgnore]
+        [PublicAPI, JsonIgnore]
         public string phoneticmodel => SpokenModel();
+
         [JsonIgnore]
         public List<Translation> phoneticModel { get; set; }
 
@@ -36,7 +37,7 @@ namespace EddiDataDefinitions
         public LandingPadSize Size { get; set; } = LandingPadSize.Small;
 
         /// <summary>the spoken size of this ship</summary>
-        [JsonIgnore]
+        [PublicAPI, JsonIgnore]
         public string size => (Size ?? LandingPadSize.Small).localizedName;
 
         /// <summary>the size of the military compartment slots</summary>
@@ -44,10 +45,12 @@ namespace EddiDataDefinitions
         public int? militarysize { get; set; }
 
         /// <summary>the total tonnage cargo capacity</summary>
+        [PublicAPI]
         public int cargocapacity { get; set; }
 
-        private long _value;
         /// <summary>the value of the ship without cargo, in credits</summary>
+
+        [PublicAPI]
         public long value
         {
             get
@@ -64,8 +67,11 @@ namespace EddiDataDefinitions
             }
         }
 
-        private long? _hullvalue;
+        private long _value;
+
         /// <summary>the value of the ship's hull, in credits</summary>
+        
+        [PublicAPI]
         public long? hullvalue
         {
             get
@@ -82,8 +88,11 @@ namespace EddiDataDefinitions
             }
         }
 
-        private long? _modulesvalue;
+        private long? _hullvalue;
+
         /// <summary>the value of the ship's hull, in credits</summary>
+        
+        [PublicAPI]
         public long? modulesvalue
         {
             get
@@ -100,11 +109,14 @@ namespace EddiDataDefinitions
             }
         }
 
+        private long? _modulesvalue;
+
         /// <summary>the value of the ship's rebuy, in credits</summary>
+        [PublicAPI]
         public long rebuy { get; set; }
 
-        private string _name;
         /// <summary>the name of this ship</summary>
+        [PublicAPI]
         public string name
         {
             get
@@ -120,9 +132,10 @@ namespace EddiDataDefinitions
                 }
             }
         }
+        private string _name;
 
-        private string _model;
         /// <summary>the model of the ship (Python, Anaconda, Cobra Mk. III, etc.)</summary>
+        [PublicAPI]
         public string model
         {
             get
@@ -139,8 +152,11 @@ namespace EddiDataDefinitions
             }
         }
 
-        private string _ident;
+        private string _model;
+
         /// <summary>the identifier of this ship</summary>
+
+        [PublicAPI]
         public string ident
         {
             get
@@ -157,13 +173,14 @@ namespace EddiDataDefinitions
             }
         }
 
-        [JsonIgnore]
-        private string _phoneticName;
+        private string _ident;
+
         /// <summary>the phonetic name of this ship</summary>
+        
         [JsonProperty("phoneticname")]
         public string phoneticName
         {
-            get { return _phoneticName; }
+            get => _phoneticName;
             set
             {
                 if (string.IsNullOrEmpty(value))
@@ -177,12 +194,18 @@ namespace EddiDataDefinitions
                 }
             }
         }
-
+        
         /// <summary>The ship's spoken name (rendered using ssml and IPA)</summary>
-        [JsonIgnore]
+
+        [PublicAPI, JsonIgnore]
         public string phoneticname => SpokenName();
 
-        // The type of mission
+        [JsonIgnore]
+        private string _phoneticName;
+
+        /// <summary>the role of this ship</summary>
+
+        [JsonProperty]
         public string roleEDName
         {
             get => Role.edname;
@@ -193,8 +216,6 @@ namespace EddiDataDefinitions
             }
         }
 
-        /// <summary>the role of this ship</summary>
-        private Role _Role = Role.MultiPurpose;
         [JsonIgnore]
         public Role Role
         {
@@ -212,7 +233,9 @@ namespace EddiDataDefinitions
             }
         }
 
-        [JsonIgnore, Obsolete("Please use localizedName or invariantName")]
+        private Role _Role = Role.MultiPurpose;
+
+        [PublicAPI, JsonIgnore, Obsolete("Please use localizedName or invariantName")]
         public string role => Role?.localizedName; // This string is made available for Cottle scripts that vary depending on the ship's role. 
 
         [JsonExtensionData]
@@ -259,16 +282,12 @@ namespace EddiDataDefinitions
             }
         }
 
-        public bool RawIsNotNull
-        {
-            get { return !string.IsNullOrEmpty(_raw); }
-        }
+        public bool RawIsNotNull => !string.IsNullOrEmpty(_raw);
 
         /// <summary>
         /// The wanted/hot status of this ship
         /// </summary>
-        private bool _hot = false;
-        [JsonIgnore]
+        [PublicAPI, JsonIgnore]
         public bool hot
         {
             get
@@ -285,10 +304,13 @@ namespace EddiDataDefinitions
             }
         }
 
+        private bool _hot = false;
+
         // <summary>the location where this ship is stored; null if the commander is in this ship</summary>
 
         /// <summary>the name of the system in which this ship is stored; null if the commander is in this ship</summary>
-        private string _starsystem;
+
+        [PublicAPI]
         public string starsystem
         {
             get
@@ -304,54 +326,106 @@ namespace EddiDataDefinitions
                 }
             }
         }
+
+        private string _starsystem;
+
         [Obsolete("Please use 'starsystem' instead")]
         public string system => starsystem; // Legacy Cottle scripts may use `system` rather than `starsystem`. 
 
         /// <summary>the name of the station in which this ship is stored; null if the commander is in this ship</summary>
+
+        [PublicAPI]
         public string station { get; set; }
+
+        [PublicAPI]
         public long? marketid { get; set; }
+        
         public decimal? x { get; set; }
+        
         public decimal? y { get; set; }
+        
         public decimal? z { get; set; }
 
         // Other properties for when this ship is stored
+
+        [PublicAPI]
         public bool intransit { get; set; }
+
+        [PublicAPI]
         public long? transferprice { get; set; }
+
+        [PublicAPI]
         public long? transfertime { get; set; }
+
+        [PublicAPI]
         public decimal? distance { get; set; }
 
+        [PublicAPI]
         public decimal health { get; set; }
+
         public Module cargohatch { get; set; }
+
+        [PublicAPI]
         public Module bulkheads { get; set; }
+
         public Module canopy { get; set; }
+
+        [PublicAPI]
         public Module powerplant { get; set; }
+
+        [PublicAPI]
         public Module thrusters { get; set; }
+
+        [PublicAPI]
         public Module frameshiftdrive { get; set; }
+
+        [PublicAPI]
         public Module lifesupport { get; set; }
+
+        [PublicAPI]
         public Module powerdistributor { get; set; }
+
+        [PublicAPI]
         public Module sensors { get; set; }
+
+        [PublicAPI]
         public Module fueltank { get; set; }
+
+        [PublicAPI]
         public List<Hardpoint> hardpoints { get; set; }
+
+        [PublicAPI]
         public List<Compartment> compartments { get; set; }
+
+        [PublicAPI]
         public List<LaunchBay> launchbays { get; set; }
+
         public string paintjob { get; set; }
 
+        [PublicAPI]
         public decimal? fueltankcapacity { get; set; } // Core capacity
+
+        [PublicAPI]
         public decimal? fueltanktotalcapacity { get; set; } // Capacity including additional tanks
+
         public decimal activeFuelReservoirCapacity { get; set; }
 
         // Ship jump properties
+
+        [PublicAPI]
         public decimal maxjumprange { get; set; }
 
         [JsonIgnore, Obsolete("Please use maxjumprange instead")]
         public decimal maxjump => maxjumprange;
 
+        [PublicAPI]
         public decimal maxfuelperjump { get; set; }
 
         [JsonIgnore, Obsolete("Please use maxfuelperjump instead")]
         public decimal maxfuel => maxfuelperjump;
 
         public decimal optimalmass { get; set; }
+
         public decimal unladenmass { get; set; }
 
         // Admin

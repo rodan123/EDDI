@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -436,20 +437,31 @@ namespace EddiDataDefinitions
                 new CommodityDefinition(128924334, 360, "AgronomicTreatment", Chemicals, 3464, false),
                 new CommodityDefinition(128958679, 361, "ApaVietii", Narcotics, 10362, true),
                 new CommodityDefinition(128961249, 362, "Tritium", Chemicals, 41684, false),
+                new CommodityDefinition(128983059, null, "OnionHeadC", Narcotics, 5387, false),
 
                 // Items for which we do not have Elite IDs
             };
         }
         private static readonly Dictionary<long, CommodityDefinition> CommoditiesByEliteID;
 
-        public readonly long EliteID;
-        public readonly long? EDDBID;
-        public readonly CommodityCategory category;
+        [PublicAPI, JsonProperty("category")]
+        public readonly CommodityCategory Category;
+
+        public string category => Category.localizedName;
+
+        [PublicAPI]
         public readonly bool rare;
 
         // The average price of a commodity can change - thus this cannot be read only.
         // Instead, this value should be updated whenever revised data is received.
+        [PublicAPI]
         public decimal avgprice { get; set; }
+
+        // Not intended to be user facing
+
+        public readonly long EliteID;
+        
+        public readonly long? EDDBID;
 
         // dummy used to ensure that the static constructor has run
         public CommodityDefinition() : this(0, null, "", Unknown)
@@ -459,7 +471,7 @@ namespace EddiDataDefinitions
         {
             this.EliteID = EliteID;
             this.EDDBID = EDDBID;
-            this.category = Category;
+            this.Category = Category;
             this.avgprice = AveragePrice;
             this.rare = Rare;
             CommoditiesByEliteID[EliteID] = this;

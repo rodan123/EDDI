@@ -1,22 +1,16 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
+﻿using System;
+using Utilities;
 
 namespace EddiEvents
 {
-    class FlightAssistEvent : Event
+    [PublicAPI]
+    public class FlightAssistEvent : Event
     {
         public const string NAME = "Flight assist";
         public const string DESCRIPTION = "Triggered when flight assist is toggled";
         public const string SAMPLE = null;
-        public static Dictionary<string, string> VARIABLES = new Dictionary<string, string>();
 
-        static FlightAssistEvent()
-        {
-            VARIABLES.Add("off", "A boolean value. True if flight assist is off.");
-        }
-
-        [JsonProperty("off")]
+        [PublicAPI("A boolean value. True if flight assist is off.")]
         public bool off { get; private set; }
 
         public FlightAssistEvent(DateTime timestamp, bool flight_assist_off) : base(timestamp, NAME)

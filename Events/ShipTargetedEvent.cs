@@ -1,74 +1,61 @@
 ﻿using EddiDataDefinitions;
-using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
+using Utilities;
 
 namespace EddiEvents
 {
+    [PublicAPI]
     public class ShipTargetedEvent : Event
     {
         public const string NAME = "Ship targeted";
         public const string DESCRIPTION = "Triggered when the player selects a target";
         public const string SAMPLE = "{\"timestamp\":\"2018-05-09T23:19:49Z\",\"event\":\"ShipTargeted\",\"TargetLocked\":true,\"Ship\":\"adder\",\"ScanStage\":3,\"PilotName\":\"$npc_name_decorate:#name=Phoenix;\",\"PilotName_Localised\":\"Phoenix\",\"PilotRank\":\"Competent\",\"ShieldHealth\":100.000000,\"HullHealth\":100.000000,\"Faction\":\"Union Cosmos\",\"LegalStatus\":\"Lawless\",\"Subsystem\":\"$int_powerplant_size3_class3_name;\",\"Subsystem_Localised\":\"Power Plant\",\"SubsystemHealth\":100.000000}";
-        public static Dictionary<string, string> VARIABLES = new Dictionary<string, string>();
 
-        static ShipTargetedEvent()
-        {
-            VARIABLES.Add("targetlocked", "True when a ship has been targeted. False when a target has been lost/deselected");
-            VARIABLES.Add("ship", "the model of the ship");
-            VARIABLES.Add("scanstage", "the stage of the ship scan (e.g. 0, 1, 2, or 3)");
-            VARIABLES.Add("name", "The name of the pilot");
-            VARIABLES.Add("rank", "The rank of the pilot");
-            VARIABLES.Add("faction", "The faction of the pilot");
-            VARIABLES.Add("power", "The aligned power of the pilot (if player is pledged)");
-            VARIABLES.Add("legalstatus", "The legal status of the pilot");
-            VARIABLES.Add("shieldhealth", "The health of the shields");
-            VARIABLES.Add("hullhealth", "The health of the hull");
-            VARIABLES.Add("subsystem", "The subsystem targeted");
-            VARIABLES.Add("subsystemhealth", "The health of the subsystem targeted");
-        }
-
-        [JsonProperty("targetlocked")]
+        [PublicAPI("True when a ship has been targeted. False when a target has been lost/deselected")]
         public bool targetlocked { get; private set; }
 
-        [JsonProperty("ship")]
+        [PublicAPI("the model of the ship")]
         public string ship { get; private set; }
 
-        [JsonProperty("scanstage")]
+        [PublicAPI("the stage of the ship scan (e.g. 0, 1, 2, or 3)")]
         public int? scanstage { get; private set; }
 
-        [JsonProperty("name")]
+        [PublicAPI("The name of the pilot")]
         public string name { get; private set; }
 
-        [JsonProperty("rank")]
+        [PublicAPI("The rank of the pilot")]
         public string rank => CombatRank?.localizedName ?? "unknown combat rank";
 
-        [JsonProperty("faction")]
+        [PublicAPI("The faction of the pilot")]
         public string faction { get; private set; }
 
-        [JsonProperty("power")]
+        [PublicAPI("The aligned power of the pilot (if player is pledged)")]
         public string power => (Power ?? Power.None).localizedName;
 
-        [JsonProperty("legalstatus")]
+        [PublicAPI("The legal status of the pilot")]
         public string legalstatus => (LegalStatus ?? LegalStatus.None).localizedName;
 
-        [JsonProperty("bounty")]
+        [PublicAPI("The bounty being offered by system authorities for destruction of the ship")]
         public int? bounty { get; private set; }
 
-        [JsonProperty("shieldhealth")]
+        [PublicAPI("The health of the shields")]
         public decimal? shieldhealth { get; private set; }
 
-        [JsonProperty("hullhealth")]
+        [PublicAPI("The health of the hull")]
         public decimal? hullhealth { get; private set; }
 
-        [JsonProperty("subsystem")]
+        [PublicAPI("The subsystem targeted")]
         public string subsystem { get; private set; }
 
-        [JsonProperty("subsystemhealth")]
+        [PublicAPI("The health of the subsystem targeted")]
         public decimal? subsystemhealth { get; private set; }
 
+        // Not intended to be user facing
+
         public CombatRating CombatRank { get; }
+
         public LegalStatus LegalStatus { get; }
+
         public Power Power { get; }
 
         public ShipTargetedEvent(DateTime timestamp, bool targetlocked, string ship, int? scanstage, string name, CombatRating rank, string faction, Power power, LegalStatus legalstatus, int? bounty, decimal? shieldhealth, decimal? hullhealth, string subsystem, decimal? subsystemhealth) : base(timestamp, NAME)

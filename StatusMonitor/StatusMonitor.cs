@@ -468,6 +468,11 @@ namespace EddiStatusMonitor
                 {
                     fuelLog = null;
                 }
+                // Detect whether we're in combat
+                if (lastStatus.in_danger && !thisStatus.in_danger)
+                {
+                    EDDI.Instance.enqueueEvent(new SafeEvent(DateTime.UtcNow) { fromLoad = false });
+                }
 
                 // Pass the change in status to all subscribed processes
                 OnStatus(StatusUpdatedEvent, currentStatus);
