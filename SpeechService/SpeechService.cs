@@ -138,17 +138,14 @@ namespace EddiSpeechService
             allVoices = voiceStore.OrderBy(v => v.name).ToList();
         }
 
-        public void Say(Ship ship, string message, int priority = 3, string voice = null, bool radio = false, string eventType = null, bool invokedFromVA = false, int volume = 0)
+        public void Say(Ship ship, string message, int priority = 3, string voice = null, bool radio = false, string eventType = null, bool invokedFromVA = false)
         {
             if (message == null) { return; }
-
-            //Check for out of range volume override values 
-            if (volume < 0 || volume > 100) { volume = 0; }
 
             Thread speechQueueHandler = new Thread(() =>
             {
                 // Queue the current speech
-                EddiSpeech queuingSpeech = new EddiSpeech(message, ship, priority, voice, radio, eventType, volume);
+                EddiSpeech queuingSpeech = new EddiSpeech(message, ship, priority, voice, radio, eventType);
                 speechQueue.Enqueue(queuingSpeech);
 
                 // Check the first item in the speech queue
@@ -184,10 +181,10 @@ namespace EddiSpeechService
 
         public static void Speak(EddiSpeech speech)
         {
-            Instance.Speak(speech.message, speech.voice, speech.echoDelay, speech.distortionLevel, speech.chorusLevel, speech.reverbLevel, speech.compressionLevel, speech.radio, speech.priority, speech.volume);
+            Instance.Speak(speech.message, speech.voice, speech.echoDelay, speech.distortionLevel, speech.chorusLevel, speech.reverbLevel, speech.compressionLevel, speech.radio, speech.priority);
         }
 
-        public void Speak(string speech, string voice, int echoDelay, int distortionLevel, int chorusLevel, int reverbLevel, int compressLevel, bool radio = false, int priority = 3, int volume = 0)
+        public void Speak(string speech, string voice, int echoDelay, int distortionLevel, int chorusLevel, int reverbLevel, int compressLevel, bool radio = false, int priority = 3)
         {
             if (speech == null || speech.Trim() == "") { return; }
 
@@ -220,11 +217,7 @@ namespace EddiSpeechService
                     statement = SpeechFormatter.StripRadioTags(statement);
                 }
 
-<<<<<<< HEAD
-                using (MemoryStream stream = getSpeechStream(voice, statement, volume))
-=======
                 using (Stream stream = getSpeechStream(voice, statement))
->>>>>>> origin/develop
                 {
                     if (stream == null)
                     {
@@ -300,14 +293,6 @@ namespace EddiSpeechService
         }
 
         // Obtain the speech memory stream
-<<<<<<< HEAD
-        private MemoryStream getSpeechStream(string voice, string speech, int volume)
-        {
-            try
-            {
-                MemoryStream stream = new MemoryStream();
-                speak(stream, voice, speech, volume);
-=======
         private Stream getSpeechStream(string voice, string speech)
         {
             try
@@ -316,7 +301,6 @@ namespace EddiSpeechService
                 {
                     voice = windowsMediaSynth?.voice;
                 }
->>>>>>> origin/develop
 
                 if (string.IsNullOrEmpty(voice))
                 {
@@ -332,11 +316,7 @@ namespace EddiSpeechService
                 if (stream.Length == 0)
                 {
                     // Try again, with speech devoid of SSML
-<<<<<<< HEAD
-                    speak(stream, voice, Regex.Replace(speech, "<.*?>", string.Empty), volume);
-=======
                     stream = speak(voice, Regex.Replace(speech, "<.*?>", string.Empty));
->>>>>>> origin/develop
                 }
 
                 return stream;
@@ -349,98 +329,13 @@ namespace EddiSpeechService
             return null;
         }
 
-<<<<<<< HEAD
-        // Speak using the Windows SAPI speech synthesizer
-        private void speak(MemoryStream stream, string voice, string speech, int volume)
-=======
         private Stream speak(string voice, string speech)
->>>>>>> origin/develop
         {
             // Get the voice we will use for speaking
             VoiceDetails voiceDetails = null;
             if (!string.IsNullOrEmpty(voice))
             {
-<<<<<<< HEAD
-                try
-                {
-                    if (voice != null)
-                    {
-                        try
-                        {
-                            Logging.Debug("Selecting voice " + voice);
-                            var timeout = new CancellationTokenSource();
-                            Task t = Task.Run(() => selectVoice(voice), timeout.Token);
-                            if (!t.Wait(TimeSpan.FromSeconds(2)))
-                            {
-                                timeout.Cancel();
-                                Logging.Warn("Failed to select voice " + voice + " (timed out)");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Logging.Warn("Failed to select voice " + voice, ex);
-                        }
-                    }
-                    Logging.Debug("Configuration is " + Configuration == null ? "<null>" : JsonConvert.SerializeObject(Configuration));
-                    synth.Rate = Configuration.Rate;
-                    //Logging.Info("Volume: " + volume + " Config: " + Configuration.Volume);
-                    if (volume > 0)
-                    {
-                        synth.Volume = volume;
-                    }
-                    else
-                    {
-                        synth.Volume = Configuration.Volume;
-                    }
-
-                    synth.SetOutputToWaveStream(stream);
-
-                    // Keep XML version at 1.0. Version 1.1 is not recommended for general use. https://en.wikipedia.org/wiki/XML#Versions
-                    if (speech.Contains("<"))
-                    {
-                        Logging.Debug("Obtaining best guess culture");
-                        string culture = @" xml:lang=""" + bestGuessCulture() + @"""";
-                        Logging.Debug("Best guess culture is " + culture);
-                        speech = @"<?xml version=""1.0"" encoding=""UTF-8""?><speak version=""1.0"" xmlns=""https://www.w3.org/2001/10/synthesis""" + culture + ">" + escapeSsml(speech) + @"</speak>";
-                        Logging.Debug("Feeding SSML to synthesizer: " + speech);
-                        if (voice != null && voice.StartsWith("CereVoice "))
-                        {
-                            // Cereproc voices do not respect `SpeakSsml` (particularly for IPA), but they do handle SSML via the `Speak` method.
-                            Logging.Debug("Working around CereVoice SSML support");
-                            synth.Speak(speech);
-                        }
-                        else
-                        {
-                            synth.SpeakSsml(speech);
-                        }
-                    }
-                    else
-                    {
-                        Logging.Debug("Feeding normal text to synthesizer: " + speech);
-                        synth.Speak(speech);
-                    }
-                    stream.ToArray();
-                }
-                catch (ThreadAbortException)
-                {
-                    Logging.Debug("Thread aborted");
-                }
-                catch (Exception ex)
-                {
-                    Logging.Warn("Speech failed: ", ex);
-                    var badSpeech = new Dictionary<string, object>() {
-                            {"speech", speech},
-                    };
-                    string badSpeechJSON = JsonConvert.SerializeObject(badSpeech);
-                    Logging.Info("Speech failed", badSpeechJSON, "", "");
-                }
-            });
-                synthThread.Start();
-                synthThread.Join();
-                stream.Position = 0;
-=======
                 voiceDetails = allVoices.SingleOrDefault(v => string.Equals(v.name, voice, StringComparison.InvariantCultureIgnoreCase));
->>>>>>> origin/develop
             }
             return speak(voiceDetails, speech);
         }
