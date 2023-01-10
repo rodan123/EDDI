@@ -1,4 +1,6 @@
 ﻿using EddiSpeechService.SpeechPreparation;
+using Microsoft.Win32;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -6,10 +8,8 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using Windows.Media.SpeechSynthesis;
-using Microsoft.Win32;
-using Newtonsoft.Json;
 using Utilities;
+using Windows.Media.SpeechSynthesis;
 
 namespace EddiSpeechService.SpeechSynthesizers
 {
@@ -60,25 +60,34 @@ namespace EddiSpeechService.SpeechSynthesizers
                 // Get all available voices from Windows.Media.SpeechSynthesis
                 foreach (var voice in SpeechSynthesizer.AllVoices)
                 {
-                    var voiceDetails = new VoiceDetails(voice.DisplayName, voice.Gender.ToString(),
-                        CultureInfo.GetCultureInfo(voice.Language), nameof(Windows.Media.SpeechSynthesis));
-
-                    // Skip voices which are not fully registered
-                    if (!TryOneCoreVoice(voiceDetails))
+                    try
                     {
-                        continue;
-                    }
+                        Logging.Debug($"Found voice: ", voice);
 
-                    voiceStore.Add(voiceDetails);
-                    Logging.Debug($"Found voice: {JsonConvert.SerializeObject(voiceDetails)}");
+                        var voiceDetails = new VoiceDetails(voice.DisplayName, voice.Gender.ToString(),
+                            CultureInfo.GetCultureInfo(voice.Language), nameof(Windows.Media));
+
+                        // Skip voices which are not fully registered
+                        if (!TryOneCoreVoice(voiceDetails))
+                        {
+                            continue;
+                        }
+
+                        voiceStore.Add(voiceDetails);
+                        Logging.Debug($"Loaded voice: ", voiceDetails);
+                    }
+                    catch (Exception e)
+                    {
+                        Logging.Error($"Failed to load {voice.DisplayName}", e);
+                    }
                 }
             }
         }
 
         internal Stream Speak(VoiceDetails voiceDetails, string speech, SpeechServiceConfiguration Configuration)
         {
-            Logging.Debug($"Selecting {nameof(Windows.Media.SpeechSynthesis)} synthesizer");
-            return WindowsMediaSpeechSynthesis(voiceDetails, speech, Configuration).AsStreamForRead();
+            Logging.Debug($"Selecting {nameof(Windows.Media)} synthesizer");
+            return WindowsMediaSpeechSynthesis(voiceDetails, speech, Configuration)?.AsStreamForRead();
         }
 
         private SpeechSynthesisStream WindowsMediaSpeechSynthesis(VoiceDetails voice, string speech, SpeechServiceConfiguration Configuration)
@@ -119,7 +128,7 @@ namespace EddiSpeechService.SpeechSynthesizers
 
                         synth.Options.SpeakingRate = ConvertSpeakingRate(Configuration.Rate);
                         synth.Options.AudioVolume = (double)Configuration.Volume / 100;
-                        Logging.Debug(JsonConvert.SerializeObject(Configuration));
+                        Logging.Debug("Configuration is: ", Configuration);
 
                         SpeechFormatter.PrepareSpeech(voice, ref speech, out var useSSML);
                         if (useSSML)

@@ -1,5 +1,5 @@
-﻿using EddiSpeechService;
-using Newtonsoft.Json;
+﻿using EddiCompanionAppService.Exceptions;
+using JetBrains.Annotations;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -11,15 +11,15 @@ using System.Net;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
-using JetBrains.Annotations;
 using Utilities;
 
 namespace EddiCompanionAppService
 {
-    public partial class CompanionAppService : IDisposable, INotifyPropertyChanged
+    public class CompanionAppService : IDisposable, INotifyPropertyChanged
     {
         // Implementation instructions from Frontier: https://hosting.zaonce.net/docs/oauth2/instructions.html
         private static readonly string LIVE_SERVER = "https://companion.orerve.net";
+        internal static readonly string LEGACY_SERVER = "https://legacy-companion.orerve.net";
         private static readonly string BETA_SERVER = "https://pts-companion.orerve.net";
         private static readonly string AUTH_SERVER = "https://auth.frontierstore.net";
         private static readonly string CALLBACK_URL = $"{Constants.EDDI_URL_PROTOCOL}://auth/";
@@ -28,23 +28,27 @@ namespace EddiCompanionAppService
         private static readonly string TOKEN_URL = "/token";
         private static readonly string AUDIENCE = "audience=steam,frontier,epic";
         private static readonly string SCOPE = "scope=capi";
-        private static readonly string PROFILE_URL = "/profile";
-        private static readonly string MARKET_URL = "/market";
-        private static readonly string SHIPYARD_URL = "/shipyard";
 
-        // We cache the profile to avoid spamming the service
-        private Profile cachedProfile;
-        private DateTime cachedProfileExpires;
+        // This API uses different endpoints for the "live" galaxy (currently game version 4.0 or later) or "legacy" galaxy.
+        private static readonly System.Version minLiveGameVersion = new System.Version(4, 0);
+        private static System.Version currentGameVersion { get; set; }
 
         private readonly CustomURLResponder URLResponder;
         private string verifier;
         private string authSessionID;
+        public CompanionAppCredentials Credentials;
+
+        public bool gameIsBeta { get; set; } = false;
+        public static bool unitTesting;
+
+        #region State Variables
 
         public enum State
         {
             LoggedOut,
             AwaitingCallback,
             Authorized,
+            ConnectionLost,
             NoClientIDConfigured,
             TokenRefresh,
         };
@@ -52,7 +56,7 @@ namespace EddiCompanionAppService
         public State CurrentState
         {
             get => _currentState;
-            private set
+            protected internal set
             {
                 if (_currentState == value) { return; }
                 State oldState = _currentState;
@@ -66,10 +70,11 @@ namespace EddiCompanionAppService
         // This is not a UI event handler so I consider that CA1009 is just unnecessary ceremony for no benefit.
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1009:DeclareEventHandlersCorrectly")]
         public event StateChangeHandler StateChanged;
-
-        public CompanionAppCredentials Credentials;
-        public bool gameIsBeta { get; set; } = false;
         public bool active => CurrentState == State.Authorized;
+
+        #endregion
+
+        #region Instance
 
         private static CompanionAppService instance;
         private readonly string clientID; // we are not allowed to check the client ID into version control or publish it to 3rd parties
@@ -94,6 +99,16 @@ namespace EddiCompanionAppService
             }
         }
 
+        #endregion
+
+        #region Endpoints
+
+        public readonly Endpoints.FleetCarrierEndpoint FleetCarrierEndpoint = new Endpoints.FleetCarrierEndpoint();
+        public readonly Endpoints.ProfileEndpoint ProfileEndpoint = new Endpoints.ProfileEndpoint();
+        public readonly Endpoints.CombinedStationEndpoints CombinedStationEndpoints = new Endpoints.CombinedStationEndpoints();
+
+        #endregion
+
         private CompanionAppService()
         {
             Credentials = CompanionAppCredentials.Load();
@@ -106,6 +121,11 @@ namespace EddiCompanionAppService
                 CurrentState = State.NoClientIDConfigured;
                 return;
             }
+            if (unitTesting)
+            {
+                CurrentState = State.Authorized;
+                return;
+            }
 
             try
             {
@@ -114,6 +134,7 @@ namespace EddiCompanionAppService
             }
             catch (Exception)
             {
+                if (Credentials.refreshToken != null) { CurrentState = State.ConnectionLost; }
                 CurrentState = State.LoggedOut;
             }
         }
@@ -134,9 +155,22 @@ namespace EddiCompanionAppService
             // dispose unmanaged resources
         }
 
-        private string ServerURL()
+        protected internal string ServerURL()
         {
-            return gameIsBeta ? BETA_SERVER : LIVE_SERVER;
+            return gameIsBeta 
+                ? BETA_SERVER 
+                : currentGameVersion != null && currentGameVersion < minLiveGameVersion 
+                    ? LEGACY_SERVER 
+                    : LIVE_SERVER;
+        }
+
+        public static void SetGameVersion(System.Version version)
+        {
+            currentGameVersion = version;
+            if (currentGameVersion != null && currentGameVersion < minLiveGameVersion)
+            {
+                Logging.Warn($"Service operating in LEGACY mode. Game version is {currentGameVersion}, LIVE endpoints require version {minLiveGameVersion} or later.");
+            }
         }
 
         ///<summary>Log in. Throws an exception if it fails</summary>
@@ -280,7 +314,7 @@ namespace EddiCompanionAppService
         {
             if (Credentials.accessToken == null) { return null; }
 
-            HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(AUTH_SERVER + DECODE_URL);
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(AUTH_SERVER + DECODE_URL);
             request.AllowAutoRedirect = true;
             request.Timeout = 10000;
             request.ReadWriteTimeout = 10000;
@@ -340,6 +374,7 @@ namespace EddiCompanionAppService
                     Credentials.Save();
                     if (Credentials.accessToken == null)
                     {
+                        CurrentState = State.ConnectionLost;
                         CurrentState = State.LoggedOut;
                         throw new EliteDangerousCompanionAppAuthenticationException("Access token not found");
                     }
@@ -347,6 +382,7 @@ namespace EddiCompanionAppService
                 }
                 else
                 {
+                    CurrentState = State.ConnectionLost;
                     CurrentState = State.LoggedOut;
                     throw new EliteDangerousCompanionAppAuthenticationException("Invalid refresh token");
                 }
@@ -363,71 +399,7 @@ namespace EddiCompanionAppService
             CurrentState = State.LoggedOut;
         }
 
-        public Profile Profile(bool forceRefresh = false)
-        {
-            if ((!forceRefresh) && cachedProfileExpires > DateTime.UtcNow)
-            {
-                // return the cached version
-                Logging.Debug("Returning cached profile");
-                return cachedProfile;
-            }
-
-            try
-            {
-                string data = obtainProfile(ServerURL() + PROFILE_URL, out DateTime timestamp);
-
-                if (data == null || data == "Profile unavailable")
-                {
-                    // Happens if there is a problem with the API.  Logging in again might clear this...
-                    relogin();
-                    if (CurrentState != State.Authorized)
-                    {
-                        // No luck; give up
-                        SpeechService.Instance.Say(null, Properties.CapiResources.frontier_api_lost, 0);
-                        Logout();
-                    }
-                    else
-                    {
-                        // Looks like login worked; try again
-                        data = obtainProfile(ServerURL() + PROFILE_URL, out timestamp);
-
-                        if (data == null || data == "Profile unavailable")
-
-                        {
-                            // No luck with a relogin; give up
-                            SpeechService.Instance.Say(null, Properties.CapiResources.frontier_api_lost, 0);
-                            Logout();
-                            throw new EliteDangerousCompanionAppException("Failed to obtain data from Frontier server (" + CurrentState + ")");
-                        }
-                    }
-                }
-
-                try
-                {
-                    cachedProfile = ProfileFromJson(data, timestamp);
-                }
-                catch (JsonException ex)
-                {
-                    Logging.Error("Failed to parse companion profile", ex);
-                    cachedProfile = null;
-                }
-            }
-            catch (EliteDangerousCompanionAppException ex)
-            {
-                // not Logging.Error as Rollbar is getting spammed when the server is down
-                Logging.Info(ex.Message);
-            }
-
-            if (cachedProfile != null)
-            {
-                cachedProfileExpires = DateTime.UtcNow.AddSeconds(30);
-                Logging.Debug("Profile is " + JsonConvert.SerializeObject(cachedProfile));
-            }
-
-            return cachedProfile;
-        }
-
-        private string obtainProfile(string url, out DateTime timestamp)
+        protected internal Tuple<string, DateTime> obtainData(string url)
         {
             DateTime expiry = Credentials?.tokenExpiry.AddSeconds(-60) ?? DateTime.MinValue;
             if (DateTime.UtcNow > expiry)
@@ -435,34 +407,44 @@ namespace EddiCompanionAppService
                 // Our access token has expired. Use our refresh token to obtain a new access token.
                 RefreshToken();
             }
-
-            if (CurrentState == State.Authorized)
+            if (CurrentState != State.Authorized)
             {
-                HttpWebRequest request = GetRequest(url);
-                using (HttpWebResponse response = GetResponse(request))
+                // Happens if there is a problem with the API.  Logging in again might clear this...
+                CurrentState = State.ConnectionLost;
+                relogin();
+                if (CurrentState != State.Authorized)
+                {
+                    // No luck; give up
+                    Logout();
+                    return null;
+                }
+
+                // Looks like login worked; try again
+                return obtainData(url);
+            }
+
+            try
+            {
+                var request = GetRequest(url);
+                using (var response = GetResponse(request))
                 {
                     if (response == null)
                     {
                         Logging.Debug("Failed to contact API server");
                         throw new EliteDangerousCompanionAppException("Failed to contact API server");
                     }
-
-                    if (response.StatusCode == HttpStatusCode.Found)
+                    if (response.StatusCode == HttpStatusCode.OK)
                     {
-                        timestamp = DateTime.MinValue;
-                        return null;
+                        var timestamp = DateTime.Parse(response.Headers.Get("date")).ToUniversalTime();
+                        return new Tuple<string, DateTime>(getResponseData(response), timestamp);
                     }
-
-                    timestamp = DateTime.Parse(response.Headers.Get("date")).ToUniversalTime();
-                    return getResponseData(response);
                 }
             }
-            else
+            catch (WebException wex)
             {
-                Logging.Debug("Service in incorrect state to provide profile (" + CurrentState + ")");
-                timestamp = DateTime.MinValue;
-                return null;
+                Logging.Warn(wex.Message, wex);
             }
+            return null;
         }
 
         /**
@@ -516,7 +498,7 @@ namespace EddiCompanionAppService
         // Set up a request with the correct parameters for talking to the companion app
         private HttpWebRequest GetRequest(string url)
         {
-            HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(url);
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             request.AllowAutoRedirect = true;
             request.Timeout = 10000;
             request.ReadWriteTimeout = 10000;
@@ -539,10 +521,10 @@ namespace EddiCompanionAppService
             }
             catch (WebException wex)
             {
-                Logging.Warn("Failed to obtain response, error code " + wex.Status);
-                return null;
+                Logging.Warn(wex.Message);
+                response = (HttpWebResponse)wex.Response;
             }
-            Logging.Debug("Response is " + JsonConvert.SerializeObject(response));
+            Logging.Debug($"Response from {request.Address} is: ", response);
             return response;
         }
 

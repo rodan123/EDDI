@@ -154,7 +154,7 @@
     <value>Wing Disable</value>
   </data>
   <data name="GenericPermit1" xml:space="preserve">
-    <value>Permit Aquisition</value>
+    <value>Permit Acquisition Opportunity</value>
   </data>
   <data name="Hack" xml:space="preserve">
     <value>Hacking</value>
@@ -187,7 +187,7 @@
     <value>Piracy</value>
   </data>
   <data name="Rescue" xml:space="preserve">
-    <value>Rescue Cargo</value>
+    <value>Rescue</value>
   </data>
   <data name="Salvage" xml:space="preserve">
     <value>Salvage</value>
@@ -244,14 +244,6 @@
   <data name="HackMegaship" xml:space="preserve">
     <value>Hack Megaship</value>
   </data>
-  <data name="ConflictCivilWar" xml:space="preserve">
-    <value>Civil War Targets</value>
-    <comment>Massacre mission type</comment>
-  </data>
-  <data name="ConflictWar" xml:space="preserve">
-    <value>War Targets</value>
-    <comment>Massacre mission type</comment>
-  </data>
   <data name="Skimmer" xml:space="preserve">
     <value>Skimmer Targets</value>
     <comment>Massacre type</comment>
@@ -307,5 +299,29 @@
   <data name="PolPrisoner" xml:space="preserve">
     <value>Political Prisoners</value>
     <comment>Bulk passenger type</comment>
+  </data>
+  <data name="Assassination" xml:space="preserve">
+    <value>Assassination</value>
+  </data>
+  <data name="Heist" xml:space="preserve">
+    <value>Heist</value>
+  </data>
+  <data name="POI" xml:space="preserve">
+    <value>Point of Interest</value>
+  </data>
+  <data name="Conflict" xml:space="preserve">
+    <value>Conflict Targets</value>
+  </data>
+  <data name="TheDead" xml:space="preserve">
+    <value>The Dead</value>
+    <comment>Guardian Ruins type mission</comment>
+  </data>
+  <data name="TW" xml:space="preserve">
+    <value>Thargoid War</value>
+    <comment>Thargoid War mission</comment>
+  </data>
+  <data name="Burning" xml:space="preserve">
+    <value>On Fire</value>
+    <comment>e.g. rescue from a burning station</comment>
   </data>
 </root>

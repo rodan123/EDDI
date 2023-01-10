@@ -1,4 +1,5 @@
-﻿using EddiCore;
+﻿using EddiConfigService;
+using EddiCore;
 using EddiSpeechService;
 using System;
 using System.Collections.Generic;
@@ -42,7 +43,7 @@ namespace Eddi
                 }
                 else
                 {
-                    EDDIConfiguration configuration = EDDIConfiguration.FromFile();
+                    EDDIConfiguration configuration = ConfigService.Instance.eddiConfiguration;
                     InstanceInfo info = configuration.Beta ? updateServerInfo.beta : updateServerInfo.production;
                     string spokenVersion = info.version.Replace(".", $" {Eddi.Properties.EddiResources.point} ");
                     Motd = info.motd;

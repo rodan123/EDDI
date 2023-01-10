@@ -61,7 +61,7 @@ namespace EddiBgsService
         }
 
         /// <summary> Can return null </summary>
-        public StarSystem GetSystemBySystemAddress(long? systemAddress)
+        public StarSystem GetSystemBySystemAddress(ulong? systemAddress)
         {
             if (systemAddress is null) { return null; }
             List<KeyValuePair<string, object>> queryList = new List<KeyValuePair<string, object>>()
@@ -85,8 +85,8 @@ namespace EddiBgsService
 
                 if (responses?.Count > 0)
                 {
-                    List<StarSystem> systems = ParseSystemsParallel(responses);
-                    return systems.OrderBy(x => x.systemname).ToList();
+                    var systems = ParseSystemsParallel(responses);
+                    return systems?.OrderBy(x => x.systemname).ToList();
                 }
             }
             return null;
@@ -94,7 +94,7 @@ namespace EddiBgsService
 
         public StarSystem GetSystemPowerplay(StarSystem system)
         {
-            StarSystem bgsSystem = GetSystemBySystemAddress(system.systemAddress) ?? GetSystemByName(system.systemname);
+            var bgsSystem = GetSystemBySystemAddress(system.systemAddress) ?? GetSystemByName(system.systemname);
             if (bgsSystem is null) { return system; }
             system.Power = bgsSystem.Power;
             system.powerState = bgsSystem.powerState;
@@ -104,7 +104,7 @@ namespace EddiBgsService
         private List<StarSystem> ParseSystemsParallel(List<object> responses)
         {
             // it is OK to allow nulls into this list; they will be handled upstream
-            List<StarSystem> systems = responses.AsParallel().Select(ParseSystem).ToList();
+            var systems = responses?.AsParallel().Select(ParseSystem).ToList();
             return systems;
         }
 
@@ -118,10 +118,12 @@ namespace EddiBgsService
                 StarSystem system = new StarSystem
                 {   
                     systemname = Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(JsonParsing.getString(systemJson, "name")), // This is lower case by default from the API
-                    systemAddress = long.Parse(JsonParsing.getString(systemJson, "ed_system_address")), // Stored in this API as a string
                     EDSMID = JsonParsing.getOptionalLong(systemJson, "edsm_id"),
                     updatedat = Dates.fromDateTimeToSeconds(JsonParsing.getDateTime("updated_at", systemJson))
                 };
+                // Stored in this API as a string. May be null.
+                var systemAddress = JsonParsing.getString(systemJson, "ed_system_address");
+                system.systemAddress = string.IsNullOrEmpty(systemAddress) ? null : (ulong?)ulong.Parse(systemAddress);
 
                 // Get powerplay data
                 // Note: EDDB does not report the following powerplay state ednames: 
@@ -146,12 +148,7 @@ namespace EddiBgsService
             }
             catch (Exception ex)
             {
-                Dictionary<string, object> data = new Dictionary<string, object>()
-                {
-                    { "input", response },
-                    { "exception", ex }
-                };
-                Logging.Error("Failed to parse BGS EDDB data.", data);
+                Logging.Error("Failed to parse BGS EDDB data.", ex);
                 return null;
             }
         }

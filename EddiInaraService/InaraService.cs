@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using EddiConfigService;
+using Newtonsoft.Json;
 using RestSharp;
 using System;
 using System.Collections.Concurrent;
@@ -28,6 +29,10 @@ namespace EddiInaraService
         private static CancellationTokenSource syncCancellationTS; // This must be static so that it is visible to child threads and tasks
         private bool eddiIsBeta;
         public static EventHandler invalidAPIkey;
+
+        // This API only accepts and only returns data for the "live" galaxy, game version 4.0 or later.
+        private static readonly System.Version minGameVersion = new System.Version(4, 0);
+        private static System.Version currentGameVersion { get; set; }
 
         public void Start(bool _eddiIsBeta = false)
         {
@@ -113,7 +118,7 @@ namespace EddiInaraService
 
             try
             {
-                if (inaraConfiguration is null) { inaraConfiguration = InaraConfiguration.FromFile(); }
+                if (inaraConfiguration is null) { inaraConfiguration = ConfigService.Instance.inaraConfiguration; }
                 List<InaraAPIEvent> indexedEvents = IndexAndFilterAPIEvents(events, inaraConfiguration);
                 if (indexedEvents.Count > 0)
                 {
@@ -139,6 +144,8 @@ namespace EddiInaraService
                     var clientResponse = client.Execute<InaraResponses>(request);
                     if (clientResponse.IsSuccessful)
                     {
+                        Logging.Debug("Inara responded with: ", clientResponse.Data);
+
                         InaraResponses response = clientResponse.Data;
                         if (validateResponse(response.header, indexedEvents, true))
                         {
@@ -219,21 +226,21 @@ namespace EddiInaraService
                 // 204 - 'Soft' error (everything was formally OK, but there are no results for the properties set, etc.)
                 if (inaraResponse.eventStatus == 202 || inaraResponse.eventStatus == 204)
                 {
-                    Logging.Warn("Inara responded with: " + (inaraResponse.eventStatusText ?? "(No response)"), JsonConvert.SerializeObject(data));
+                    Logging.Warn("Inara warning or soft error reported: " + (inaraResponse.eventStatusText ?? "(No response)"), JsonConvert.SerializeObject(data));
                 }
                 // Other errors
                 else if (!string.IsNullOrEmpty(inaraResponse.eventStatusText))
                 {
                     if (header)
                     {
-                        Logging.Warn("Inara responded with: " + (inaraResponse.eventStatusText ?? "(No response)"), JsonConvert.SerializeObject(data));
+                        Logging.Warn("Inara sending error: " + (inaraResponse.eventStatusText ?? "(No response)"), JsonConvert.SerializeObject(data));
                         if (inaraResponse.eventStatusText.Contains("Invalid API key"))
                         {
                             ReEnqueueAPIEvents(indexedEvents);
                             // The Inara API key has been rejected. We'll note and remember that.
-                            InaraConfiguration inaraConfiguration = InaraConfiguration.FromFile();
+                            var inaraConfiguration = ConfigService.Instance.inaraConfiguration;
                             inaraConfiguration.isAPIkeyValid = false;
-                            inaraConfiguration.ToFile();
+                            ConfigService.Instance.inaraConfiguration = inaraConfiguration;
                             // Send internal events to the Inara Responder and the UI to handle the invalid API key appropriately
                             invalidAPIkey?.Invoke(inaraConfiguration, new EventArgs());
                         }
@@ -248,21 +255,15 @@ namespace EddiInaraService
                     {
                         // There may be an issue with a specific API event.
                         // We'll add that API event to a list and omit sending that event again in this instance.
-                        Logging.Error("Inara responded with: " + inaraResponse.eventStatusText, data);
+                        Logging.Error("Inara event error: " + inaraResponse.eventStatusText, data);
                         invalidAPIEvents.Add(indexedEvents.Find(e => e.eventCustomID == inaraResponse.eventCustomID).eventName);
                     }
-                }
-                else
-                {
-                    // Inara responded, but no status text description was given.
-                    Logging.Error("Inara responded with: ", data);
                 }
                 return false;
             }
             catch (Exception e)
             {
-                data.Add("Exception", e);
-                Logging.Error("Failed to handle Inara server response", data);
+                Logging.Error("Failed to handle Inara server response", e);
                 return false;
             }
         }
@@ -290,20 +291,22 @@ namespace EddiInaraService
 
         public void SendAPIEvents(List<InaraAPIEvent> queue)
         {
-            InaraConfiguration inaraConfiguration = InaraConfiguration.FromFile();
+            var inaraConfiguration = ConfigService.Instance.inaraConfiguration;
             if (checkAPIcredentialsOk(inaraConfiguration))
             {
                 var responses = SendEventBatch(queue, inaraConfiguration);
                 if (responses != null && responses.Count > 0)
                 {
                     inaraConfiguration.lastSync = queue.Max(e => e.eventTimestamp);
-                    inaraConfiguration.ToFile();
+                    ConfigService.Instance.inaraConfiguration = inaraConfiguration;
                 }
             }
         }
 
         public void EnqueueAPIEvent(InaraAPIEvent inaraAPIEvent)
         {
+            if (currentGameVersion != null && currentGameVersion < minGameVersion) { return; }
+
             if (inaraAPIEvent.eventName.StartsWith("get"))
             {
                 Logging.Error("Cannot enqueue 'get' Inara API events as these require an immediate response. Send these directly.");
@@ -322,6 +325,15 @@ namespace EddiInaraService
                 // Clear any ID / index value assigned to the data
                 inaraAPIEvent.eventCustomID = null;
                 EnqueueAPIEvent(inaraAPIEvent);
+            }
+        }
+
+        public static void SetGameVersion(System.Version version)
+        {
+            currentGameVersion = version;
+            if (currentGameVersion != null && currentGameVersion < minGameVersion)
+            {
+                Logging.Warn($"Service disabled. Game version is {currentGameVersion}, service may only send and receive data for version {minGameVersion} or later.");
             }
         }
     }

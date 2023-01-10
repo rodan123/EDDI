@@ -1,4 +1,5 @@
-﻿using EddiCore;
+﻿using EddiConfigService;
+using EddiCore;
 using System;
 using System.Diagnostics;
 using System.Globalization;
@@ -19,6 +20,7 @@ namespace Eddi
         // True if we have been started by VoiceAttack and the vaProxy object has been set
         public static bool FromVA => vaProxy != null;
         public static dynamic vaProxy;
+        public static Action vaStartup;
 
         [STAThread]
         public static void Main()
@@ -30,8 +32,11 @@ namespace Eddi
 
             // Prepare to start the application
             Logging.incrementLogs(); // Increment to a new log file.
-            EDDIConfiguration configuration = EDDIConfiguration.FromFile();
-            //StartRollbar(configuration.DisableTelemetry); // do immediately to initialize error reporting
+            EDDIConfiguration configuration = ConfigService.Instance.eddiConfiguration;
+            if (configuration != null && !configuration.DisableTelemetry)
+            {
+                //StartTelemetryService(); // do immediately to initialize error reporting
+            }
             ApplyAnyOverrideCulture(configuration); // this must be done before any UI is generated
 
             // Start by fetching information from the update server, and handling appropriately
@@ -46,6 +51,7 @@ namespace Eddi
             {
                 // Start with the MainWindow hidden
                 app.MainWindow = new MainWindow();
+                vaStartup?.Invoke();
                 app.Run();
             }
             else
@@ -109,42 +115,42 @@ namespace Eddi
             return false;
         }
 
-        public static void StartRollbar(bool disableTelemetry)
+        private static void StartTelemetryService()
         {
-            // Configure Rollbar error reporting
-            _Rollbar.TelemetryEnabled = !disableTelemetry;
-            if (_Rollbar.TelemetryEnabled)
-            {
-                // Generate an id unique to this app run for bug tracking
-                _Rollbar.configureRollbar(Guid.NewGuid().ToString(), FromVA);
+            // Generate an id unique to this app run for bug tracking
+            // and start the telemetry service
+            var telemetryID = Guid.NewGuid().ToString();
+            Telemetry.Start(telemetryID, FromVA);
 
-                // Catch and send unhandled exceptions from Windows forms
-                System.Windows.Forms.Application.ThreadException += (sender, args) =>
-                {
-                    Exception exception = args.Exception;
-                    _Rollbar.ExceptionHandler(exception);
-                    ReloadAndRecover(exception);
-                };
-                // Catch and send unhandled exceptions from non-UI threads
-                AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
-                {
-                    Exception exception = args.ExceptionObject as Exception;
-                    _Rollbar.ExceptionHandler(exception);
-                    ReloadAndRecover(exception);
-                };
-                // Catch and send unhandled exceptions from the task scheduler
-                TaskScheduler.UnobservedTaskException += (sender, args) =>
-                {
-                    Exception exception = args.Exception;
-                    _Rollbar.ExceptionHandler(exception);
-                    ReloadAndRecover(exception);
-                };
-                // Catch and write managed exceptions to the local debug console (but do not send)
-                AppDomain.CurrentDomain.FirstChanceException += (sender, eventArgs) =>
-                {
-                    Debug.WriteLine(eventArgs.Exception.ToString());
-                };
-            }
+            // Catch and send unhandled exceptions
+            System.Windows.Forms.Application.ThreadException += (sender, args) =>
+            {
+                CrashLogger(args.Exception);
+            };
+            App.Current.DispatcherUnhandledException += (sender, args) =>
+            {
+                CrashLogger(args.Exception);
+            };
+            // Catch and send unhandled exceptions from non-UI threads
+            AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
+            {
+                CrashLogger(args.ExceptionObject as Exception);
+            };
+            // Catch and send unhandled exceptions from the task scheduler
+            TaskScheduler.UnobservedTaskException += (sender, args) =>
+            {
+                CrashLogger(args.Exception);
+            };
+            // Catch and write managed exceptions to the local debug console (but do not send)
+            AppDomain.CurrentDomain.FirstChanceException += (sender, args) =>
+            {
+                Debug.WriteLine(args.Exception.ToString());
+            };
+        }
+
+        private static void CrashLogger(Exception ex)
+        {
+            Logging.Error($"Unhandled exception: {ex.Message}.", ex);
         }
 
         public static void ApplyAnyOverrideCulture(EDDIConfiguration configuration)
@@ -152,7 +158,7 @@ namespace Eddi
             try
             {
                 // we are using the InvariantCulture name "" to mean user's culture
-                CultureInfo overrideCulture = string.IsNullOrEmpty(configuration.OverrideCulture) ? null : new CultureInfo(configuration.OverrideCulture);
+                var overrideCulture = string.IsNullOrEmpty(configuration.OverrideCulture) ? null : new CultureInfo(configuration.OverrideCulture);
                 ApplyCulture(overrideCulture);
             }
             catch
@@ -166,21 +172,14 @@ namespace Eddi
         {
             CultureInfo.DefaultThreadCurrentCulture = ci;
             CultureInfo.DefaultThreadCurrentUICulture = ci;
-            if (ci != null)
-            {
-                Thread.CurrentThread.CurrentCulture = ci;
-                Thread.CurrentThread.CurrentUICulture = ci;
-            }
+            OverrideThreadCulture(ci);
         }
 
-        private static void ReloadAndRecover(Exception exception)
+        public static void OverrideThreadCulture(CultureInfo ci)
         {
-#if DEBUG
-#else
-            Logging.Debug("Reloading after unhandled exception: " + exception.ToString());
-            EDDI.Instance.Stop();
-            EDDI.Instance.Start();
-#endif
+            if (ci == null) { return; }
+            Thread.CurrentThread.CurrentCulture = ci;
+            Thread.CurrentThread.CurrentUICulture = ci;
         }
     }
 }

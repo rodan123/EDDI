@@ -242,7 +242,7 @@
     <comment>Commodity AutoFabricators</comment>
   </data>
   <data name="AzCancriFormula42" xml:space="preserve">
-    <value>Formula 42 di A z Cancri</value>
+    <value>Formula 42 di AZ Cancri</value>
     <comment>Commodity AzCancriFormula42</comment>
   </data>
   <data name="BaltahSineVacuumKrill" xml:space="preserve">
@@ -442,7 +442,7 @@
     <comment>Commodity DamnaCarapaces</comment>
   </data>
   <data name="DataCore" xml:space="preserve">
-    <value>Nucleo Dati</value>
+    <value>Nucleo dati</value>
     <comment>Commodity DataCore</comment>
   </data>
   <data name="DeltaPhoenicisPalms" xml:space="preserve">
@@ -490,7 +490,7 @@
     <comment>Commodity EmergencyPowerCells</comment>
   </data>
   <data name="EncriptedDataStorage" xml:space="preserve">
-    <value>Archivio Dati Criptato</value>
+    <value>Archivio dati criptato</value>
     <comment>Commodity EncriptedDataStorage</comment>
   </data>
   <data name="EncryptedCorrespondence" xml:space="preserve">
@@ -741,7 +741,7 @@
     <value>Birra di Kongga</value>
     <comment>Commodity KonggaAle</comment>
   </data>
-  <data name="KoroKungPellets" xml:space="preserve">
+  <data name="KorroKungPellets" xml:space="preserve">
     <value>Fertilizzante di Koro Kung</value>
     <comment>Commodity KoroKungPellets</comment>
   </data>
@@ -754,7 +754,7 @@
     <comment>Commodity Lanthanum</comment>
   </data>
   <data name="LargeExplorationDataCash" xml:space="preserve">
-    <value>Contenitore Grande di dati ricavati dalla sorveglianza</value>
+    <value>Grande deposito di dati d'indagini</value>
     <comment>Commodity LargeExplorationDataCash</comment>
   </data>
   <data name="LavianBrandy" xml:space="preserve">
@@ -806,7 +806,7 @@
     <comment>Commodity LyraeWeed</comment>
   </data>
   <data name="MagneticEmitterCoil" xml:space="preserve">
-    <value>Bobine per Emettitori Magnetici</value>
+    <value>Bobina per Emettitore Magnetico</value>
     <comment>Commodity MagneticEmitterCoil</comment>
   </data>
   <data name="MarineSupplies" xml:space="preserve">
@@ -850,7 +850,7 @@
     <comment>Commodity MilitaryGradeFabrics</comment>
   </data>
   <data name="MilitaryIntelligence" xml:space="preserve">
-    <value>Dati segreti militari</value>
+    <value>Segreti militari</value>
     <comment>Commodity MilitaryIntelligence</comment>
   </data>
   <data name="MineralExtractors" xml:space="preserve">
@@ -1126,7 +1126,7 @@
     <comment>Commodity Slaves</comment>
   </data>
   <data name="SmallExplorationDataCash" xml:space="preserve">
-    <value>Contenitore piccolo di Dati di Sorveglianza</value>
+    <value>Piccolo deposito di dati d'indagini</value>
     <comment>Commodity SmallExplorationDataCash</comment>
   </data>
   <data name="SoontillRelics" xml:space="preserve">
@@ -1174,7 +1174,7 @@
     <comment>Commodity Taaffeite</comment>
   </data>
   <data name="TacticalData" xml:space="preserve">
-    <value>Dati Tattici</value>
+    <value>Dati tattici</value>
     <comment>Commodity TacticalData</comment>
   </data>
   <data name="TanmarkTranquilTea" xml:space="preserve">
@@ -1282,11 +1282,11 @@
     <comment>Commodity UnknownResin</comment>
   </data>
   <data name="UnknownTechnologySamples" xml:space="preserve">
-    <value>Campione Tecnologico Thargoid</value>
+    <value>Campioni di tecnologia Thargoid</value>
     <comment>Commodity UnknownTechnologySamples</comment>
   </data>
   <data name="UnstableDataCore" xml:space="preserve">
-    <value>Nucleo di Dati Instabile</value>
+    <value>Nucleo dati instabile</value>
     <comment>Commodity UnstableDataCore</comment>
   </data>
   <data name="Uraninite" xml:space="preserve">
@@ -1330,7 +1330,7 @@
     <comment>Commodity USSCargoTechnicalBlueprints</comment>
   </data>
   <data name="USSCargoTradeData" xml:space="preserve">
-    <value>Dati Commerciali</value>
+    <value>Dati commerciali</value>
     <comment>Commodity USSCargoTradeData</comment>
   </data>
   <data name="UszaianTreeGrub" xml:space="preserve">
@@ -1602,7 +1602,7 @@
     <comment>Commodity UtopianPublicity</comment>
   </data>
   <data name="PersonalGifts" xml:space="preserve">
-    <value>Doni Personali</value>
+    <value>Regali delle Feste</value>
     <comment>Commodity.PersonalGifts</comment>
   </data>
   <data name="ShansCharisOrchid" xml:space="preserve">
@@ -1614,7 +1614,7 @@
     <comment>Commodity Ancient Key</comment>
   </data>
   <data name="ThargoidTissueSampleType1" xml:space="preserve">
-    <value>Campione di Tessuto di Ciclope Thargoid</value>
+    <value>Campione di Tessuto di Ciclopide Thargoid</value>
     <comment>Commodity ThargoidTissueSampleType1</comment>
   </data>
   <data name="ThargoidTissueSampleType2" xml:space="preserve">
@@ -1662,7 +1662,7 @@
     <comment>Commodity Alexandrite</comment>
   </data>
   <data name="Opal" xml:space="preserve">
-    <value>Opali del Vuoto</value>
+    <value>Opale del vuoto</value>
     <comment>Commodity Opal</comment>
   </data>
   <data name="UnknownBiologicalMatter" xml:space="preserve">
@@ -1772,5 +1772,25 @@
   <data name="OnionHeadC" xml:space="preserve">
     <value>Distillato Gamma di Testa di Cipolla</value>
     <comment>Commodity Onionhead Gamma Strain</comment>
+  </data>
+  <data name="ClassifiedExperimentalEquipment" xml:space="preserve">
+    <value>Equipaggiamento sperimentale classificato</value>
+    <comment>Commodity ClassifiedExperimentalEquipment</comment>
+  </data>
+  <data name="AncientRelicTG" xml:space="preserve">
+    <value>Reliquia non classificata</value>
+    <comment>Commodity AncientRelicTG</comment>
+  </data>
+  <data name="ThargoidTissueSampleType5" xml:space="preserve">
+    <value>Campione di tessuto di Orthrus Thargoid</value>
+    <comment>Commodity ThargoidTissueSampleType5</comment>
+  </data>
+  <data name="ThargoidGeneratorTissueSample" xml:space="preserve">
+    <value>Campione di tessuto caustico</value>
+    <comment>Commodity ThargoidGeneratorTissueSample</comment>
+  </data>
+  <data name="UnocuppiedEscapePod" xml:space="preserve">
+    <value>Capsula di Salvataggio vuota</value>
+    <comment>Commodity UnocuppiedEscapePod</comment>
   </data>
 </root>

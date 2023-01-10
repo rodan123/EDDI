@@ -241,10 +241,7 @@
     <value>Dispositifs d'auto-fabrication</value>
     <comment>Commodity AutoFabricators</comment>
   </data>
-  <data name="AzCancriFormula42" xml:space="preserve">
-    <value>Formule 42 d'AZ Cancri</value>
-    <comment>Commodity AzCancriFormula42</comment>
-  </data>
+  
   <data name="BaltahSineVacuumKrill" xml:space="preserve">
     <value>Crevettes stellaires de Baltah'sine</value>
     <comment>Commodity BaltahSineVacuumKrill</comment>
@@ -741,7 +738,7 @@
     <value>Bière de Kongga</value>
     <comment>Commodity KonggaAle</comment>
   </data>
-  <data name="KoroKungPellets" xml:space="preserve">
+  <data name="KorroKungPellets" xml:space="preserve">
     <value>Boulettes Koro Kung</value>
     <comment>Commodity KoroKungPellets</comment>
   </data>
@@ -1601,10 +1598,7 @@
     <value>Pamphlets d'Utopia</value>
     <comment>Commodity UtopianPublicity</comment>
   </data>
-  <data name="PersonalGifts" xml:space="preserve">
-    <value>Cadeaux personnels</value>
-    <comment>Commodity.PersonalGifts</comment>
-  </data>
+  
   <data name="ShansCharisOrchid" xml:space="preserve">
     <value>Orchidée Shan Charis</value>
     <comment>Commodity ShansCharisOrchid</comment>
@@ -1769,5 +1763,10 @@
     <value>Ailes à faible gravité Uzumoku</value>
     <comment>Commodity UzumokuLowGWings</comment>
   </data>
+  
+  
+  
+  
+  
   
 </root>

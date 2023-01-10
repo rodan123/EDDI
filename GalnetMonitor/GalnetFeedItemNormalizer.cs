@@ -6,7 +6,7 @@ using System.ServiceModel.Syndication;
 using System.Text.RegularExpressions;
 using System.Text;
 
-namespace GalnetMonitor
+namespace EddiGalnetMonitor
 {
     /// <summary>
     /// The <see cref="DefaultFeedItemNormalizer"/> normalizes <see cref="FeedItem.Title"/>, 
@@ -41,10 +41,10 @@ namespace GalnetMonitor
             }
             else
             {
-                itemuri = alternatelink.GetAbsoluteUri();
+                itemuri = alternatelink?.GetAbsoluteUri();
             }
             string galnetId = GalnetMonitor.altURL ? FetchId(item.Summary.Text) : item.Id;
-            return new ExtendedFeedItem
+            return new FeedItem
             {
                 Id = string.IsNullOrEmpty(galnetId) ? null : galnetId.Trim(),
                 Title = item.Title == null ? null : Normalize(item.Title.Text, false),
@@ -136,17 +136,6 @@ namespace GalnetMonitor
                 return null;
 
             return newvalue;
-        }
-
-        public class ExtendedFeedItem : FeedItem
-        {
-            public string Id { get; set; }
-            public DateTimeOffset PublishDate { get; set; }
-            public DateTimeOffset LastUpdatedDate { get; set; }
-
-            public ExtendedFeedItem() { }
-            public ExtendedFeedItem(FeedItem item)
-                : base(item) { }
         }
     }
 }

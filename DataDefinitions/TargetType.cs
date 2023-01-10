@@ -8,11 +8,13 @@
         static TargetType()
         {
             resourceManager = Properties.TargetType.ResourceManager;
-            resourceManager.IgnoreCase = false;
+            resourceManager.IgnoreCase = true;
             missingEDNameHandler = (edname) => new TargetType(edname);
 
             var BountyHunter = new TargetType("BountyHunter");
             var Civilian = new TargetType("Civilian");
+            var CitizenHumanoid = new TargetType("CitizenHumanoid");
+            var GuardHumanoid = new TargetType("GuardHumanoid");
             var Hostage = new TargetType("Hostage");
             var Miner = new TargetType("Miner");
             var Pirate = new TargetType("Pirate");
@@ -23,7 +25,9 @@
             var TerroristLeader = new TargetType("TerroristLeader");
             var Trader = new TargetType("Trader");
             var VenerableGeneral = new TargetType("VenerableGeneral");
+            var Deserter = new TargetType("Deserter");
             var DeserterASS = new TargetType("DeserterASS");
+            var AIHumanoid = new TargetType("AIHumanoid");
         }
 
         // dummy used to ensure that the static constructor has run

@@ -19,7 +19,7 @@ namespace EddiDataDefinitions.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class MissionType {
@@ -88,11 +88,29 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Assassination.
+        /// </summary>
+        internal static string Assassination {
+            get {
+                return ResourceManager.GetString("Assassination", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Black Ops.
         /// </summary>
         internal static string BlOps {
             get {
                 return ResourceManager.GetString("BlOps", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to On Fire.
+        /// </summary>
+        internal static string Burning {
+            get {
+                return ResourceManager.GetString("Burning", resourceCulture);
             }
         }
         
@@ -133,20 +151,11 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Civil War Targets.
+        ///   Looks up a localized string similar to Conflict Targets.
         /// </summary>
-        internal static string ConflictCivilWar {
+        internal static string Conflict {
             get {
-                return ResourceManager.GetString("ConflictCivilWar", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to War Targets.
-        /// </summary>
-        internal static string ConflictWar {
-            get {
-                return ResourceManager.GetString("ConflictWar", resourceCulture);
+                return ResourceManager.GetString("Conflict", resourceCulture);
             }
         }
         
@@ -241,7 +250,7 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Permit Aquisition.
+        ///   Looks up a localized string similar to Permit Acquisition Opportunity.
         /// </summary>
         internal static string GenericPermit1 {
             get {
@@ -273,6 +282,15 @@ namespace EddiDataDefinitions.Properties {
         internal static string Hard {
             get {
                 return ResourceManager.GetString("Hard", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Heist.
+        /// </summary>
+        internal static string Heist {
+            get {
+                return ResourceManager.GetString("Heist", resourceCulture);
             }
         }
         
@@ -430,6 +448,15 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Point of Interest.
+        /// </summary>
+        internal static string POI {
+            get {
+                return ResourceManager.GetString("POI", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Political Prisoners.
         /// </summary>
         internal static string PolPrisoner {
@@ -502,7 +529,7 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Rescue Cargo.
+        ///   Looks up a localized string similar to Rescue.
         /// </summary>
         internal static string Rescue {
             get {
@@ -570,6 +597,24 @@ namespace EddiDataDefinitions.Properties {
         internal static string StartZone {
             get {
                 return ResourceManager.GetString("StartZone", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The Dead.
+        /// </summary>
+        internal static string TheDead {
+            get {
+                return ResourceManager.GetString("TheDead", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Thargoid War.
+        /// </summary>
+        internal static string TW {
+            get {
+                return ResourceManager.GetString("TW", resourceCulture);
             }
         }
         

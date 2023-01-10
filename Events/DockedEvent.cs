@@ -22,11 +22,11 @@ namespace EddiEvents
         [PublicAPI("The market ID of station at which the commander has docked")]
         public long? marketId { get; private set; }
 
-        [PublicAPI("The special state of the station, if applicable (\"Damaged\" for damaged stations for example)")]
+        [PublicAPI("The special state of the station, if applicable (e.g. \"Damaged\", \"UnderAttack\", \"UnderRepairs\")")]
         public string state { get; private set; }
 
         [PublicAPI("The model of the station at which the commander has docked (Orbis, Coriolis, etc)")]
-        public string model => stationModel.localizedName;
+        public string model => stationModel?.localizedName;
 
         [PublicAPI("The economy of the station at which the commander has docked")]
         public string economy => economyShares.Count > 0 ? (economyShares[0]?.economy ?? Economy.None).localizedName : Economy.None.localizedName;
@@ -76,19 +76,17 @@ namespace EddiEvents
 
         // These properties are not intended to be user facing
 
-        public long? systemAddress { get; private set; }
+        public ulong systemAddress { get; private set; }
 
-        public StationModel stationModel { get; private set; } = StationModel.None;
+        public StationModel stationModel { get; private set; }
 
         public Faction controllingfaction { get; private set; }
 
-        public List<StationService> stationServices { get; private set; } = new List<StationService>();
+        public List<StationService> stationServices { get; private set; }
 
-        public FactionState factionState { get; private set; } = FactionState.None;
+        public List<EconomyShare> economyShares { get; private set; }
 
-        public List<EconomyShare> economyShares { get; private set; } = new List<EconomyShare>() { new EconomyShare(Economy.None, 0M), new EconomyShare(Economy.None, 0M) };
-
-        public DockedEvent(DateTime timestamp, string system, long? systemAddress, long? marketId, string station, string state, StationModel stationModel, Faction controllingfaction, List<EconomyShare> Economies, decimal? distancefromstar, List<StationService> stationServices, bool cockpitBreach, bool wanted, bool activeFine) : base(timestamp, NAME)
+        public DockedEvent(DateTime timestamp, string system, ulong systemAddress, long? marketId, string station, string state, StationModel stationModel, Faction controllingfaction, List<EconomyShare> Economies, decimal? distancefromstar, List<StationService> stationServices, bool cockpitBreach, bool wanted, bool activeFine) : base(timestamp, NAME)
         {
             this.system = system;
             this.systemAddress = systemAddress;
@@ -97,9 +95,9 @@ namespace EddiEvents
             this.state = state;
             this.stationModel = stationModel ?? StationModel.None;
             this.controllingfaction = controllingfaction;
-            this.economyShares = Economies;
+            this.economyShares = Economies ?? new List<EconomyShare>() { new EconomyShare(Economy.None, 0M), new EconomyShare(Economy.None, 0M) };
             this.distancefromstar = distancefromstar;
-            this.stationServices = stationServices;
+            this.stationServices = stationServices ?? new List<StationService>();
             this.cockpitbreach = cockpitBreach;
             this.wanted = wanted;
             this.activefine = activeFine;

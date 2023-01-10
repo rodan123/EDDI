@@ -241,10 +241,7 @@
     <value>Автосинтезаторы</value>
     <comment>Commodity AutoFabricators</comment>
   </data>
-  <data name="AzCancriFormula42" xml:space="preserve">
-    <value>Формула 42 AZ Cancri</value>
-    <comment>Commodity AzCancriFormula42</comment>
-  </data>
+  
   <data name="BaltahSineVacuumKrill" xml:space="preserve">
     <value>Вакуумный криль с Балтах'сине</value>
     <comment>Commodity BaltahSineVacuumKrill</comment>
@@ -741,7 +738,7 @@
     <value>Эль с Кунгги</value>
     <comment>Commodity KonggaAle</comment>
   </data>
-  <data name="KoroKungPellets" xml:space="preserve">
+  <data name="KorroKungPellets" xml:space="preserve">
     <value>Корокунгские катышки</value>
     <comment>Commodity KoroKungPellets</comment>
   </data>
@@ -1601,10 +1598,7 @@
     <value>Публикации Утопии</value>
     <comment>Commodity UtopianPublicity</comment>
   </data>
-  <data name="PersonalGifts" xml:space="preserve">
-    <value>Персональные подарки</value>
-    <comment>Commodity.PersonalGifts</comment>
-  </data>
+  
   <data name="ShansCharisOrchid" xml:space="preserve">
     <value>Орхидея Shan Charis</value>
     <comment>Commodity ShansCharisOrchid</comment>
@@ -1773,4 +1767,12 @@
     <value>Луковая головка, сорт гамма</value>
     <comment>Commodity Onionhead Gamma Strain</comment>
   </data>
+  <data name="ClassifiedExperimentalEquipment" xml:space="preserve">
+    <value>Классифицированное экспериментальное оборудование</value>
+    <comment>Commodity ClassifiedExperimentalEquipment</comment>
+  </data>
+  
+  
+  
+  
 </root>

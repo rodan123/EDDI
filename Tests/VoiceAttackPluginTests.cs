@@ -1,18 +1,19 @@
-﻿using EddiCargoMonitor;
-using EddiDataDefinitions;
+﻿using EddiDataDefinitions;
 using EddiEvents;
 using EddiJournalMonitor;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using Utilities;
 
 namespace UnitTests
 {
     public class MockVAProxy
     {
-        public List<string> vaLog = new List<string>();
+        [UsedImplicitly] public List<string> vaLog = new List<string>();
+
         public Dictionary<string, object> vaVars = new Dictionary<string, object>();
 
         public void WriteToLog(string msg, string color = null)
@@ -65,6 +66,7 @@ namespace UnitTests
             Assert.IsTrue(events.Count == 1);
             Assert.IsInstanceOfType(events[0], typeof(ExplorationDataSoldEvent));
             var ev = events[0] as ExplorationDataSoldEvent;
+            Assert.IsNotNull(ev);
 
             var vars = new MetaVariables(ev.GetType(), ev).Results;
 
@@ -100,6 +102,7 @@ namespace UnitTests
             Assert.IsTrue(events.Count == 1);
             Assert.IsInstanceOfType(events[0], typeof(DiscoveryScanEvent));
             DiscoveryScanEvent ev = events[0] as DiscoveryScanEvent;
+            Assert.IsNotNull(ev);
 
             Assert.AreEqual(7, ev.totalbodies);
             Assert.AreEqual(3, ev.nonbodies);
@@ -127,6 +130,7 @@ namespace UnitTests
             Assert.IsTrue(events.Count == 1);
             Assert.IsInstanceOfType(events[0], typeof(AsteroidProspectedEvent));
             AsteroidProspectedEvent ev = events[0] as AsteroidProspectedEvent;
+            Assert.IsNotNull(ev);
 
             var vars = new MetaVariables(ev.GetType(), ev).Results;
 
@@ -175,11 +179,12 @@ namespace UnitTests
             var vars = new MetaVariables(ev.GetType(), ev).Results;
 
             var cottleVars = vars.AsCottleVariables();
+            Assert.IsNotNull(cottleVars);
             Assert.AreEqual(4, cottleVars.Count);
-            Assert.AreEqual("Water", cottleVars.FirstOrDefault(k => k.key == "commodity").value);
-            Assert.AreEqual(5, cottleVars.FirstOrDefault(k => k.key == "amount").value);
-            Assert.IsNull(cottleVars.FirstOrDefault(k => k.key == "missionid").value);
-            Assert.AreEqual(true, cottleVars.FirstOrDefault(k => k.key == "abandoned").value);
+            Assert.AreEqual("Water", cottleVars.FirstOrDefault(k => k.key == "commodity")?.value);
+            Assert.AreEqual(5, cottleVars.FirstOrDefault(k => k.key == "amount")?.value);
+            Assert.IsNull(cottleVars.FirstOrDefault(k => k.key == "missionid")?.value);
+            Assert.AreEqual(true, cottleVars.FirstOrDefault(k => k.key == "abandoned")?.value);
 
             var vaVars = vars.AsVoiceAttackVariables("EDDI", ev.type);
             foreach (var @var in vaVars) { @var.Set(vaProxy); }

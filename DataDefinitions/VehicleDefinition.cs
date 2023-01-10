@@ -8,7 +8,7 @@ namespace EddiDataDefinitions
         static VehicleDefinition()
         {
             resourceManager = Properties.Vehicle.ResourceManager;
-            resourceManager.IgnoreCase = false;
+            resourceManager.IgnoreCase = true;
 
             var Empire = new VehicleDefinition("Empire");
             var Federation = new VehicleDefinition("Federation");
@@ -16,7 +16,8 @@ namespace EddiDataDefinitions
             var GdnHybridV2 = new VehicleDefinition("GdnHybridV2");
             var GdnHybridV3 = new VehicleDefinition("GdnHybridV3");
             var Independent = new VehicleDefinition("Independent");
-            var TestBuggy = new VehicleDefinition("TestBuggy");
+            var TestBuggy = new VehicleDefinition("TestBuggy"); // Scarab SRV
+            var CombatSRV = new VehicleDefinition("CombatMulticrewSRV01"); // Scorpion SRV
         }
 
         // dummy used to ensure that the static constructor has run

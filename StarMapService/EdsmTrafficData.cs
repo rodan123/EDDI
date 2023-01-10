@@ -22,44 +22,52 @@ namespace EddiStarMapService
                 );
                 return hostility;
             }
-            return new Traffic();
+            return null;
         }
 
         public Traffic GetStarMapTraffic(string systemName, long? edsmId = null)
         {
             if (systemName == null) { return null; }
-
+            if (currentGameVersion != null && currentGameVersion < minGameVersion) { return null; }
 
             var request = new RestRequest("api-system-v1/traffic", Method.POST);
             request.AddParameter("systemName", systemName);
-            request.AddParameter("systemId", edsmId);
+            if (edsmId != null) { request.AddParameter("systemId", edsmId); }
             var clientResponse = restClient.Execute<Dictionary<string, object>>(request);
             if (clientResponse.IsSuccessful)
             {
+                Logging.Debug("EDSM responded with " + clientResponse.Content);
                 var token = JToken.Parse(clientResponse.Content);
                 if (token is JObject response)
                 {
                     return ParseStarMapTraffic(response);
                 }
             }
-            return new Traffic();
+            else
+            {
+                Logging.Debug("EDSM responded with " + clientResponse.ErrorMessage, clientResponse.ErrorException);
+            }
+            return null;
         }
 
         public Traffic ParseStarMapTraffic(JObject response)
         {
             if (response.IsNullOrEmpty()) { return new Traffic(); }
-            Traffic traffic = ((JObject)response["traffic"]).ToObject<Traffic>();
+            Traffic traffic = ((JObject)response["traffic"]).ToObject<Traffic>() ?? new Traffic();
             return traffic;
         }
 
         public Traffic GetStarMapDeaths(string systemName, long? edsmId = null)
         {
             if (systemName == null) { return null; }
-
+            if (currentGameVersion != null && currentGameVersion < minGameVersion) { return null; }
 
             var request = new RestRequest("api-system-v1/deaths", Method.POST);
             request.AddParameter("systemName", systemName);
-            request.AddParameter("systemId", edsmId);
+            if (edsmId != null)
+            {
+                request.AddParameter("systemId", edsmId);
+            }
             var clientResponse = restClient.Execute<Dictionary<string, object>>(request);
             if (clientResponse.IsSuccessful)
             {
@@ -69,13 +77,17 @@ namespace EddiStarMapService
                     return ParseStarMapDeaths(response);
                 }
             }
-            return new Traffic();
+            else
+            {
+                Logging.Debug("EDSM responded with " + clientResponse.ErrorMessage, clientResponse.ErrorException);
+            }
+            return null;
         }
 
         public Traffic ParseStarMapDeaths(JObject response)
         {
             if (response.IsNullOrEmpty()) { return new Traffic(); }
-            Traffic deaths = ((JObject)response["deaths"]).ToObject<Traffic>();
+            Traffic deaths = ((JObject)response["deaths"]).ToObject<Traffic>() ?? new Traffic();
             return deaths;
         }
     }

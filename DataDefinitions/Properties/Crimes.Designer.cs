@@ -223,6 +223,15 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Arc cutter use.
+        /// </summary>
+        public static string onFoot_arcCutterUse {
+            get {
+                return ResourceManager.GetString("onFoot_arcCutterUse", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Assault.
         /// </summary>
         public static string onFoot_assault {
@@ -241,11 +250,38 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Carrying illegal data.
+        /// </summary>
+        public static string onFoot_carryingIllegalData {
+            get {
+                return ResourceManager.GetString("onFoot_carryingIllegalData", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Carrying stolen goods.
+        /// </summary>
+        public static string onFoot_carryingStolenGoods {
+            get {
+                return ResourceManager.GetString("onFoot_carryingStolenGoods", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Damaging defense systems.
         /// </summary>
         public static string onFoot_damagingDefences {
             get {
                 return ResourceManager.GetString("onFoot_damagingDefences", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Transferring illegal data.
+        /// </summary>
+        public static string onFoot_dataTransfer {
+            get {
+                return ResourceManager.GetString("onFoot_dataTransfer", resourceCulture);
             }
         }
         

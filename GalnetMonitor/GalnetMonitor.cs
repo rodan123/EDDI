@@ -1,4 +1,6 @@
-﻿using EddiCore;
+﻿using EddiConfigService;
+using EddiCore;
+using EddiDataDefinitions;
 using EddiEvents;
 using Newtonsoft.Json.Linq;
 using SimpleFeedReader;
@@ -14,7 +16,7 @@ using System.Threading;
 using System.Windows.Controls;
 using Utilities;
 
-namespace GalnetMonitor
+namespace EddiGalnetMonitor
 {
 
     /// <summary>
@@ -24,7 +26,7 @@ namespace GalnetMonitor
     {
         private static Dictionary<string, string> locales = new Dictionary<string, string>();
         protected static string locale;
-        private GalnetConfiguration configuration = new GalnetConfiguration();
+        private GalnetConfiguration configuration;
         protected static ResourceManager resourceManager = EddiGalnetMonitor.Properties.GalnetMonitor.ResourceManager;
 
         private bool running;
@@ -32,19 +34,12 @@ namespace GalnetMonitor
 
         public static bool altURL { get; private set; }
 
+        // This monitor currently requires game version 4.0 or later.
+        private static readonly System.Version minGameVersion = new System.Version(4, 0);
+
         public GalnetMonitor()
         {
-            // Remove the old configuration file if it still exists
-            if (File.Exists(Constants.DATA_DIR + @"\galnet"))
-            {
-                try
-                {
-                    File.Delete(Constants.DATA_DIR + @"\galnet");
-                }
-                catch { }
-            }
-
-            configuration = GalnetConfiguration.FromFile();
+            configuration = ConfigService.Instance.galnetConfiguration;
         }
 
         /// <summary>
@@ -83,9 +78,29 @@ namespace GalnetMonitor
         /// </summary>
         public void Start()
         {
+            EDDI.Instance.GameVersionUpdated += OnGameVersionUpdated;
             running = true;
             locales = GetGalnetLocales();
             monitor();
+        }
+
+        private void OnGameVersionUpdated(object sender, EventArgs e)
+        {
+            if (sender is System.Version currentGameVersion)
+            {
+                if (currentGameVersion < minGameVersion)
+                {
+                    Logging.Warn($"Monitor disabled. Game version is {currentGameVersion}, monitor may only receive data for version {minGameVersion} or later.");
+                    Stop();
+                }
+                else
+                {
+                    if (!running)
+                    {
+                        Start();
+                    }
+                }
+            }
         }
 
         public void Stop()
@@ -98,7 +113,7 @@ namespace GalnetMonitor
 
         public void Reload()
         {
-            configuration = GalnetConfiguration.FromFile();
+            configuration = ConfigService.Instance.galnetConfiguration;
         }
 
         /// <summary>
@@ -187,41 +202,36 @@ namespace GalnetMonitor
                     {
                         try
                         {
-                            foreach (GalnetFeedItemNormalizer.ExtendedFeedItem item in items)
+                            foreach (FeedItem item in items)
                             {
                                 try
                                 {
-
-                                    if (firstUid == null)
+                                    if (string.IsNullOrEmpty(firstUid))
                                     {
                                         // Obtain the ID of the first item that we read as a marker
-                                        firstUid = item.Id;
+                                        firstUid = item?.Id;
                                     }
 
-                                    if (item.Id == configuration.lastuuid)
+                                    if (item?.Id == configuration.lastuuid)
                                     {
                                         // Reached the first item we have already seen - go no further
                                         break;
                                     }
 
-                                    if (item.Title is null || item.GetContent() is null)
+                                    if (item?.Title is null || item?.GetContent() is null)
                                     {
                                         // Skip items which do not contain useful content.
                                         continue;
                                     }
 
+                                    Logging.Debug("Handling Galnet feed item", item);
                                     News newsItem = new News(item.Id, assignCategory(item.Title, item.GetContent()), item.Title, item.GetContent(), item.PublishDate.DateTime, false);
                                     newsItems.Add(newsItem);
                                     GalnetSqLiteRepository.Instance.SaveNews(newsItem);
                                 }
                                 catch (Exception ex)
                                 {
-                                    Dictionary<string, object> data = new Dictionary<string, object>()
-                                    {
-                                        { "item", item },
-                                        { "exception", ex}
-                                    };
-                                    Logging.Error("Exception handling Galnet news item.", data);
+                                    Logging.Error($"Exception handling Galnet feed item: {item?.Title}", ex);
                                 }
                             }
 
@@ -229,7 +239,7 @@ namespace GalnetMonitor
                             {
                                 Logging.Debug("Updated latest UID to " + firstUid);
                                 configuration.lastuuid = firstUid;
-                                configuration.ToFile();
+                                ConfigService.Instance.galnetConfiguration = configuration;
                             }
 
                             if (newsItems.Count > 0)
@@ -314,13 +324,7 @@ namespace GalnetMonitor
             }
             catch (Exception ex)
             {
-                Dictionary<string, object> data = new Dictionary<string, object>()
-                {
-                    { "title", title },
-                    { "content", content },
-                    { "exception", ex }
-                };
-                Logging.Error("Exception categorizing Galnet article.", data);
+                Logging.Error($"Exception categorizing Galnet article {title}.", ex);
             }
 
             return GetGalnetResource("categoryArticle");
@@ -348,13 +352,16 @@ namespace GalnetMonitor
 
         public Dictionary<string, string> GetGalnetLocales()
         {
-            Dictionary<string, string> locales = new Dictionary<string, string>();
-
-            locales.Add("English", "en"); // Add our "neutral" language "en".
+            Dictionary<string, string> locales = new Dictionary<string, string>
+            {
+                { "English", "en" } // Add our "neutral" language "en".
+            };
 
             // Add our satellite resource language folders to the list. Since these are stored according to folder name, we can interate through folder names to identify supported resources
             Dictionary<string, string> satelliteLocales = new Dictionary<string, string>();
-            DirectoryInfo rootInfo = new DirectoryInfo(new FileInfo(System.Reflection.Assembly.GetExecutingAssembly().Location).DirectoryName);
+            var fileInfo = new FileInfo(System.Reflection.Assembly.GetExecutingAssembly().Location).DirectoryName;
+            if (fileInfo is null) { throw new DirectoryNotFoundException(); }
+            DirectoryInfo rootInfo = new DirectoryInfo(fileInfo);
             DirectoryInfo[] subDirs = rootInfo.GetDirectories();
             foreach (DirectoryInfo dir in subDirs)
             {
@@ -367,6 +374,7 @@ namespace GalnetMonitor
                 {
                     continue;
                 }
+
                 try
                 {
                     CultureInfo cInfo = new CultureInfo(name);
@@ -377,7 +385,9 @@ namespace GalnetMonitor
                     }
                 }
                 catch
-                { }
+                {
+                    // Nothing to do here
+                }
             }
 
             // Sort satellite locales prior to adding them to our list

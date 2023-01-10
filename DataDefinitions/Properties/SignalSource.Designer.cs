@@ -19,7 +19,7 @@ namespace EddiDataDefinitions.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     public class SignalSource {
@@ -61,6 +61,15 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Distress Beacon.
+        /// </summary>
+        public static string Abandoned_Buggy {
+            get {
+                return ResourceManager.GetString("Abandoned_Buggy", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Distress Call.
         /// </summary>
         public static string Aftermath_Large {
@@ -81,99 +90,27 @@ namespace EddiDataDefinitions.Properties {
         /// <summary>
         ///   Looks up a localized string similar to Guardian Structure.
         /// </summary>
-        public static string Ancient_Medium_001 {
+        public static string Ancient_Medium {
             get {
-                return ResourceManager.GetString("Ancient_Medium_001", resourceCulture);
+                return ResourceManager.GetString("Ancient_Medium", resourceCulture);
             }
         }
         
         /// <summary>
         ///   Looks up a localized string similar to Guardian Structure.
         /// </summary>
-        public static string Ancient_Medium_002 {
+        public static string Ancient_Small {
             get {
-                return ResourceManager.GetString("Ancient_Medium_002", resourceCulture);
+                return ResourceManager.GetString("Ancient_Small", resourceCulture);
             }
         }
         
         /// <summary>
         ///   Looks up a localized string similar to Guardian Structure.
         /// </summary>
-        public static string Ancient_Medium_003 {
+        public static string Ancient_Tiny {
             get {
-                return ResourceManager.GetString("Ancient_Medium_003", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Guardian Structure.
-        /// </summary>
-        public static string Ancient_Small_001 {
-            get {
-                return ResourceManager.GetString("Ancient_Small_001", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Guardian Structure.
-        /// </summary>
-        public static string Ancient_Small_002 {
-            get {
-                return ResourceManager.GetString("Ancient_Small_002", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Guardian Structure.
-        /// </summary>
-        public static string Ancient_Small_003 {
-            get {
-                return ResourceManager.GetString("Ancient_Small_003", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Guardian Structure.
-        /// </summary>
-        public static string Ancient_Small_004 {
-            get {
-                return ResourceManager.GetString("Ancient_Small_004", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Guardian Structure.
-        /// </summary>
-        public static string Ancient_Small_005 {
-            get {
-                return ResourceManager.GetString("Ancient_Small_005", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Guardian Structure.
-        /// </summary>
-        public static string Ancient_Tiny_001 {
-            get {
-                return ResourceManager.GetString("Ancient_Tiny_001", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Guardian Structure.
-        /// </summary>
-        public static string Ancient_Tiny_002 {
-            get {
-                return ResourceManager.GetString("Ancient_Tiny_002", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Guardian Structure.
-        /// </summary>
-        public static string Ancient_Tiny_003 {
-            get {
-                return ResourceManager.GetString("Ancient_Tiny_003", resourceCulture);
+                return ResourceManager.GetString("Ancient_Tiny", resourceCulture);
             }
         }
         
@@ -183,6 +120,60 @@ namespace EddiDataDefinitions.Properties {
         public static string AttackAftermath {
             get {
                 return ResourceManager.GetString("AttackAftermath", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Minor Wreckage.
+        /// </summary>
+        public static string Cargo {
+            get {
+                return ResourceManager.GetString("Cargo", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Crashed Ship.
+        /// </summary>
+        public static string CrashedShip {
+            get {
+                return ResourceManager.GetString("CrashedShip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Distress Beacon.
+        /// </summary>
+        public static string Damaged_Eagle {
+            get {
+                return ResourceManager.GetString("Damaged_Eagle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ENCRYPTED SIGNAL.
+        /// </summary>
+        public static string Damaged_Eagle_Assassination {
+            get {
+                return ResourceManager.GetString("Damaged_Eagle_Assassination", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Distress Beacon.
+        /// </summary>
+        public static string Damaged_Sidewinder {
+            get {
+                return ResourceManager.GetString("Damaged_Sidewinder", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ENCRYPTED SIGNAL.
+        /// </summary>
+        public static string Damaged_Sidewinder_Assassination {
+            get {
+                return ResourceManager.GetString("Damaged_Sidewinder_Assassination", resourceCulture);
             }
         }
         
@@ -277,6 +268,24 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Signal Source.
+        /// </summary>
+        public static string GenericSignalSource {
+            get {
+                return ResourceManager.GetString("GenericSignalSource", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Armed Revolt.
+        /// </summary>
+        public static string Gro_controlScenarioTitle {
+            get {
+                return ResourceManager.GetString("Gro_controlScenarioTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Listening Post.
         /// </summary>
         public static string ListeningPost {
@@ -358,6 +367,15 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Active Power Source.
+        /// </summary>
+        public static string Perimeter {
+            get {
+                return ResourceManager.GetString("Perimeter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Biological Surface Signal.
         /// </summary>
         public static string SAA_SignalType_Biological {
@@ -403,6 +421,15 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Planetary Anomaly.
+        /// </summary>
+        public static string SAA_SignalType_PlanetAnomaly {
+            get {
+                return ResourceManager.GetString("SAA_SignalType_PlanetAnomaly", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Thargoid Surface Signal.
         /// </summary>
         public static string SAA_SignalType_Thargoid {
@@ -426,6 +453,33 @@ namespace EddiDataDefinitions.Properties {
         public static string Settlement_Unflattened_WreckedUnknown {
             get {
                 return ResourceManager.GetString("Settlement_Unflattened_WreckedUnknown", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Irregular Markers.
+        /// </summary>
+        public static string Smugglers_Cache {
+            get {
+                return ResourceManager.GetString("Smugglers_Cache", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Irregular Markers.
+        /// </summary>
+        public static string Trap_Cargo {
+            get {
+                return ResourceManager.GetString("Trap_Cargo", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Irregular Markers.
+        /// </summary>
+        public static string Trap_Data {
+            get {
+                return ResourceManager.GetString("Trap_Data", resourceCulture);
             }
         }
         
@@ -579,6 +633,105 @@ namespace EddiDataDefinitions.Properties {
         public static string Warzone_TG {
             get {
                 return ResourceManager.GetString("Warzone_TG", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to High Intensity AX Conflict Zone.
+        /// </summary>
+        public static string Warzone_TG_High {
+            get {
+                return ResourceManager.GetString("Warzone_TG_High", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Low Intensity AX Conflict Zone.
+        /// </summary>
+        public static string Warzone_TG_Low {
+            get {
+                return ResourceManager.GetString("Warzone_TG_Low", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Medium Intensity AX Conflict Zone.
+        /// </summary>
+        public static string Warzone_TG_Med {
+            get {
+                return ResourceManager.GetString("Warzone_TG_Med", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Very High Intensity AX Conflict Zone.
+        /// </summary>
+        public static string Warzone_TG_VeryHigh {
+            get {
+                return ResourceManager.GetString("Warzone_TG_VeryHigh", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Minor Wreckage.
+        /// </summary>
+        public static string Wreckage_AncientProbe {
+            get {
+                return ResourceManager.GetString("Wreckage_AncientProbe", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Minor Wreckage.
+        /// </summary>
+        public static string Wreckage_Buggy {
+            get {
+                return ResourceManager.GetString("Wreckage_Buggy", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Minor Wreckage.
+        /// </summary>
+        public static string Wreckage_Cargo {
+            get {
+                return ResourceManager.GetString("Wreckage_Cargo", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Impact Site.
+        /// </summary>
+        public static string Wreckage_Probe {
+            get {
+                return ResourceManager.GetString("Wreckage_Probe", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Impact Site.
+        /// </summary>
+        public static string Wreckage_Satellite {
+            get {
+                return ResourceManager.GetString("Wreckage_Satellite", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Crash Site.
+        /// </summary>
+        public static string Wrecks_Eagle {
+            get {
+                return ResourceManager.GetString("Wrecks_Eagle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Crash Site.
+        /// </summary>
+        public static string Wrecks_Sidewinder {
+            get {
+                return ResourceManager.GetString("Wrecks_Sidewinder", resourceCulture);
             }
         }
     }

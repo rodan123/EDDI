@@ -1,18 +1,16 @@
 ﻿using Eddi;
 using EddiCargoMonitor;
+using EddiCompanionAppService;
 using EddiCore;
-using EddiCrimeMonitor;
 using EddiDataDefinitions;
 using EddiDataProviderService;
 using EddiEvents;
-using EddiMaterialMonitor;
 using EddiNavigationService;
 using EddiShipMonitor;
 using EddiSpeechResponder;
 using EddiSpeechService;
 using EddiStarMapService;
-using EddiStatusMonitor;
-using Newtonsoft.Json;
+using EddiStatusService;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -23,7 +21,6 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using EddiCompanionAppService;
 using Utilities;
 
 namespace EddiVoiceAttackResponder
@@ -54,7 +51,10 @@ namespace EddiVoiceAttackResponder
         // We'll maintain a referenceable list of variables that we've set from events
         private static List<VoiceAttackVariable> currentVariables = new List<VoiceAttackVariable>();
 
+        private static System.Version vaVersion;
         private static readonly object vaProxyLock = new object();
+
+        private static Status currentStatus;
 
         public static void VA_Init1(dynamic vaProxy)
         {
@@ -63,131 +63,140 @@ namespace EddiVoiceAttackResponder
             App.vaProxy = vaProxy;
             if (App.AlreadyRunning()) { return; }
 
+            App.vaStartup = () =>
+            {
+                try
+                {
+                    Logging.Info("Initialising EDDI VoiceAttack plugin");
+
+                    // Set up our event responder.
+                    VoiceAttackResponder.RaiseEvent += (s, theEvent) =>
+                    {
+                        if (theEvent is null) { return; }
+                        if (eventQueues.ContainsKey(theEvent.type))
+                        {
+                            // Add our event to an existing blocking collection for that event type.
+                            eventQueues[theEvent.type].Add(theEvent);
+                        }
+                        else
+                        {
+                            // Add our event to a new blocking collection for that event type and start a consumer task for that collection
+                            eventQueues[theEvent.type] = new BlockingCollection<Event> { theEvent };
+                            var consumerTask = Task.Run(() =>
+                            {
+                                // ReSharper disable once AccessToModifiedClosure - OK to use vaProxy in this context.
+                                dequeueEvents(eventQueues[theEvent.type], ref vaProxy);
+                            });
+                            consumerTasks.Add(consumerTask);
+                        }
+                    };
+
+                    // Add notifiers for changes in variables we want to react to 
+                    // (we can only use event handlers with classes which are always constructed - nullable objects will be updated via responder events)
+                    EDDI.Instance.PropertyChanged += (s, e) => updateStandardValues(e);
+                    EDDI.Instance.State.CollectionChanged += (s, e) =>
+                    {
+                        setDictionaryValues(EDDI.Instance.State, "state", ref vaProxy);
+                    };
+                    SpeechService.Instance.PropertyChanged += (s, e) =>
+                    {
+                        setSpeechState(e);
+                    };
+                    CompanionAppService.Instance.StateChanged += (oldState, newState) =>
+                    {
+                        setCAPIState(newState == CompanionAppService.State.Authorized, ref vaProxy);
+                    };
+                    StatusService.StatusUpdatedEvent += OnStatusUpdated;
+
+                    CargoMonitor cargoMonitor = (CargoMonitor)EDDI.Instance.ObtainMonitor("Cargo monitor");
+                    cargoMonitor.InventoryUpdatedEvent += (s, e) =>
+                    {
+                        lock (vaProxyLock)
+                        {
+                            setCargo(cargoMonitor, ref vaProxy);
+                        }
+                    };
+
+                    ShipMonitor shipMonitor = (ShipMonitor)EDDI.Instance.ObtainMonitor("Ship monitor");
+                    if (shipMonitor != null)
+                    {
+                        shipMonitor.ShipyardUpdatedEvent += (s, e) =>
+                        {
+                            lock (vaProxyLock)
+                            {
+                                setShipValues(shipMonitor.GetCurrentShip(), "Ship", ref vaProxy);
+                                Task.Run(() => setShipyardValues(shipMonitor.shipyard?.ToList(), ref vaProxy));
+                            }
+                        };
+                    }
+
+                    StatusService.StatusUpdatedEvent += (s, e) =>
+                    {
+                        if (s is Status status)
+                        {
+                            lock (vaProxyLock)
+                            {
+                                setStatusValues(status, "Status", ref vaProxy);
+                            }
+                        }
+                    };
+
+                    // Set initial values for standard variables
+                    initializeStandardValues();
+
+                    // Display instance information if available
+                    if (EddiUpgrader.UpgradeRequired)
+                    {
+                        vaProxy.WriteToLog("Please shut down VoiceAttack and run EDDI standalone to upgrade", "red");
+                        string msg = Properties.VoiceAttack.run_eddi_standalone;
+                        SpeechService.Instance.Say(null, msg, 0);
+                    }
+                    else if (EddiUpgrader.UpgradeAvailable)
+                    {
+                        vaProxy.WriteToLog("Please shut down VoiceAttack and run EDDI standalone to upgrade", "orange");
+                        string msg = Properties.VoiceAttack.run_eddi_standalone;
+                        SpeechService.Instance.Say(null, msg, 0);
+                    }
+
+                    if (EddiUpgrader.Motd != null)
+                    {
+                        vaProxy.WriteToLog("Message from EDDI: " + EddiUpgrader.Motd, "black");
+                        string msg = String.Format(Eddi.Properties.EddiResources.msg_from_eddi, EddiUpgrader.Motd);
+                        SpeechService.Instance.Say(null, msg, 0);
+                    }
+
+                    vaProxy.WriteToLog("The EDDI plugin is fully operational.", "green");
+                    setStatus(ref vaProxy, "Operational");
+
+                    // Fire an event once the VA plugin is initialized
+                    EDDI.Instance.enqueueEvent(new VAInitializedEvent(DateTime.UtcNow));
+
+                    // Set a variable indicating the version of VoiceAttack in use
+                    vaVersion = vaProxy.VAVersion;
+                    EDDI.Instance.vaVersion = vaVersion?.ToString();
+
+                    Logging.Info("EDDI VoiceAttack plugin initialization complete");
+                }
+                catch (Exception e)
+                {
+                    Logging.Error("Failed to initialize VoiceAttack plugin", e);
+                    vaProxy.WriteToLog("Unable to fully initialize EDDI. Some functions may not work.", "red");
+                }
+            };
+
             Thread appThread = new Thread(App.Main);
             appThread.SetApartmentState(ApartmentState.STA);
             appThread.Start();
+        }
 
-            try
+        private static void OnStatusUpdated(object sender, EventArgs e)
+        {
+            if (sender is Status status)
             {
-                int timeout = 0;
-                while (Application.Current == null)
+                LockManager.GetLock(nameof(currentStatus), () =>
                 {
-                    if (timeout < 200)
-                    {
-                        Thread.Sleep(50);
-                        timeout++;
-                    }
-                    else
-                    {
-                        throw new TimeoutException("EDDI VoiceAttack plugin initialisation has timed out");
-                    }
-                }
-
-                Logging.Info("Initialising EDDI VoiceAttack plugin");
-
-                // Set up our event responder.
-                VoiceAttackResponder.RaiseEvent += (s, theEvent) =>
-                {
-                    if (theEvent is null) { return; }
-                    if (eventQueues.ContainsKey(theEvent.type))
-                    {
-                        // Add our event to an existing blocking collection for that event type.
-                        eventQueues[theEvent.type].Add(theEvent);
-                    }
-                    else
-                    {
-                        // Add our event to a new blocking collection for that event type and start a consumer task for that collection
-                        eventQueues[theEvent.type] = new BlockingCollection<Event> { theEvent };
-                        var consumerTask = Task.Run(() =>
-                        {
-                            // ReSharper disable once AccessToModifiedClosure - OK to use vaProxy in this context.
-                            dequeueEvents(eventQueues[theEvent.type], ref vaProxy);
-                        });
-                        consumerTasks.Add(consumerTask);
-                    }
-                };
-
-                // Add notifiers for changes in variables we want to react to 
-                // (we can only use event handlers with classes which are always constructed - nullable objects will be updated via responder events)
-                EDDI.Instance.PropertyChanged += (s, e) => updateStandardValues(e);
-                EDDI.Instance.State.CollectionChanged += (s, e) => setDictionaryValues(EDDI.Instance.State, "state", ref vaProxy);
-                SpeechService.Instance.PropertyChanged += (s, e) => setSpeechState(e);
-                CompanionAppService.Instance.StateChanged += (oldState, newState) => setCAPIState(newState == CompanionAppService.State.Authorized, ref vaProxy);
-
-                CargoMonitor cargoMonitor = (CargoMonitor)EDDI.Instance.ObtainMonitor("Cargo monitor");
-                cargoMonitor.InventoryUpdatedEvent += (s, e) =>
-                {
-                    lock (vaProxyLock)
-                    {
-                        setCargo(cargoMonitor, ref vaProxy);
-                    }
-                };
-
-                ShipMonitor shipMonitor = (ShipMonitor)EDDI.Instance.ObtainMonitor("Ship monitor");
-                if (shipMonitor != null)
-                {
-                    shipMonitor.ShipyardUpdatedEvent += (s, e) =>
-                    {
-                        lock (vaProxyLock)
-                        {
-                            setShipValues(shipMonitor.GetCurrentShip(), "Ship", ref vaProxy);
-                            Task.Run(() => setShipyardValues(shipMonitor.shipyard?.Copy().ToList(), ref vaProxy));
-                        }
-                    };
-                }
-
-                StatusMonitor statusMonitor = (StatusMonitor)EDDI.Instance.ObtainMonitor("Status monitor");
-                if (statusMonitor != null)
-                {
-                    statusMonitor.StatusUpdatedEvent += (s, e) =>
-                    {
-                        lock (vaProxyLock)
-                        {
-                            setStatusValues(statusMonitor.currentStatus, "Status", ref vaProxy);
-                        }
-                    };
-                }
-
-                // Set initial values for standard variables
-                initializeStandardValues();
-
-                // Display instance information if available
-                if (EddiUpgrader.UpgradeRequired)
-                {
-                    vaProxy.WriteToLog("Please shut down VoiceAttack and run EDDI standalone to upgrade", "red");
-                    string msg = Properties.VoiceAttack.run_eddi_standalone;
-                    SpeechService.Instance.Say(null, msg, 0);
-                }
-                else if (EddiUpgrader.UpgradeAvailable)
-                {
-                    vaProxy.WriteToLog("Please shut down VoiceAttack and run EDDI standalone to upgrade", "orange");
-                    string msg = Properties.VoiceAttack.run_eddi_standalone;
-                    SpeechService.Instance.Say(null, msg, 0);
-                }
-
-                if (EddiUpgrader.Motd != null)
-                {
-                    vaProxy.WriteToLog("Message from EDDI: " + EddiUpgrader.Motd, "black");
-                    string msg = String.Format(Eddi.Properties.EddiResources.msg_from_eddi, EddiUpgrader.Motd);
-                    SpeechService.Instance.Say(null, msg, 0);
-                }
-
-                vaProxy.WriteToLog("The EDDI plugin is fully operational.", "green");
-                setStatus(ref vaProxy, "Operational");
-
-                // Fire an event once the VA plugin is initialized
-                EDDI.Instance.enqueueEvent(new VAInitializedEvent(DateTime.UtcNow));
-
-                // Set a variable indicating the version of VoiceAttack in use
-                System.Version v = vaProxy.VAVersion;
-                EDDI.Instance.vaVersion = v.ToString();
-
-                Logging.Info("EDDI VoiceAttack plugin initialization complete");
-            }
-            catch (Exception e)
-            {
-                Logging.Error("Failed to initialize VoiceAttack plugin", e);
-                vaProxy.WriteToLog("Unable to fully initialize EDDI. Some functions may not work.", "red");
+                    currentStatus = status;
+                });
             }
         }
 
@@ -199,6 +208,7 @@ namespace EddiVoiceAttackResponder
                 {
                     try
                     {
+                        Logging.Debug($"Passing event {@event.type} to VoiceAttack", @event);
                         if (@event?.type != null)
                         {
                             lock (vaProxyLock)
@@ -213,19 +223,20 @@ namespace EddiVoiceAttackResponder
                             while (active)
                             {
                                 Thread.Sleep(50);
-                                active = vaProxy.Command.Active("((EDDI " + @event.type.ToLowerInvariant() + "))");
+                                if (vaVersion?.CompareTo(new System.Version(1, 7, 4)) > 0) // If running VoiceAttack version 1.7.4 or later
+                                {
+                                    active = vaProxy.Command.Active("((EDDI " + @event.type.ToLowerInvariant() + "))");
+                                }
+                                else // Legacy command invocation for versions of VoiceAttack prior to 1.7.4
+                                {
+                                    active = vaProxy.CommandActive("((EDDI " + @event.type.ToLowerInvariant() + "))");
+                                }
                             }
                         }
                     }
                     catch (Exception ex)
                     {
-                        Dictionary<string, object> data = new Dictionary<string, object>
-                        {
-                            { "event", JsonConvert.SerializeObject(@event) },
-                            { "exception", ex.Message },
-                            { "stacktrace", ex.StackTrace }
-                        };
-                        Logging.Error("VoiceAttack failed to handle event.", data);
+                        Logging.Error($"VoiceAttack failed to handle {@event.type} event.", ex);
                     }
                 }
             }
@@ -291,11 +302,23 @@ namespace EddiVoiceAttackResponder
             {
                 // Fire local command if present  
                 Logging.Debug("Searching for command " + commandName);
-                if (vaProxy.Command.Exists(commandName))
+                if (vaVersion?.CompareTo(new System.Version(1,7,4)) > 0) // If running VoiceAttack version 1.7.4 or later
                 {
-                    Logging.Debug("Found command " + commandName);
-                    vaProxy.Command.Execute(commandName);
-                    Logging.Info("Executed command " + commandName);
+                    if (vaProxy.Command.Exists(commandName))
+                    {
+                        Logging.Debug("Found command " + commandName);
+                        vaProxy.Command.Execute(commandName);
+                        Logging.Info("Executed command " + commandName);
+                    }
+                }
+                else // Legacy command invocation for versions of VoiceAttack prior to 1.7.4
+                {
+                    if (vaProxy.CommandExists(commandName))
+                    {
+                        Logging.Debug("Found command " + commandName);
+                        vaProxy.ExecuteCommand(commandName);
+                        Logging.Info("Executed command " + commandName);
+                    }
                 }
             }
             catch (Exception ex)
@@ -342,12 +365,15 @@ namespace EddiVoiceAttackResponder
         }
 
         public static void VA_StopCommand()
-        {
-        }
+        { }
 
         public static void VA_Invoke1(dynamic vaProxy)
         {
             Logging.Debug("Invoked with context " + (string)vaProxy.Context);
+
+            // This thread is invoked from VoiceAttack and may by invoked with the system default culture
+            // so make sure that we're using our assigned culture.
+//            App.OverrideThreadCulture(App.overrideCulture);
 
             try
             {
@@ -493,7 +519,7 @@ namespace EddiVoiceAttackResponder
             string config = (string)vaProxy.Context;
 
             if (Application.Current?.Dispatcher != null
-                && (bool)Application.Current?.Dispatcher?.Invoke(() => Application.Current.MainWindow == null)
+                && (Application.Current?.Dispatcher?.Invoke(() => Application.Current.MainWindow == null) ?? false)
                 && config != "configuration")
             {
                 vaProxy.WriteToLog("The EDDI configuration window is not open.", "orange");
@@ -772,6 +798,7 @@ namespace EddiVoiceAttackResponder
             try
             {
                 SpeechService.Instance.ShutUp();
+                SpeechService.Instance.StopAudio();
             }
             catch (Exception e)
             {
@@ -898,8 +925,8 @@ namespace EddiVoiceAttackResponder
                     return;
                 }
 
-                // Nothing above, so remove the item
-                EDDI.Instance.State.Remove(stateVariableName);
+                // Nothing above, so set the item to null
+                EDDI.Instance.State[stateVariableName] = null;
             }
             catch (Exception e)
             {
@@ -988,7 +1015,7 @@ namespace EddiVoiceAttackResponder
                     StarSystemSqLiteRepository.Instance.SaveStarSystem(currentSystem);
 
                     // Store in EDSM
-                    IEdsmService edsmService = new StarMapService();
+                    IEdsmService edsmService = new StarMapService(null, true);
                     edsmService.sendStarMapComment(currentSystemName, comment);
                 }
             }
@@ -1005,7 +1032,7 @@ namespace EddiVoiceAttackResponder
                 string type = vaProxy.GetText("Type variable");
                 if (!string.IsNullOrEmpty(type))
                 {
-                    ShipMonitor.JumpDetail detail = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship monitor")).JumpDetails(type);
+                    var detail = EDDI.Instance.CurrentShip?.JumpDetails(type);
                     vaProxy.SetDecimal("Ship jump detail distance", detail?.distance);
                     vaProxy.SetInt("Ship jump detail jumps", detail?.jumps);
                     vaProxy.SetText("Type variable", null);
@@ -1021,152 +1048,33 @@ namespace EddiVoiceAttackResponder
         {
             try
             {
-                CrimeMonitor crimeMonitor = (CrimeMonitor)EDDI.Instance.ObtainMonitor("Crime monitor");
-                MaterialMonitor materialMonitor = (MaterialMonitor)EDDI.Instance.ObtainMonitor("Material monitor");
-                int materialDistance = materialMonitor.maxStationDistanceFromStarLs ?? 10000;
                 string type = vaProxy.GetText("Type variable");
-                string system = vaProxy.GetText("System variable");
-                string station = vaProxy.GetText("Station variable");
+                string string0 = vaProxy.GetText("System variable");
+                string string1 = vaProxy.GetText("System variable 2") ?? vaProxy.GetText("Station variable");
+                decimal? numeric = vaProxy.GetDecimal("Numeric variable");
 
-                switch (type)
-                {
-                    case "cancel":
-                        {
-                            NavigationService.Instance.CancelDestination();
-                        }
-                        break;
-                    case "encoded":
-                        {
-                            NavigationService.Instance.GetServiceRoute("encoded", materialDistance);
-                        }
-                        break;
-                    case "expiring":
-                        {
-                            NavigationService.Instance.GetExpiringRoute();
-                        }
-                        break;
-                    case "facilitator":
-                        {
-                            int distance = crimeMonitor.maxStationDistanceFromStarLs ?? 10000;
-                            bool isChecked = crimeMonitor.prioritizeOrbitalStations;
-                            NavigationService.Instance.GetServiceRoute("facilitator", distance, isChecked);
-                        }
-                        break;
-                    case "farthest":
-                        {
-                            NavigationService.Instance.GetFarthestRoute();
-                        }
-                        break;
-                    case "guardian":
-                        {
-                            NavigationService.Instance.GetServiceRoute("guardian", materialDistance);
-                        }
-                        break;
-                    case "human":
-                        {
-                            NavigationService.Instance.GetServiceRoute("human", materialDistance);
-                        }
-                        break;
-                    case "manufactured":
-                        {
-                            NavigationService.Instance.GetServiceRoute("manufactured", materialDistance);
-                        }
-                        break;
-                    case "most":
-                        {
-                            if (string.IsNullOrEmpty(system))
-                            {
-                                NavigationService.Instance.GetMostRoute();
-                            }
-                            else
-                            {
-                                NavigationService.Instance.GetMostRoute(system);
-                            }
-                        }
-                        break;
-                    case "nearest":
-                        {
-                            NavigationService.Instance.GetNearestRoute();
-                        }
-                        break;
-                    case "next":
-                        {
-                            NavigationService.Instance.GetNextInRoute();
-                        }
-                        break;
-                    case "raw":
-                        {
-                            NavigationService.Instance.GetServiceRoute("raw", materialDistance);
-                        }
-                        break;
-                    case "route":
-                        {
-                            if (string.IsNullOrEmpty(system))
-                            {
-                                NavigationService.Instance.GetMissionsRoute();
-                            }
-                            else
-                            {
-                                NavigationService.Instance.GetMissionsRoute(system);
-                            }
-                        }
-                        break;
-                    case "scoop":
-                        {
-                            ShipMonitor.JumpDetail detail = ((ShipMonitor)EDDI.Instance.ObtainMonitor("Ship monitor")).JumpDetails("total");
-                            NavigationService.Instance.GetScoopRoute(detail.distance);
-                        }
-                        break;
-                    case "set":
-                        {
-                            if (string.IsNullOrEmpty(system))
-                            {
-                                NavigationService.Instance.SetDestination();
-                            }
-                            else
-                            {
-                                if (string.IsNullOrEmpty(station))
-                                {
-                                    NavigationService.Instance.SetDestination(system);
-                                }
-                                else
-                                {
-                                    NavigationService.Instance.SetDestination(system, station);
-                                }
-                            }
-                        }
-                        break;
-                    case "source":
-                        {
-                            if (string.IsNullOrEmpty(system))
-                            {
-                                NavigationService.Instance.GetSourceRoute();
-                            }
-                            else
-                            {
-                                NavigationService.Instance.GetSourceRoute(system);
-                            }
-                        }
-                        break;
-                    case "update":
-                        {
-                            if (string.IsNullOrEmpty(system))
-                            {
-                                NavigationService.Instance.UpdateRoute();
-                            }
-                            else
-                            {
-                                NavigationService.Instance.UpdateRoute(system);
-                            }
-                        }
-                        break;
-                }
                 vaProxy.SetText("Type variable", null);
                 vaProxy.SetText("System variable", null);
+                vaProxy.SetText("System variable 2", null);
+                vaProxy.SetText("Station variable", null);
+                vaProxy.SetDecimal("Numeric variable", null);
+
+                if (Enum.TryParse(type, true, out QueryType result))
+                {
+                    var @event = NavigationService.Instance.NavQuery(result, string0, string1, numeric);
+                    if (@event != null)
+                    {
+                        EDDI.Instance?.enqueueEvent(@event);
+                    }
+                }
+                else
+                {
+                    Logging.Warn($"The search query '{type}' is unrecognized.");
+                }
             }
             catch (Exception e)
             {
-                setStatus(ref vaProxy, "Failed to get missions route", e);
+                setStatus(ref vaProxy, "Failed to get route", e);
             }
         }
     }

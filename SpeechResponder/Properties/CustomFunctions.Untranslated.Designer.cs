@@ -19,7 +19,7 @@ namespace EddiSpeechResponder.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     public class CustomFunctions_Untranslated {
@@ -618,18 +618,13 @@ namespace EddiSpeechResponder.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to This function will produce a destination/route for valid mission destinations.
+        ///   Looks up a localized string similar to This function will produce a destination/route. It takes at least one mandatory argument, the `type`, and up to two optional arguments.
         ///
-        ///RouteDetails takes one mandatory argument, the `routetype`, and up to two optional arguments.
+        ///The `type` variable is a mandatory parameter defining the type of command you are sending to the Navigation Monitor. This variable may be used either to plot a new route or to send commands to control a previously plotted route.
         ///
-        ///The following `routetype` values are valid:
+        ///Route plotting `type` values:
         ///
-        ///* `cancel` Cancel the currently stored route.
-        ///* `encoded` Nearest encoded materials trader.
-        ///* `expiring` Destination of your next expiring mission.
-        ///* `facilitator` Nearest &apos;Legal Facilities&apos; contact.
-        ///* `farthest` Mission destination farthest from your current location.
-        ///* `guardian [rest of string was truncated]&quot;;.
+        ///* `carrier` Plots a fleet carrier route between systems. Takes a destination system name as a mandatory 2nd  [rest of string was truncated]&quot;;.
         /// </summary>
         public static string RouteDetails {
             get {
@@ -662,6 +657,21 @@ namespace EddiSpeechResponder.Properties {
         public static string SecurityLevelDetails {
             get {
                 return ResourceManager.GetString("SecurityLevelDetails", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This function will send a text string to the system clipboard.  
+        ///
+        ///SetClipboard takes a single argument: the text to send to the clipboard. 
+        ///
+        ///Common usage of this is to allow a text string to be pasted outside of EDDI, for example:
+        ///
+        ///    {SetClipboard(&quot;Shinrarta Dezhra&quot;)}.
+        /// </summary>
+        public static string SetClipboard {
+            get {
+                return ResourceManager.GetString("SetClipboard", resourceCulture);
             }
         }
         
@@ -914,13 +924,11 @@ namespace EddiSpeechResponder.Properties {
         ///
         ///VoiceDetails takes either zero or one arguments.
         ///
-        ///With zero arguments, the function returns a list of `VoiceDetail` objects. For example:
+        ///With zero arguments, the function returns a `VoiceDetail` object for the currently selected voice. For example:
         ///
-        ///{for voice in VoiceDetails(): \{voice.name\} speaks \{voice.culturename\},}
+        ///    The current voice is {VoiceDetail().name}.
         ///
-        ///With one argument, the function returns a single `VoiceDetail` object. For example:
-        ///
-        ///    {VoiceDetails(&quot;Microsoft Zi [rest of string was truncated]&quot;;.
+        ///With one argument, if the argument is a whole number then the function returns a list of `VoiceDetail` objects randomized a [rest of string was truncated]&quot;;.
         /// </summary>
         public static string VoiceDetails {
             get {

@@ -1,4 +1,5 @@
-﻿using EddiCore;
+﻿using EddiConfigService;
+using EddiCore;
 using EddiDataDefinitions;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -19,8 +20,8 @@ namespace EddiEddpMonitor
 
         public List<KeyValuePair<string, FactionState>> StatesPlusNone { get; set; }
 
-        private ObservableCollection<Watch> watches;
-        public ObservableCollection<Watch> Watches
+        private ObservableCollection<BgsWatch> watches;
+        public ObservableCollection<BgsWatch> Watches
         {
             get { return watches; }
             set { watches = value; OnPropertyChanged("Watch"); }
@@ -37,8 +38,10 @@ namespace EddiEddpMonitor
             DataContext = this;
 
             // Make a list of states plus a (anything) state that maps to NULL
-            StatesPlusNone = new List<KeyValuePair<string, FactionState>>();
-            StatesPlusNone.Add(new KeyValuePair<string, FactionState>(Properties.EddpResources.anything, null));
+            StatesPlusNone = new List<KeyValuePair<string, FactionState>>
+            {
+                new KeyValuePair<string, FactionState>(Properties.EddpResources.anything, null)
+            };
             StatesPlusNone.AddRange(FactionState.AllOfThem.OrderBy(x => x.localizedName).Select(x => new KeyValuePair<string, FactionState>(x.localizedName, x)));
             configurationFromFile();
             InitializeComponent();
@@ -46,9 +49,9 @@ namespace EddiEddpMonitor
 
         private void configurationFromFile()
         {
-            configuration = EddpConfiguration.FromFile();
-            ObservableCollection<Watch> watches = new ObservableCollection<Watch>();
-            foreach (Watch watch in configuration.watches)
+            configuration = ConfigService.Instance.eddpConfiguration;
+            ObservableCollection<BgsWatch> watches = new ObservableCollection<BgsWatch>();
+            foreach (BgsWatch watch in configuration.watches)
             {
                 watches.Add(watch);
             }
@@ -73,21 +76,21 @@ namespace EddiEddpMonitor
 
         private void eddpAddWatch(object sender, RoutedEventArgs e)
         {
-            Watch watch = new Watch();
-            watch.Name = Properties.EddpResources.new_watch;
+            BgsWatch bgsWatch = new BgsWatch();
+            bgsWatch.Name = Properties.EddpResources.new_watch;
 
-            configuration.watches.Add(watch);
+            configuration.watches.Add(bgsWatch);
             updateWatchesConfiguration();
-            Watches.Add(watch);
+            Watches.Add(bgsWatch);
             watchData.Items.Refresh();
         }
 
         private void eddpDeleteWatch(object sender, RoutedEventArgs e)
         {
-            Watch watch = (Watch)((Button)e.Source).DataContext;
-            configuration.watches.Remove(watch);
+            BgsWatch bgsWatch = (BgsWatch)((Button)e.Source).DataContext;
+            configuration.watches.Remove(bgsWatch);
             updateWatchesConfiguration();
-            Watches.Remove(watch);
+            Watches.Remove(bgsWatch);
             watchData.Items.Refresh();
         }
 
@@ -95,7 +98,7 @@ namespace EddiEddpMonitor
         {
             if (configuration != null)
             {
-                configuration.ToFile();
+                ConfigService.Instance.eddpConfiguration = configuration;
             }
             EDDI.Instance.Reload("EDDP monitor");
         }

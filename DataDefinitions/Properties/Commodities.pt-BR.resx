@@ -242,7 +242,7 @@
     <comment>Commodity AutoFabricators</comment>
   </data>
   <data name="AzCancriFormula42" xml:space="preserve">
-    <value>Fórmula 42 de Az Cancri</value>
+    <value>Fórmula 42 de AZ Cancri</value>
     <comment>Commodity AzCancriFormula42</comment>
   </data>
   <data name="BaltahSineVacuumKrill" xml:space="preserve">
@@ -741,7 +741,7 @@
     <value>Cerveja de Kongga</value>
     <comment>Commodity KonggaAle</comment>
   </data>
-  <data name="KoroKungPellets" xml:space="preserve">
+  <data name="KorroKungPellets" xml:space="preserve">
     <value>Pastilhas de Koro Kung</value>
     <comment>Commodity KoroKungPellets</comment>
   </data>
@@ -1602,7 +1602,7 @@
     <comment>Commodity UtopianPublicity</comment>
   </data>
   <data name="PersonalGifts" xml:space="preserve">
-    <value>Presentes Pessoais</value>
+    <value>Presentes Festivos</value>
     <comment>Commodity.PersonalGifts</comment>
   </data>
   <data name="ShansCharisOrchid" xml:space="preserve">
@@ -1769,5 +1769,28 @@
     <value>Asas de Baixa Gravidade de Uzumoku</value>
     <comment>Commodity UzumokuLowGWings</comment>
   </data>
-  
+  <data name="OnionHeadC" xml:space="preserve">
+    <value>Cepa Gama de Onionhead</value>
+    <comment>Commodity Onionhead Gamma Strain</comment>
+  </data>
+  <data name="ClassifiedExperimentalEquipment" xml:space="preserve">
+    <value>Equipamento Experimental Secreto</value>
+    <comment>Commodity ClassifiedExperimentalEquipment</comment>
+  </data>
+  <data name="AncientRelicTG" xml:space="preserve">
+    <value>Relíquia Não Classificada</value>
+    <comment>Commodity AncientRelicTG</comment>
+  </data>
+  <data name="ThargoidTissueSampleType5" xml:space="preserve">
+    <value>Amostra de Tecido Thargoid Orthrus</value>
+    <comment>Commodity ThargoidTissueSampleType5</comment>
+  </data>
+  <data name="ThargoidGeneratorTissueSample" xml:space="preserve">
+    <value>Amostra de Tecido Cáustico</value>
+    <comment>Commodity ThargoidGeneratorTissueSample</comment>
+  </data>
+  <data name="UnocuppiedEscapePod" xml:space="preserve">
+    <value>Cápsula de Escape Desocupada</value>
+    <comment>Commodity UnocuppiedEscapePod</comment>
+  </data>
 </root>

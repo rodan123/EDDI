@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using EddiConfigService;
+using Newtonsoft.Json;
 using RestSharp;
 using RestSharp.Serializers;
 using System;
@@ -34,7 +35,7 @@ namespace EddiStarMapService
         private const int startupDelayMilliSeconds = 1000 * 10; // 10 seconds
 
         // The minimum interval between EDSM responder event syncs
-        private const int syncIntervalMilliSeconds = 60000; // 1 minute
+        private const int syncIntervalMilliSeconds = 5000; // 5 seconds
 
         public static string inGameCommanderName { get; set; }
         private string commanderName { get; set; }
@@ -46,6 +47,12 @@ namespace EddiStarMapService
         // For normal use, the EDSM API base URL is https://www.edsm.net/.
         // If you need to do some testing on EDSM's API, please use the https://beta.edsm.net/ endpoint for sending data.
         private const string baseUrl = "https://www.edsm.net/";
+
+        // This API only accepts and only returns data for the "live" galaxy, game version 4.0 or later.
+        private static readonly System.Version minGameVersion = new System.Version(4, 0);
+        private static System.Version currentGameVersion { get; set; }
+        private static string gameVersion;
+        private static string gameBuild;
 
         private class EdsmRestClient : IEdsmRestClient
         {
@@ -60,20 +67,46 @@ namespace EddiStarMapService
             }
 
             public Uri BuildUri(IRestRequest request) => restClient.BuildUri(request);
-            IRestResponse<T> IEdsmRestClient.Execute<T>(IRestRequest request) => restClient.Execute<T>(request);
+            IRestResponse<T> IEdsmRestClient.Execute<T>(IRestRequest request)
+            {
+                var response = restClient.Execute<T>(request);
+                if (int.TryParse(
+                    response.Headers.FirstOrDefault(h => h.Name == "X-Rate-Limit-Remaining")?.Value as string,
+                    out int requestsRemaining))
+                {
+                    if (requestsRemaining == 0)
+                    {
+                        // We've exceeded our rate limit. A new request can be made after a short time has passed.
+                        if (int.TryParse(
+                            response.Headers.FirstOrDefault(h => h.Name == "X-Rate-Limit-Reset")?.Value as string,
+                            out var resetSeconds)) { }
+                        else
+                        {
+                            resetSeconds = 10;
+                        }
+                        Logging.Warn($"EDSM rate limit exceeded. Waiting {resetSeconds} seconds for server cool-down.");
+                        Thread.Sleep(TimeSpan.FromSeconds(resetSeconds));
+                        ((IEdsmRestClient) this).Execute<T>(request);
+                    }
+                }
+                return response;
+            }
         }
 
-        public StarMapService(IEdsmRestClient restClient = null)
+        public StarMapService(IEdsmRestClient restClient = null, bool needsCredentials = false)
         {
             this.restClient = restClient ?? new EdsmRestClient(baseUrl);
 
-            // Set up EDSM API credentials
-            SetEdsmCredentials();
+            if (needsCredentials)
+            {
+                // Set up EDSM API credentials
+                SetEdsmCredentials();
+            }
         }
 
         public void SetEdsmCredentials()
         {
-            StarMapConfiguration starMapCredentials = StarMapConfiguration.FromFile();
+            var starMapCredentials = ConfigService.Instance.edsmConfiguration;
             if (!string.IsNullOrEmpty(starMapCredentials?.apiKey))
             {
                 // Commander name might come from EDSM credentials or from the game and companion app
@@ -136,6 +169,7 @@ namespace EddiStarMapService
                         var holdingQueue = new List<IDictionary<string, object>>();
                         try
                         {
+                            Logging.Debug("Sending queued events to EDSM: ", queuedEvents);
                             foreach (var pendingEvent in queuedEvents.GetConsumingEnumerable(syncCancellationTS.Token))
                             {
                                 holdingQueue.Add(pendingEvent);
@@ -144,14 +178,19 @@ namespace EddiStarMapService
                                 {
                                     // Once we hit zero queued events, wait a couple more seconds for any concurrent events to register
                                     await Task.Delay(2000, syncCancellationTS.Token).ConfigureAwait(false);
-                                    if (queuedEvents.Count > 0) { continue; }
+                                    if (queuedEvents.Count > 0)
+                                    {
+                                        continue;
+                                    }
+
                                     // No additional events registered, send any events we have in our holding queue
                                     if (holdingQueue.Count > 0)
                                     {
                                         var sendingQueue = holdingQueue.Copy();
-                                        holdingQueue = new List<IDictionary<string, object>>();
-                                        await Task.Run(() => SendEvents(sendingQueue), syncCancellationTS.Token).ConfigureAwait(false);
-                                        await Task.Delay(syncIntervalMilliSeconds, syncCancellationTS.Token).ConfigureAwait(false);
+                                        await Task.Run(() => SendEvents(sendingQueue), syncCancellationTS.Token)
+                                            .ConfigureAwait(false);
+                                        await Task.Delay(syncIntervalMilliSeconds, syncCancellationTS.Token)
+                                            .ConfigureAwait(false);
                                     }
                                 }
                             }
@@ -164,6 +203,11 @@ namespace EddiStarMapService
                                 queuedEvents.Add(pendingEvent);
                             }
                         }
+                        catch (Exception ex)
+                        {
+                            Logging.Error(ex.Message, ex);
+                        }
+                        holdingQueue.Clear();
                     }).ConfigureAwait(false);
                 }
                 catch (TaskCanceledException)
@@ -176,6 +220,8 @@ namespace EddiStarMapService
         public void EnqueueEvent(IDictionary<string, object> eventObject)
         {
             if (eventObject is null) { return; }
+            if (currentGameVersion != null && currentGameVersion < minGameVersion) { return; }
+
             queuedEvents.Add(eventObject);
         }
 
@@ -196,7 +242,8 @@ namespace EddiStarMapService
 
         private void SendEvents(List<IDictionary<string, object>> queue)
         {
-            StarMapConfiguration starMapConfiguration = StarMapConfiguration.FromFile();
+            if (currentGameVersion is null) { return; } // Wait until we have a game version before sending events
+            var starMapConfiguration = ConfigService.Instance.edsmConfiguration;
             SendEventBatch(queue, starMapConfiguration);
         }
 
@@ -216,6 +263,8 @@ namespace EddiStarMapService
             request.AddParameter("apiKey", apiKey);
             request.AddParameter("fromSoftware", Constants.EDDI_NAME);
             request.AddParameter("fromSoftwareVersion", Constants.EDDI_VERSION);
+            request.AddParameter("fromGameVersion", gameVersion);
+            request.AddParameter("fromGameBuild", gameBuild);
             request.AddParameter("message", JsonConvert.SerializeObject(eventData).Normalize());
             request.Timeout = JournalTimeoutMilliseconds;
 
@@ -230,16 +279,17 @@ namespace EddiStarMapService
                     Logging.Warn(clientResponse.ErrorMessage);
                     ReEnqueueEvents(eventData);
                 }
-                else if (response.msgnum >= 100 && response.msgnum <= 103)
+                else if (response.msgnum >= 100 && response.msgnum <= 104)
                 {
                     // 100 -  Everything went fine! 
                     // 101 -  The journal message was already processed in our database. 
                     // 102 -  The journal message was already in a newer version in our database. 
-                    // 103 -  Duplicate event request (already reported from another software client). 
+                    // 103 -  Duplicate event request (cached data already reported from another software client). 
+                    // 104 -  Commander is in a crew session without being the captain. As such we do not register any logs. 
                     starMapConfiguration.lastJournalSync = eventData
                         .Select(e => JsonParsing.getDateTime("timestamp", e))
                         .Max();
-                    starMapConfiguration.ToFile();
+                    ConfigService.Instance.edsmConfiguration = starMapConfiguration;
                 }
                 if (response?.msgnum != 100)
                 {
@@ -277,7 +327,7 @@ namespace EddiStarMapService
                     StarMapLogResponse response = clientResponse.Data;
                     if (response?.msgnum != 100)
                     {
-                        Logging.Warn("EDSM responded with " + response?.msg ?? clientResponse.ErrorMessage);
+                        Logging.Warn("EDSM responded with " + response?.msg);
                     }
                 }
                 catch (ThreadAbortException)
@@ -361,7 +411,7 @@ namespace EddiStarMapService
 
             if (response != null)
             {
-                Logging.Debug("Response for star map logs is " + JsonConvert.SerializeObject(response));
+                Logging.Debug("Response for star map logs is: " + response);
 
                 if (response.msgnum != 100)
                 {
@@ -378,6 +428,18 @@ namespace EddiStarMapService
             }
             Logging.Debug("No response received.");
             throw new EDSMException("No response received."); // not for localization
+        }
+
+        public static void SetGameVersion(System.Version GameVersion, string gameversion, string gamebuild)
+        {
+            currentGameVersion = GameVersion;
+            gameVersion = gameversion;
+            gameBuild = gamebuild;
+
+            if (currentGameVersion != null && currentGameVersion < minGameVersion)
+            {
+                Logging.Warn($"Service disabled. Game version is {currentGameVersion}, service may only send and receive data for version {minGameVersion} or later.");
+            }
         }
     }
 
@@ -405,6 +467,7 @@ namespace EddiStarMapService
         public string system { get; set; } // System name
 
         public long systemId { get; set; } // EDSM ID
+        public ulong? systemId64 { get; set; } // System address
         public DateTime date { get; set; }
     }
 
@@ -461,7 +524,6 @@ namespace EddiStarMapService
 
         public string RootElement { get; set; }
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")] // this usage is perfectly correct
         public string Serialize(object obj)
         {
             using (var stringWriter = new StringWriter())
@@ -472,7 +534,6 @@ namespace EddiStarMapService
             }
         }
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")] // this usage is perfectly correct
         public T Deserialize<T>(IRestResponse response)
         {
             var content = response.Content;

@@ -19,7 +19,7 @@ namespace EddiDataDefinitions.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     public class Commodities {
@@ -295,6 +295,15 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Unclassified Relic.
+        /// </summary>
+        public static string AncientRelicTG {
+            get {
+                return ResourceManager.GetString("AncientRelicTG", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Ancient Tablet.
         /// </summary>
         public static string AncientTablet {
@@ -448,7 +457,7 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Az Cancri Formula 42.
+        ///   Looks up a localized string similar to AZ Cancri Formula 42.
         /// </summary>
         public static string AzCancriFormula42 {
             get {
@@ -768,6 +777,15 @@ namespace EddiDataDefinitions.Properties {
         public static string ChiEridaniMarinePaste {
             get {
                 return ResourceManager.GetString("ChiEridaniMarinePaste", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Classified Experimental Equipment.
+        /// </summary>
+        public static string ClassifiedExperimentalEquipment {
+            get {
+                return ResourceManager.GetString("ClassifiedExperimentalEquipment", resourceCulture);
             }
         }
         
@@ -1710,9 +1728,9 @@ namespace EddiDataDefinitions.Properties {
         /// <summary>
         ///   Looks up a localized string similar to Koro Kung Pellets.
         /// </summary>
-        public static string KoroKungPellets {
+        public static string KorroKungPellets {
             get {
-                return ResourceManager.GetString("KoroKungPellets", resourceCulture);
+                return ResourceManager.GetString("KorroKungPellets", resourceCulture);
             }
         }
         
@@ -2365,7 +2383,7 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Void Opals.
+        ///   Looks up a localized string similar to Void Opal.
         /// </summary>
         public static string Opal {
             get {
@@ -2491,7 +2509,7 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Personal Gifts.
+        ///   Looks up a localized string similar to Festive Gifts.
         /// </summary>
         public static string PersonalGifts {
             get {
@@ -3184,6 +3202,15 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Caustic Tissue Sample.
+        /// </summary>
+        public static string ThargoidGeneratorTissueSample {
+            get {
+                return ResourceManager.GetString("ThargoidGeneratorTissueSample", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Thargoid Scout Tissue Sample .
         /// </summary>
         public static string ThargoidScoutTissueSample {
@@ -3225,6 +3252,15 @@ namespace EddiDataDefinitions.Properties {
         public static string ThargoidTissueSampleType4 {
             get {
                 return ResourceManager.GetString("ThargoidTissueSampleType4", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Thargoid Orthrus Tissue Sample.
+        /// </summary>
+        public static string ThargoidTissueSampleType5 {
+            get {
+                return ResourceManager.GetString("ThargoidTissueSampleType5", resourceCulture);
             }
         }
         
@@ -3450,6 +3486,15 @@ namespace EddiDataDefinitions.Properties {
         public static string UnmarkedWeapons {
             get {
                 return ResourceManager.GetString("UnmarkedWeapons", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Unoccupied Escape Pod.
+        /// </summary>
+        public static string UnocuppiedEscapePod {
+            get {
+                return ResourceManager.GetString("UnocuppiedEscapePod", resourceCulture);
             }
         }
         

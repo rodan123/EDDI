@@ -16,8 +16,6 @@ namespace EddiDataDefinitions
         /// <summary>The ID of this body in the star system</summary>
         public long? bodyId { get; set; }
 
-        public static int CompareById(Body lhs, Body rhs) => Math.Sign((lhs.bodyId - rhs.bodyId) ?? 0);
-        
         /// <summary>The ID of this body in EDSM</summary>
         public long? EDSMID { get; set; }
 
@@ -30,7 +28,7 @@ namespace EddiDataDefinitions
         public BodyType bodyType { get; set; } = BodyType.None;
 
         /// <summary>The name of the body</summary>
-        [PublicAPI, JsonProperty("name"), JsonRequired]
+        [PublicAPI, JsonProperty("name")]
         public string bodyname { get; set; }
 
         /// <summary>The short name of the body</summary>
@@ -42,7 +40,7 @@ namespace EddiDataDefinitions
         public string systemname { get; set; }
 
         /// <summary>Unique 64 bit id value for system</summary>
-        public long? systemAddress { get; set; }
+        public ulong? systemAddress { get; set; }
 
         /// <summary>The distance of the body from the arrival star, in light seconds </summary>
         [PublicAPI]
@@ -68,7 +66,12 @@ namespace EddiDataDefinitions
 
         /// <summary>When we scanned this object, if we have (DateTime)</summary>
         [PublicAPI]
-        public DateTime? scanned { get; set; }
+        public DateTime? scanned
+        {
+            get => _scanned;
+            set { _scanned = value; OnPropertyChanged(); }
+        }
+        [JsonIgnore] private DateTime? _scanned;
 
         /// <summary>Whether we're the first commander to map this body</summary>
         [PublicAPI]
@@ -76,15 +79,32 @@ namespace EddiDataDefinitions
 
         /// <summary>When we mapped this object, if we have (DateTime)</summary>
         [PublicAPI]
-        public DateTime? mapped { get; set; }
+        public DateTime? mapped
+        {
+            get => _mapped;
+            set { _mapped = value; OnPropertyChanged(); }
+        }
+        [JsonIgnore] private DateTime? _mapped;
 
         /// <summary>Whether we received an efficiency bonus when mapping this body</summary>
-        public bool mappedEfficiently { get; set; }
+        public bool mappedEfficiently
+        {
+            get => _mappedEfficiently;
+            set { _mappedEfficiently = value; OnPropertyChanged(); }
+        }
+        [JsonIgnore] private bool _mappedEfficiently;
 
         /// <summary>The estimated value of the body</summary>
         [PublicAPI, JsonIgnore]
-        public long estimatedvalue => scanned == null ? 0 :
-            solarmass == null ? estimateBodyValue() : estimateStarValue();
+        public long estimatedvalue => scanned == null ? 0 : solarmass == null 
+                ? estimateBodyValue(mapped != null, mappedEfficiently) 
+                : estimateStarValue();
+
+        /// <summary>The estimated maximum value of the body</summary>
+        [PublicAPI, JsonIgnore]
+        public long maxestimatedvalue => scanned == null ? 0 : solarmass == null
+            ? estimateBodyValue(true, true)
+            : estimateStarValue();
 
         // Orbital characteristics
 
@@ -144,24 +164,17 @@ namespace EddiDataDefinitions
                     }
                 }
                 _parents = value;
+                OnPropertyChanged();
             }
         }
+        [JsonIgnore] private List<IDictionary<string, object>> _parents;
 
         /// <summary> Density in Kg per cubic meter </summary>
         [PublicAPI, JsonIgnore]
-        public decimal? density
-        {
-            get { return GetDensity(); }
-            set { _density = value; }
-        }
-        [JsonIgnore]
-        private decimal? _density;
+        public decimal? density => GetDensity();
 
         public Body()
         { }
-
-        [JsonIgnore]
-        private List<IDictionary<string, object>> _parents;
 
         // Additional calculated statistics
 
@@ -206,7 +219,7 @@ namespace EddiDataDefinitions
 
         /// <summary>If this body is the main star</summary>
         [PublicAPI, JsonIgnore]
-        public bool? mainstar => distance == 0 ? true : false;
+        public bool? mainstar => distance == 0;
 
         /// <summary>The stellar class of the star</summary>
         [PublicAPI]
@@ -233,7 +246,8 @@ namespace EddiDataDefinitions
         // Additional calculated star information
 
         [PublicAPI, JsonIgnore]
-        public bool scoopable => !string.IsNullOrEmpty(stellarclass) && "KGBFOAM".Contains(stellarclass);
+        public bool scoopable => !string.IsNullOrEmpty(stellarclass) 
+                                 && "KGBFOAM".Contains(stellarclass.Split('_')[0]);
 
         [PublicAPI, JsonIgnore]
         public string chromaticity => starClass?.chromaticity?.localizedName; // For use with Cottle
@@ -256,7 +270,7 @@ namespace EddiDataDefinitions
             (decimal?)StarClass.DistanceFromStarForTemperature(StarClass.minHabitableTempKelvin, Convert.ToDouble(radius), Convert.ToDouble(temperature)) : null;
 
         /// <summary> Star definition </summary>
-        public Body(string bodyName, long? bodyId, List<IDictionary<string, object>> parents, decimal? distanceLs, string stellarclass, int? stellarsubclass, decimal? solarmass, decimal radiusKm, decimal? absolutemagnitude, long? ageMegaYears, decimal? temperatureKelvin, string luminosityclass, decimal? semimajoraxisLs, decimal? eccentricity, decimal? orbitalinclinationDegrees, decimal? periapsisDegrees, decimal? orbitalPeriodDays, decimal? rotationPeriodDays, decimal? axialTiltDegrees, List<Ring> rings, bool? alreadydiscovered, bool? alreadymapped, string systemName = null, long? systemAddress = null)
+        public Body(string bodyName, long? bodyId, List<IDictionary<string, object>> parents, decimal? distanceLs, string stellarclass, int? stellarsubclass, decimal? solarmass, decimal radiusKm, decimal? absolutemagnitude, long? ageMegaYears, decimal? temperatureKelvin, string luminosityclass, decimal? semimajoraxisLs, decimal? eccentricity, decimal? orbitalinclinationDegrees, decimal? periapsisDegrees, decimal? orbitalPeriodDays, decimal? rotationPeriodDays, decimal? axialTiltDegrees, List<Ring> rings, bool? alreadydiscovered, bool? alreadymapped, string systemName = null, ulong? systemAddress = null)
         {
             this.bodyname = bodyName;
             this.radius = radiusKm;
@@ -293,9 +307,6 @@ namespace EddiDataDefinitions
             // Scan details
             this.alreadydiscovered = alreadydiscovered;
             this.alreadymapped = alreadymapped;
-
-            // Other calculations
-            this.density = GetDensity();
         }
 
         // Additional calculated star statistics
@@ -410,7 +421,7 @@ namespace EddiDataDefinitions
         public ReserveLevel reserveLevel { get; set; } = ReserveLevel.None;
 
         /// <summary> Planet or Moon definition </summary>
-        public Body(string bodyName, long? bodyId, List<IDictionary<string, object>> parents, decimal? distanceLs, bool? tidallylocked, TerraformState terraformstate, PlanetClass planetClass, AtmosphereClass atmosphereClass, List<AtmosphereComposition> atmosphereCompositions, Volcanism volcanism, decimal? earthmass, decimal? radiusKm, decimal gravity, decimal? temperatureKelvin, decimal? pressureAtm, bool? landable, List<MaterialPresence> materials, List<SolidComposition> solidCompositions, decimal? semimajoraxisLs, decimal? eccentricity, decimal? orbitalinclinationDegrees, decimal? periapsisDegrees, decimal? orbitalPeriodDays, decimal? rotationPeriodDays, decimal? axialtiltDegrees, List<Ring> rings, ReserveLevel reserveLevel, bool? alreadydiscovered, bool? alreadymapped, string systemName = null, long? systemAddress = null)
+        public Body(string bodyName, long? bodyId, List<IDictionary<string, object>> parents, decimal? distanceLs, bool? tidallylocked, TerraformState terraformstate, PlanetClass planetClass, AtmosphereClass atmosphereClass, List<AtmosphereComposition> atmosphereCompositions, Volcanism volcanism, decimal? earthmass, decimal? radiusKm, decimal gravity, decimal? temperatureKelvin, decimal? pressureAtm, bool? landable, List<MaterialPresence> materials, List<SolidComposition> solidCompositions, decimal? semimajoraxisLs, decimal? eccentricity, decimal? orbitalinclinationDegrees, decimal? periapsisDegrees, decimal? orbitalPeriodDays, decimal? rotationPeriodDays, decimal? axialtiltDegrees, List<Ring> rings, ReserveLevel reserveLevel, bool? alreadydiscovered, bool? alreadymapped, string systemName = null, ulong? systemAddress = null)
         {
             this.bodyname = bodyName;
             this.bodyType = (bool)parents?.Exists(p => p.ContainsKey("Planet"))
@@ -454,9 +465,6 @@ namespace EddiDataDefinitions
             // Scan details
             this.alreadydiscovered = alreadydiscovered;
             this.alreadymapped = alreadymapped;
-
-            // Other calculations
-            this.density = GetDensity();
         }
 
         // Additional calculated planet and moon statistics
@@ -467,12 +475,12 @@ namespace EddiDataDefinitions
         public decimal? pressureprobability => Probability.CumulativeP(starClass == null ? planetClass.pressuredistribution : null, pressure);
 
         [PublicAPI, JsonIgnore] // The duration of a solar day on the body, in Earth days
-        public decimal? solarday => (orbitalperiod * rotationalperiod) / (orbitalperiod - rotationalperiod);
+        public decimal? solarday => orbitalperiod - rotationalperiod == 0 ? null : (orbitalperiod * rotationalperiod) / (orbitalperiod - rotationalperiod);
 
         [PublicAPI, JsonIgnore] // The ground speed of the parent body's shadow on the surface of the body in meters per second
         public decimal? solarsurfacevelocity => (2 * (decimal)Math.PI * radius * 1000) / (solarday * 86400);
 
-        private long estimateBodyValue()
+        private long estimateBodyValue(bool isMapped, bool isMappedEfficiently)
         {
             // Credit to MattG's thread at https://forums.frontier.co.uk/showthread.php/232000-Exploration-value-formulae for scan value formulas
 
@@ -493,8 +501,8 @@ namespace EddiDataDefinitions
             int k_terraformable = 93328;
             double mappingMultiplier = 1;
 
-            var alreadyDiscovered = (alreadydiscovered ?? false);
-            var alreadyMapped = (alreadymapped ?? false);
+            var alreadyDiscovered = (alreadydiscovered ?? true); 
+            var alreadyMapped = (alreadymapped ?? true); // If we don't know then we'll assume true to underestimate rather than overestimate the value
 
             // Override constants for specific types of bodies
             if (planetClass.edname == "AmmoniaWorld")
@@ -533,7 +541,7 @@ namespace EddiDataDefinitions
             // Terraformability is a scale from 0-100%, but since we don't know the % we'll assume 100% for the time being.
             k = terraformable ? (k + k_terraformable) : k;
 
-            if (mapped != null)
+            if (isMapped)
             {
                 if (!alreadyDiscovered && !alreadyMapped) // First to discover and first to map
                 {
@@ -547,7 +555,7 @@ namespace EddiDataDefinitions
                 {
                     mappingMultiplier = 3.3333333333;
                 }
-                mappingMultiplier *= (mappedEfficiently) ? efficientMappingMultiplier : 1;
+                mappingMultiplier *= (isMappedEfficiently) ? efficientMappingMultiplier : 1;
             }
 
             // Calculate exploration scan values
@@ -614,8 +622,17 @@ namespace EddiDataDefinitions
             return null;
         }
 
-        // Convert legacy data
+        public static string GetShortName(string bodyname, string systemname)
+        {
+            if (bodyname is null) { return null; }
+            return (systemname == null || bodyname == systemname || !bodyname.StartsWith(systemname)) 
+                ? bodyname 
+                : bodyname?.Replace(systemname, "").Trim();
+        }
 
+        public static int CompareById(Body lhs, Body rhs) => Math.Sign((lhs.bodyId - rhs.bodyId) ?? 0);
+
+        #region Legacy data conversions
         [JsonExtensionData]
         private IDictionary<string, JToken> _additionalData = new Dictionary<string, JToken>();
 
@@ -638,22 +655,26 @@ namespace EddiDataDefinitions
                 }
             }
 
-            // Calculate our density if possible to do so.
-            density = GetDensity();
-
             _additionalData = null;
         }
+        #endregion
 
+        #region Implement INotifyPropertyChanged
         public event PropertyChangedEventHandler PropertyChanged;
 
-        public void NotifyPropertyChanged(string propName)
+        public void OnPropertyChanged([System.Runtime.CompilerServices.CallerMemberNameAttribute] string propName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
         }
+        #endregion
 
-        public static string GetShortName(string bodyname, string systemname)
-        {
-            return (systemname == null || bodyname == systemname) ? bodyname : bodyname?.Replace(systemname, "").Trim();
-        }
+        #region Newtonsoft ShouldSerialize logic
+
+        // Allow `bodyname` to be omitted when distance is set
+        // (so that we can create a temporary main star with a stellar class when
+        // the `bodyname` is still unknown)
+        public bool ShouldSerializebodyname() => distance is null || !string.IsNullOrEmpty(bodyname);
+
+        #endregion
     }
 }

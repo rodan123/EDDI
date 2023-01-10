@@ -8,7 +8,7 @@
         static Crime()
         {
             resourceManager = Properties.Crimes.ResourceManager;
-            resourceManager.IgnoreCase = false;
+            resourceManager.IgnoreCase = true;
             missingEDNameHandler = (edname) => new Crime(edname);
 
             None = new Crime("none");
@@ -37,9 +37,13 @@
             var PassengerWanted = new Crime("passengerWanted");
             var MissionFine = new Crime("missionFine");
 
+            var onFootArcCutterUse = new Crime("onFoot_arcCutterUse");
             var onFootAssault = new Crime("onFoot_assault");
             var onFootBreakingAndEntering = new Crime("onFoot_breakingAndEntering");
+            var onFootCarryingIllegalData = new Crime("onFoot_carryingIllegalData");
+            var onFootCarryingStolenGoods = new Crime("onFoot_carryingStolenGoods");
             var onFootDamagingDefences = new Crime("onFoot_damagingDefences");
+            var onFootDataTransfer = new Crime("onFoot_dataTransfer");
             var onFootDetectionOfWeapon = new Crime("onFoot_detectionOfWeapon");
             var onFootfailureToSubmitToPolice = new Crime("onFoot_failureToSubmitToPolice");
             var onFootIdentityTheft = new Crime("onFoot_identityTheft");

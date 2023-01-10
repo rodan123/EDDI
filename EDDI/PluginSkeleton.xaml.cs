@@ -1,4 +1,5 @@
-﻿using EddiCore;
+﻿using EddiConfigService;
+using EddiCore;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -20,18 +21,18 @@ namespace Eddi
 
         private void pluginenabled_Checked(object sender, RoutedEventArgs e)
         {
-            EDDIConfiguration configuration = EDDIConfiguration.FromFile();
+            EDDIConfiguration configuration = ConfigService.Instance.eddiConfiguration;
             configuration.Plugins[pluginName] = true;
-            configuration.ToFile();
+            ConfigService.Instance.eddiConfiguration = configuration;
             EDDI.Instance.EnableResponder(pluginName);
             EDDI.Instance.EnableMonitor(pluginName);
         }
 
         private void pluginenabled_Unchecked(object sender, RoutedEventArgs e)
         {
-            EDDIConfiguration configuration = EDDIConfiguration.FromFile();
+            EDDIConfiguration configuration = ConfigService.Instance.eddiConfiguration;
             configuration.Plugins[pluginName] = false;
-            configuration.ToFile();
+            ConfigService.Instance.eddiConfiguration = configuration;
             EDDI.Instance.DisableResponder(pluginName);
             EDDI.Instance.DisableMonitor(pluginName);
         }

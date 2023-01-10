@@ -242,7 +242,7 @@
     <comment>Commodity AutoFabricators</comment>
   </data>
   <data name="AzCancriFormula42" xml:space="preserve">
-    <value>Az Cancri Formula 42</value>
+    <value>AZ Cancri Formula 42</value>
     <comment>Commodity AzCancriFormula42</comment>
   </data>
   <data name="BaltahSineVacuumKrill" xml:space="preserve">
@@ -741,7 +741,7 @@
     <value>Kongga Ale</value>
     <comment>Commodity KonggaAle</comment>
   </data>
-  <data name="KoroKungPellets" xml:space="preserve">
+  <data name="KorroKungPellets" xml:space="preserve">
     <value>Koro Kung Pellets</value>
     <comment>Commodity KoroKungPellets</comment>
   </data>
@@ -1602,7 +1602,7 @@
     <comment>Commodity UtopianPublicity</comment>
   </data>
   <data name="PersonalGifts" xml:space="preserve">
-    <value>Personal Gifts</value>
+    <value>Festive Gifts</value>
     <comment>Commodity.PersonalGifts</comment>
   </data>
   <data name="ShansCharisOrchid" xml:space="preserve">
@@ -1662,7 +1662,7 @@
     <comment>Commodity Alexandrite</comment>
   </data>
   <data name="Opal" xml:space="preserve">
-    <value>Void Opals</value>
+    <value>Void Opal</value>
     <comment>Commodity Opal</comment>
   </data>
   <data name="UnknownBiologicalMatter" xml:space="preserve">
@@ -1772,5 +1772,25 @@
   <data name="OnionHeadC" xml:space="preserve">
     <value>Onionhead Gamma Strain</value>
     <comment>Commodity Onionhead Gamma Strain</comment>
+  </data>
+  <data name="ClassifiedExperimentalEquipment" xml:space="preserve">
+    <value>Classified Experimental Equipment</value>
+    <comment>Commodity ClassifiedExperimentalEquipment</comment>
+  </data>
+  <data name="AncientRelicTG" xml:space="preserve">
+    <value>Unclassified Relic</value>
+    <comment>Commodity AncientRelicTG</comment>
+  </data>
+  <data name="ThargoidTissueSampleType5" xml:space="preserve">
+    <value>Thargoid Orthrus Tissue Sample</value>
+    <comment>Commodity ThargoidTissueSampleType5</comment>
+  </data>
+  <data name="ThargoidGeneratorTissueSample" xml:space="preserve">
+    <value>Caustic Tissue Sample</value>
+    <comment>Commodity ThargoidGeneratorTissueSample</comment>
+  </data>
+  <data name="UnocuppiedEscapePod" xml:space="preserve">
+    <value>Unoccupied Escape Pod</value>
+    <comment>Commodity UnocuppiedEscapePod</comment>
   </data>
 </root>

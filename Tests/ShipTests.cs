@@ -1,4 +1,5 @@
-﻿using EddiCore;
+﻿using EddiConfigService;
+using EddiCore;
 using EddiDataDefinitions;
 using EddiEvents;
 using EddiJournalMonitor;
@@ -79,6 +80,7 @@ namespace UnitTests
             List<Event> events = JournalMonitor.ParseJournalEntry(data);
             Assert.AreEqual(1, events.Count);
             ShipLoadoutEvent loadoutEvent = events[0] as ShipLoadoutEvent;
+            Assert.IsNotNull(loadoutEvent);
             Assert.AreEqual("Peppermint", loadoutEvent.shipname);
             Assert.AreEqual(18, loadoutEvent.compartments.Count);
             Assert.AreEqual(7, loadoutEvent.hardpoints.Count);
@@ -87,6 +89,7 @@ namespace UnitTests
             var privateObject = new PrivateObject(shipMonitor);
             object[] args = new object[] { loadoutEvent };
             Ship ship = privateObject.Invoke("ParseShipLoadoutEvent", args) as Ship;
+            Assert.IsNotNull(ship);
             Assert.AreEqual("Peppermint", ship.name);
             Assert.AreEqual("Int_FuelScoop_Size7_Class5", ship.compartments[0].module.edname);
             Assert.AreEqual("Fuel Scoop", ship.compartments[0].module.invariantName);
@@ -100,9 +103,6 @@ namespace UnitTests
             int sidewinderId = 901;
             int courierId = 902;
 
-            Ship sidewinder;
-            Ship courier;
-
             // Start a ship monitor
             ShipMonitor shipMonitor = new ShipMonitor();
             PrivateObject privateObject = new PrivateObject(shipMonitor);
@@ -113,7 +113,7 @@ namespace UnitTests
             SendEvents(@"{ ""timestamp"":""2017-04-24T08:10:24Z"", ""event"":""Location"", ""Docked"":true, ""MarketID"":128666762, ""StationName"":""Jameson Memorial"", ""StationType"":""Orbis"", ""StarSystem"":""Shinrarta Dezhra"", ""SystemAddress"":3932277478106, ""StarPos"":[55.719,17.594,27.156], ""SystemAllegiance"":""Independent"", ""SystemEconomy"":""$economy_HighTech;"", ""SystemEconomy_Localised"":""High Tech"", ""SystemGovernment"":""$government_Democracy;"", ""SystemGovernment_Localised"":""Democracy"", ""SystemSecurity"":""$SYSTEM_SECURITY_high;"", ""SystemSecurity_Localised"":""High Security"", ""Body"":""Jameson Memorial"", ""BodyType"":""Station"", ""Factions"":[ { ""Name"":""Lori Jameson"", ""FactionState"":""None"", ""Government"":""Engineer"", ""Influence"":0.040307, ""Allegiance"":""Independent"" }, { ""Name"":""LTT 4487 Industry"", ""FactionState"":""None"", ""Government"":""Corporate"", ""Influence"":0.191939, ""Allegiance"":""Federation"" }, { ""Name"":""The Pilots Federation"", ""FactionState"":""Boom"", ""Government"":""Democracy"", ""Influence"":0.447217, ""Allegiance"":""Independent"" }, { ""Name"":""Future of Arro Naga"", ""FactionState"":""Boom"", ""Government"":""Democracy"", ""Influence"":0.128599, ""Allegiance"":""Federation"" }, { ""Name"":""The Dark Wheel"", ""FactionState"":""Boom"", ""Government"":""Democracy"", ""Influence"":0.092131, ""Allegiance"":""Independent"" }, { ""Name"":""Los Chupacabras"", ""FactionState"":""None"", ""Government"":""PrisonColony"", ""Influence"":0.099808, ""Allegiance"":""Independent"" } ], ""SystemFaction"":""The Pilots Federation"", ""FactionState"":""Boom"" }", shipMonitor);
             SendEvents(@"{ ""timestamp"":""2017-04-24T08:10:25Z"", ""event"":""Docked"", ""MarketID"":128666762, ""StationName"":""Jameson Memorial"", ""StationType"":""Orbis"", ""StarSystem"":""Shinrarta Dezhra"", ""SystemAddress"":3932277478106, ""StationFaction"":""The Pilots Federation"", ""FactionState"":""Boom"", ""StationGovernment"":""$government_Democracy;"", ""StationGovernment_Localised"":""Democracy"", ""StationEconomy"":""$economy_HighTech;"", ""StationEconomy_Localised"":""High Tech"", ""DistFromStarLS"":325.124878 }", shipMonitor);
 
-            sidewinder = shipMonitor.GetShip(sidewinderId);
+            var sidewinder = shipMonitor.GetShip(sidewinderId);
             Assert.AreEqual(sidewinder, shipMonitor.GetCurrentShip());
             Assert.AreEqual(sidewinder.model, "Sidewinder");
             Assert.AreEqual(100, sidewinder.health);
@@ -128,7 +128,7 @@ namespace UnitTests
             sidewinder = shipMonitor.GetShip(sidewinderId);
             Assert.AreEqual(sidewinder.model, "Sidewinder");
 
-            courier = shipMonitor.GetShip(courierId);
+            var courier = shipMonitor.GetShip(courierId);
             Assert.AreEqual(courier, shipMonitor.GetCurrentShip());
             Assert.AreEqual(courier.model, "Imperial Courier");
             Assert.AreEqual(100, courier.health);
@@ -182,7 +182,7 @@ namespace UnitTests
             Assert.AreEqual(courier, shipMonitor.GetCurrentShip());
             Assert.AreEqual(courier.model, "Imperial Courier");
             Assert.AreEqual(courier.name, "Scunthorpe Bound");
-            Assert.AreEqual("Int_CargoRack_Size2_Class1", courier.compartments[0].module.EDName);
+            Assert.AreEqual("Int_CargoRack_Size2_Class1", courier.compartments[0].module.edname);
             Assert.AreEqual("cargo rack", courier.compartments[0].module.invariantName.ToLowerInvariant());
 
             // Sell the Sidewinder
@@ -199,7 +199,7 @@ namespace UnitTests
             List<Event> events = JournalMonitor.ParseJournalEntry(line);
             ModulePurchasedEvent @event = (ModulePurchasedEvent)events[0];
 
-            Assert.AreEqual("hpt_crimescanner_size0_class3", @event.buymodule.EDName.ToLowerInvariant());
+            Assert.AreEqual("hpt_crimescanner_size0_class3", @event.buymodule.edname.ToLowerInvariant());
             Assert.AreEqual(3223343616, @event.marketId);
             Assert.AreEqual(101025, @event.buyprice);
             Assert.IsNull(@event.sellmodule);
@@ -276,16 +276,17 @@ namespace UnitTests
             privateObject.SetFieldOrProperty("updatedAt", DateTime.MinValue);
 
             // Set up our ship
+            Assert.IsNotNull(@event.shipid);
             Ship ship = new Ship() { model = @event.ship, LocalId = (int)@event.shipid };
             ship.compartments.Add(new Compartment() { name = @event.fromslot, size = 3, module = @event.frommodule });
             ship.compartments.Add(new Compartment() { name = @event.toslot, size = 3, module = @event.tomodule });
-            privateObject.Invoke("RemoveShip", new object[] { (int)@event.shipid });
-            privateObject.Invoke("AddShip", new object[] { ship });
+            privateObject.Invoke("RemoveShip", (int)@event.shipid);
+            privateObject.Invoke("AddShip", ship);
 
             // Test the event handler
             Assert.AreEqual(@event.frommodule, ship.compartments.FirstOrDefault(c => c.name == @event.fromslot)?.module);
             Assert.AreEqual(@event.tomodule, ship.compartments.FirstOrDefault(c => c.name == @event.toslot)?.module);
-            privateObject.Invoke("handleModuleSwappedEvent", new object[] { @event });
+            privateObject.Invoke("handleModuleSwappedEvent", @event);
             Assert.AreEqual(@event.frommodule, ship.compartments.FirstOrDefault(c => c.name == @event.toslot)?.module);
             Assert.AreEqual(@event.tomodule, ship.compartments.FirstOrDefault(c => c.name == @event.fromslot)?.module);
 
@@ -303,7 +304,8 @@ namespace UnitTests
             Assert.AreEqual("Omega Sector OD-S b4-0", @event.system);
             Assert.AreEqual("Rock of Isolation", @event.station);
             Assert.AreEqual(128928173, @event.marketId);
-            StoredModule storedModule = @event.storedmodules.FirstOrDefault(m => m.module.EDName.ToLowerInvariant() == "int_hyperdrive_size6_class5");
+            StoredModule storedModule = @event.storedmodules.FirstOrDefault(m => m.module.edname.ToLowerInvariant() == "int_hyperdrive_size6_class5");
+            Assert.IsNotNull(storedModule);
             Assert.AreEqual("Shinrarta Dezhra", storedModule.system);
             Assert.AreEqual(128666762, storedModule.marketid);
             Assert.AreEqual("Jameson Memorial", storedModule.station);
@@ -338,7 +340,7 @@ namespace UnitTests
         public void TestShipMonitorDeserialization()
         {
             // Read from our test item "shipMonitor.json"
-            ShipMonitorConfiguration configuration = new ShipMonitorConfiguration();
+            var configuration = new ShipMonitorConfiguration();
             try
             {
                 configuration = DeserializeJsonResource<ShipMonitorConfiguration>(Resources.shipMonitor);
@@ -378,14 +380,14 @@ namespace UnitTests
             Assert.AreEqual(81, ship2.LocalId);
             Assert.AreEqual("The Impact Kraiter", ship2.name);
             Assert.AreEqual(16, ship2.cargocapacity);
-            Assert.AreEqual(8, ship2.compartments.Count());
+            Assert.AreEqual(8, ship2.compartments.Count);
             Assert.AreEqual("Slot01_Size6", ship2.compartments[0].name);
             Assert.AreEqual(6, ship2.compartments[0].size);
             Assert.IsNotNull(ship2.compartments[0].module);
-            Assert.AreEqual("Int_ShieldGenerator_Size6_Class3_Fast", ship2.compartments[0].module.EDName);
+            Assert.AreEqual("Int_ShieldGenerator_Size6_Class3_Fast", ship2.compartments[0].module.edname);
             Assert.AreEqual("Bi-Weave Shield Generator", ship2.compartments[0].module.invariantName);
             Assert.AreEqual("SRV", ship2.launchbays[0].type);
-            Assert.AreEqual(2, ship2.launchbays[0].vehicles.Count());
+            Assert.AreEqual(2, ship2.launchbays[0].vehicles.Count);
             Assert.AreEqual("TestBuggy", ship2.launchbays[0].vehicles[0].vehicleDefinition);
             Assert.AreEqual("Starter", ship2.launchbays[0].vehicles[0].loadoutDescription);
             Assert.AreEqual("dual plasma repeaters", ship2.launchbays[0].vehicles[0].localizedDescription);
@@ -395,10 +397,9 @@ namespace UnitTests
         public void TestShipMonitorDeserializationDoesntMutateStatics()
         {
             // Read from our test item "shipMonitor.json"
-            ShipMonitorConfiguration configuration = new ShipMonitorConfiguration();
             try
             {
-                configuration = DeserializeJsonResource<ShipMonitorConfiguration>(Resources.shipMonitor);
+                DeserializeJsonResource<ShipMonitorConfiguration>(Resources.shipMonitor);
             }
             catch (Exception)
             {
@@ -411,23 +412,24 @@ namespace UnitTests
         [TestMethod]
         public void TestShipMonitorDeserializationMatchesSerialization()
         {
-            var privateObject = new PrivateObject(new ShipMonitor());
+            var shipMonitor = new ShipMonitor();
+            var privateObject = new PrivateObject(shipMonitor);
             privateObject.SetFieldOrProperty("shipyard", new ObservableCollection<Ship>());
             privateObject.SetFieldOrProperty("updatedAt", DateTime.MinValue);
 
             string data = DeserializeJsonResource<string>(Resources.loadout);
             List<Event> events = JournalMonitor.ParseJournalEntry(data);
             ShipLoadoutEvent loadoutEvent = events[0] as ShipLoadoutEvent;
-            object[] loadoutArgs = new object[] { loadoutEvent };
+            object[] loadoutArgs = { loadoutEvent };
             privateObject.Invoke("handleShipLoadoutEvent", loadoutArgs);
 
-            Ship originalShip = EDDI.Instance.CurrentShip;
+            Ship originalShip = shipMonitor.GetCurrentShip();
 
             if (originalShip != null)
             {
                 string originalShipString = JsonConvert.SerializeObject(originalShip);
                 Ship deserializedShip = JsonConvert.DeserializeObject<Ship>(originalShipString);
-                if (originalShip != null && deserializedShip != null)
+                if (deserializedShip != null)
                 {
                     Assert.IsTrue(JsonParsing.compareJsonEquality(originalShip, deserializedShip, true, out string mutatedProperty, Array.Empty<string>()));
                     if (!string.IsNullOrEmpty(mutatedProperty))
@@ -448,6 +450,7 @@ namespace UnitTests
             string data = DeserializeJsonResource<string>(Resources.loadout);
             List<Event> events = JournalMonitor.ParseJournalEntry(data);
             ShipLoadoutEvent loadoutEvent = events[0] as ShipLoadoutEvent;
+
             object[] loadoutArgs = new object[] { loadoutEvent };
 
             string data2 = DeserializeJsonResource<string>(Resources.fighterLoadout);
@@ -465,10 +468,11 @@ namespace UnitTests
 
             // After a loadout event generated from a fighter, 
             // we still want to track the ship we launched from as our current ship.
+            Assert.IsNotNull(loadoutEvent);
+            Assert.IsNotNull(fighterLoadoutEvent);
             Assert.AreEqual(loadoutEvent.shipid, currentShip.LocalId);
             Assert.AreNotEqual(fighterLoadoutEvent.shipid, currentShip.LocalId);
         }
-
 
         [TestMethod]
         public void TestJournalModulePurchasedHandlingMinimalShip()
@@ -480,14 +484,15 @@ namespace UnitTests
             Assert.IsNotNull(@event);
             Assert.IsInstanceOfType(@event, typeof(ModulePurchasedEvent));
 
-            Assert.AreEqual(119, (int)@event.shipid);
+            Assert.IsNotNull(@event.shipid);
+            Assert.AreEqual(119, @event.shipid);
             Assert.IsNotNull(@event.slot);
             Assert.IsNotNull(@event.buymodule);
 
             PrivateObject privateObject = new PrivateObject(new ShipMonitor());
 
             Ship ship = ShipDefinitions.FromModel(@event.ship);
-            ship.LocalId = (int)@event.shipid;
+            ship.LocalId = @event.shipid;
             object[] moduleArgs = new object[] { ship, @event.slot, @event.buymodule };
             privateObject.Invoke("AddModule", moduleArgs);
 
@@ -510,7 +515,8 @@ namespace UnitTests
             PrivateObject privateObject = new PrivateObject(new ShipMonitor());
 
             Ship ship = ShipDefinitions.FromModel(@event.ship);
-            ship.LocalId = (int)@event.shipid;
+            Assert.IsNotNull(@event.shipid);
+            ship.LocalId = @event.shipid;
             string slot = @event.slot;
             Module module = @event.buymodule;
             object[] moduleArgs = new object[] { ship, slot, module };
@@ -531,25 +537,33 @@ namespace UnitTests
         [TestMethod]
         public void TestShipRefuelledEvent_Scooping()
         {
-            PrivateObject privateObject = new PrivateObject(EDDI.Instance);
-            privateObject.SetFieldOrProperty("CurrentShip", ShipDefinitions.FromEDModel("Asp"));
-            Ship currentShip = (Ship)privateObject.GetFieldOrProperty("CurrentShip");
-            currentShip.fueltanktotalcapacity = 32M;
-
             string line1 = "{ \"timestamp\":\"2019 - 07 - 21T16: 28:35Z\", \"event\":\"FuelScoop\", \"Scooped\":5.001066, \"Total\":31.552881 }";
             string line2 = "{ \"timestamp\":\"2019 - 07 - 21T16: 28:35Z\", \"event\":\"FuelScoop\", \"Scooped\":0.447121, \"Total\":32.000000 }";
 
-            List<Event> events = JournalMonitor.ParseJournalEntry(line1);
-            ShipRefuelledEvent @event1 = (ShipRefuelledEvent)events[0];
-            Assert.AreEqual(5.001066M, @event1.amount);
-            Assert.AreEqual(31.552881M, @event1.total);
-            Assert.IsFalse(@event1.full);
-            Assert.AreEqual("Ship refuelled", @event1.type);
+            var event1 = JournalMonitor.ParseJournalEntry(line1)[0] as ShipRefuelledEvent;
+            var event2 = JournalMonitor.ParseJournalEntry(line2)[0] as ShipRefuelledEvent;
 
-            events = JournalMonitor.ParseJournalEntry(line2);
-            ShipRefuelledEvent @event2 = (ShipRefuelledEvent)events[0];
-            Assert.AreEqual(0.447121M, @event2.amount);
-            Assert.AreEqual(32.000000M, @event2.total);
+            var shipMonitor = new ShipMonitor();
+            var privateObject = new PrivateObject(shipMonitor);
+
+            // Set up our ship
+            Ship ship = new Ship { LocalId = 9999, fueltanktotalcapacity = 32M };
+            privateObject.Invoke("RemoveShip", 9999);
+            privateObject.Invoke("AddShip", ship);
+            privateObject.SetFieldOrProperty("currentShipId", 9999);
+
+            // Evaluate the results of our events
+            Assert.IsNotNull(event1);
+            shipMonitor.PreHandle(event1);
+            Assert.AreEqual(5.001066M, event1.amount);
+            Assert.AreEqual(31.552881M, event1.total);
+            Assert.IsFalse(event1.full);
+            Assert.AreEqual("Ship refuelled", event1.type);
+
+            Assert.IsNotNull(event2);
+            shipMonitor.PreHandle(event2);
+            Assert.AreEqual(0.447121M, event2.amount);
+            Assert.AreEqual(32.000000M, event2.total);
             Assert.IsTrue(event2.full);
         }
 
@@ -558,14 +572,13 @@ namespace UnitTests
         {
             // Obtain our ship monitor and save its state
             ShipMonitor shipMonitor = (ShipMonitor)EDDI.Instance.ObtainMonitor("Ship monitor");
-            ObservableCollection<Ship> shipyard = shipMonitor.shipyard;
             PrivateObject privateObject = new PrivateObject(shipMonitor);
             privateObject.SetFieldOrProperty("updatedAt", DateTime.MinValue);
 
             // Set up our ship
             Ship ship = new Ship() { LocalId = 9999, x = 0, y = 0, z = 0 };
-            privateObject.Invoke("RemoveShip", new object[] { 9999 });
-            privateObject.Invoke("AddShip", new object[] { ship });
+            privateObject.Invoke("RemoveShip", 9999);
+            privateObject.Invoke("AddShip", ship);
 
             // Set up our event
             string line = @"{ ""timestamp"":""2019-06-30T05:38:53Z"", ""event"":""FSDJump"", ""StarSystem"":""Ogmar"", ""SystemAddress"":84180519395914, ""StarPos"":[-9534.00000,-905.28125,19802.03125], ""SystemAllegiance"":""Independent"", ""SystemEconomy"":""$economy_HighTech;"", ""SystemEconomy_Localised"":""High Tech"", ""SystemSecondEconomy"":""$economy_None;"", ""SystemSecondEconomy_Localised"":""None"", ""SystemGovernment"":""$government_Confederacy;"", ""SystemGovernment_Localised"":""Confederacy"", ""SystemSecurity"":""$SYSTEM_SECURITY_medium;"", ""SystemSecurity_Localised"":""Medium Security"", ""Population"":133000, ""Body"":""Ogmar A"", ""BodyID"":1, ""BodyType"":""Star"", ""JumpDist"":8.625, ""FuelUsed"":0.151982, ""FuelLevel"":31.695932, ""Factions"":[ { ""Name"":""Jaques"", ""FactionState"":""Election"", ""Government"":""Cooperative"", ""Influence"":0.104895, ""Allegiance"":""Independent"", ""Happiness"":""$Faction_HappinessBand1;"", ""Happiness_Localised"":""Elated"", ""MyReputation"":100.000000, ""ActiveStates"":[ { ""State"":""Election"" } ] }, { ""Name"":""Colonia Research Department"", ""FactionState"":""None"", ""Government"":""Cooperative"", ""Influence"":0.078921, ""Allegiance"":""Independent"", ""Happiness"":""$Faction_HappinessBand2;"", ""Happiness_Localised"":""Happy"", ""MyReputation"":21.639999, ""RecoveringStates"":[ { ""State"":""Outbreak"", ""Trend"":0 } ] }, { ""Name"":""Pilots' Federation Local Branch"", ""FactionState"":""None"", ""Government"":""Democracy"", ""Influence"":0.000000, ""Allegiance"":""PilotsFederation"", ""Happiness"":"""", ""MyReputation"":100.000000 }, { ""Name"":""Colonia Mining Enterprise"", ""FactionState"":""None"", ""Government"":""Cooperative"", ""Influence"":0.052947, ""Allegiance"":""Independent"", ""Happiness"":""$Faction_HappinessBand2;"", ""Happiness_Localised"":""Happy"", ""MyReputation"":100.000000 }, { ""Name"":""Colonia Co-operative"", ""FactionState"":""Election"", ""Government"":""Cooperative"", ""Influence"":0.104895, ""Allegiance"":""Independent"", ""Happiness"":""$Faction_HappinessBand2;"", ""Happiness_Localised"":""Happy"", ""MyReputation"":71.470001, ""PendingStates"":[ { ""State"":""Expansion"", ""Trend"":0 } ], ""ActiveStates"":[ { ""State"":""Outbreak"" }, { ""State"":""Election"" } ] }, { ""Name"":""Colonia Agricultural Co-operative"", ""FactionState"":""None"", ""Government"":""Cooperative"", ""Influence"":0.076923, ""Allegiance"":""Independent"", ""Happiness"":""$Faction_HappinessBand2;"", ""Happiness_Localised"":""Happy"", ""MyReputation"":6.640000, ""RecoveringStates"":[ { ""State"":""Outbreak"", ""Trend"":0 } ] }, { ""Name"":""GalCop Colonial Defence Commission"", ""FactionState"":""Boom"", ""Government"":""Confederacy"", ""Influence"":0.449550, ""Allegiance"":""Independent"", ""Happiness"":""$Faction_HappinessBand2;"", ""Happiness_Localised"":""Happy"", ""MyReputation"":100.000000, ""ActiveStates"":[ { ""State"":""Boom"" } ] }, { ""Name"":""Colonia Tech Combine"", ""FactionState"":""None"", ""Government"":""Cooperative"", ""Influence"":0.090909, ""Allegiance"":""Independent"", ""Happiness"":""$Faction_HappinessBand2;"", ""Happiness_Localised"":""Happy"", ""MyReputation"":0.000000, ""RecoveringStates"":[ { ""State"":""Outbreak"", ""Trend"":0 } ] }, { ""Name"":""Milanov's Reavers"", ""FactionState"":""None"", ""Government"":""Anarchy"", ""Influence"":0.040959, ""Allegiance"":""Independent"", ""Happiness"":""$Faction_HappinessBand2;"", ""Happiness_Localised"":""Happy"", ""MyReputation"":0.000000, ""RecoveringStates"":[ { ""State"":""Outbreak"", ""Trend"":0 } ] } ], ""SystemFaction"":{ ""Name"":""GalCop Colonial Defence Commission"", ""FactionState"":""Boom"" }, ""Conflicts"":[ { ""WarType"":""election"", ""Status"":""active"", ""Faction1"":{ ""Name"":""Jaques"", ""Stake"":""Crockett Gateway"", ""WonDays"":1 }, ""Faction2"":{ ""Name"":""Colonia Co-operative"", ""Stake"":"""", ""WonDays"":2 } } ] }";

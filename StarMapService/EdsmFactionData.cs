@@ -1,5 +1,4 @@
 ﻿using EddiDataDefinitions;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RestSharp;
 using System;
@@ -14,6 +13,7 @@ namespace EddiStarMapService
         public List<Faction> GetStarMapFactions(string systemName, long? edsmId = null)
         {
             if (systemName == null) { return new List<Faction>(); }
+            if (currentGameVersion != null && currentGameVersion < minGameVersion) { return new List<Faction>(); }
 
             var request = new RestRequest("api-system-v1/factions", Method.POST);
             request.AddParameter("systemName", systemName);
@@ -21,6 +21,7 @@ namespace EddiStarMapService
             var clientResponse = restClient.Execute<JObject>(request);
             if (clientResponse.IsSuccessful)
             {
+                Logging.Debug("EDSM responded with " + clientResponse.Content);
                 var token = JToken.Parse(clientResponse.Content);
                 if (token is JObject response)
                 {
@@ -54,6 +55,8 @@ namespace EddiStarMapService
         {
             try
             {
+                Logging.Debug($"Parsing EDSM system {systemName} faction", faction);
+
                 if (faction is null) { return null; }
                 Faction Faction = new Faction
                 {
@@ -72,7 +75,7 @@ namespace EddiStarMapService
                     FactionState = FactionState.FromName((string)faction["state"]) ?? FactionState.None,
                 });
 
-                IDictionary<string, object> factionDetail = faction.ToObject<IDictionary<string, object>>();
+                IDictionary<string, object> factionDetail = faction.ToObject<IDictionary<string, object>>() ?? new Dictionary<string, object>();
 
                 // Active states
                 factionDetail.TryGetValue("activeStates", out object activeStatesVal);
@@ -97,7 +100,7 @@ namespace EddiStarMapService
                         var pendingState = pendingStateToken.ToObject<IDictionary<string, object>>();
                         FactionTrendingState pTrendingState = new FactionTrendingState(
                             FactionState.FromName(JsonParsing.getString(pendingState, "state")) ?? FactionState.None,
-                            JsonParsing.getInt(pendingState, "trend")
+                            JsonParsing.getOptionalInt(pendingState, "trend")
                         );
                         Faction.presences.FirstOrDefault(p => p.systemName == systemName)?
                             .PendingStates.Add(pTrendingState);
@@ -114,7 +117,7 @@ namespace EddiStarMapService
                         var recoveringState = recoveringStateToken.ToObject<IDictionary<string, object>>();
                         FactionTrendingState rTrendingState = new FactionTrendingState(
                             FactionState.FromName(JsonParsing.getString(recoveringState, "state")) ?? FactionState.None,
-                            JsonParsing.getInt(recoveringState, "trend")
+                            JsonParsing.getOptionalInt(recoveringState, "trend")
                         );
                         Faction.presences.FirstOrDefault(p => p.systemName == systemName)?
                             .RecoveringStates.Add(rTrendingState);
@@ -125,13 +128,7 @@ namespace EddiStarMapService
             }
             catch (Exception ex)
             {
-                Dictionary<string, object> data = new Dictionary<string, object>
-                            {
-                                {"faction", JsonConvert.SerializeObject(faction)},
-                                {"exception", ex.Message},
-                                {"stacktrace", ex.StackTrace}
-                            };
-                Logging.Error("Error parsing EDSM faction result.", data);
+                Logging.Error($"Error parsing EDSM system {systemName} faction result.", ex);
             }
             return null;
         }

@@ -1,5 +1,4 @@
-﻿using EddiCompanionAppService;
-using EddiDataDefinitions;
+﻿using EddiDataDefinitions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json.Linq;
 using System;
@@ -27,8 +26,11 @@ namespace UnitTests
                 new OutfittingInfoItem(128788699, "Hpt_ATDumbfireMissile_Fixed_Medium", "weapon", 540900)
             };
 
-            JObject json = DeserializeJsonResource<JObject>(Resources.Abasheli_Barracks);
-            var actualModules = CompanionAppService.OutfittingFromProfile(json);
+            JObject json = DeserializeJsonResource<JObject>(Resources.capi_shipyard_Abasheli_Barracks)?.ToObject<JObject>();
+            Assert.IsNotNull(json);
+            json["timestamp"] = DateTime.UtcNow; // We add a timestamp to the json returned from the Frontier API, do the same here.
+            var station = FrontierApiStation.FromJson(null, json);
+            var actualModules = station.outfitting;
 
             Assert.AreEqual(165, actualModules.Count);
             foreach (var expectedModule in incompleteExpectedModules)
@@ -59,8 +61,11 @@ namespace UnitTests
                 new ShipyardInfoItem(128672145, "Federation_Dropship_MkII", 19814205)
             };
 
-            JObject json = DeserializeJsonResource<JObject>(Resources.Abasheli_Barracks);
-            var actualShips = CompanionAppService.ShipyardFromProfile(json);
+            JObject json = DeserializeJsonResource<JObject>(Resources.capi_shipyard_Abasheli_Barracks)?.ToObject<JObject>();
+            Assert.IsNotNull(json);
+            json["timestamp"] = DateTime.UtcNow; // We add a timestamp to the json returned from the Frontier API, do the same here.
+            var station = FrontierApiStation.FromJson(null, json);
+            var actualShips = station.ships;
 
             Assert.AreEqual(expectedShips.Count, actualShips.Count);
             foreach (var expectedShip in expectedShips)
@@ -78,17 +83,16 @@ namespace UnitTests
         [TestMethod]
         public void TestProfileStation()
         {
-            var marketTimestamp = DateTime.UtcNow;
-            JObject marketJson = DeserializeJsonResource<JObject>(Resources.Libby_Horizons);
-
-            var expectedStation = new ProfileStation()
+            JObject marketJson = DeserializeJsonResource<JObject>(Resources.capi_market_Libby_Horizons)?.ToObject<JObject>();
+            Assert.IsNotNull(marketJson);
+            var expectedStation = new FrontierApiStation()
             {
                 name = "Libby Horizons",
                 marketId = 3228854528,
-                economyShares = new List<ProfileEconomyShare>() 
+                economyShares = new List<FrontierApiEconomyShare>() 
                 {
-                    new ProfileEconomyShare("Refinery", 0.88M),
-                    new ProfileEconomyShare("Industrial", 0.12M),
+                    new FrontierApiEconomyShare("Refinery", 0.88M),
+                    new FrontierApiEconomyShare("Industrial", 0.12M),
                 },
                 eddnCommodityMarketQuotes = new List<MarketInfoItem>()
                 {
@@ -118,6 +122,7 @@ namespace UnitTests
                     new MarketInfoItem(128672302, "CeramicComposites", "Industrial Materials", 0, 712, 393, CommodityBracket.None, CommodityBracket.High, 0, 35686, false, new HashSet<string>() { "Consumer" } ),
                     new MarketInfoItem(128673857, "CoolingHoses", "Industrial Materials", 0, 1896, 1886, CommodityBracket.None, CommodityBracket.High, 0, 7839, false, new HashSet<string>() { "Consumer" } ),
                     new MarketInfoItem(128673855, "InsulatingMembrane", "Industrial Materials", 0, 11386, 10691, CommodityBracket.None, CommodityBracket.Medium, 0, 1461, false, new HashSet<string>() { "Consumer" } ),
+                    new MarketInfoItem(129015433, "AncientRelicTG", "Salvage", 4798, 4797, 4750, CommodityBracket.None, CommodityBracket.None, 0, 0, false, new HashSet<string>()),
                 },
                 prohibitedCommodities = new List<KeyValuePair<long, string>>()
                 {
@@ -128,8 +133,8 @@ namespace UnitTests
                     new KeyValuePair<long, string>(128667728, "ImperialSlaves"),
                     new KeyValuePair<long, string>(128049243, "Slaves")
                 },
-                commoditiesupdatedat = Dates.fromDateTimeToSeconds(marketTimestamp),
-                json = DeserializeJsonResource<JObject>(Resources.Libby_Horizons),
+                commoditiesupdatedat = marketJson["timestamp"]?.ToObject<DateTime>() ?? DateTime.MinValue,
+                marketJson = DeserializeJsonResource<JObject>(Resources.capi_market_Libby_Horizons)?.ToObject<JObject>(),
                 stationServices = new List<KeyValuePair<string, string>>()
                 {
                     new KeyValuePair<string, string>("dock", "ok"),
@@ -150,13 +155,15 @@ namespace UnitTests
                     new KeyValuePair<string, string>("engineer", "ok")
                 }
             };
+            Assert.IsNotNull(expectedStation.marketJson);
+            expectedStation.marketJson["timestamp"] = marketJson["timestamp"]?.ToObject<DateTime>(); // We add a timestamp to the json returned from the Frontier API, do the same here.
 
-            var actualStation = CompanionAppService.ProfileStation(marketTimestamp, marketJson);
+            var actualStation = FrontierApiStation.FromJson(marketJson, null);
 
             // Test commodities separately to minimize redundant data entry
             var incompleteExpectedCommodities = expectedStation.eddnCommodityMarketQuotes;
             var actualCommodities = actualStation.eddnCommodityMarketQuotes;
-            Assert.AreEqual(116, actualCommodities.Count);
+            Assert.AreEqual(117, actualCommodities.Count);
             foreach (var expectedCommodity in incompleteExpectedCommodities)
             {
                 foreach (var actualCommodity in actualCommodities)
@@ -186,12 +193,13 @@ namespace UnitTests
             };
 
             // Set up our profile station
-            var profile = new Profile();
             var marketTimestamp = DateTime.UtcNow;
-            JObject marketJson = DeserializeJsonResource<JObject>(Resources.Libby_Horizons);
-            profile.LastStation = CompanionAppService.ProfileStation(marketTimestamp, marketJson);
+            JObject marketJson = DeserializeJsonResource<JObject>(Resources.capi_market_Libby_Horizons)?.ToObject<JObject>();
+            Assert.IsNotNull(marketJson);
+            marketJson["timestamp"] = marketTimestamp; // We add a timestamp to the json returned from the Frontier API, do the same here.
+            var lastStation = FrontierApiStation.FromJson(marketJson, null);
 
-            var updatedStation = profile.LastStation.UpdateStation(DateTime.UtcNow, originalStation);
+            var updatedStation = lastStation.UpdateStation(marketTimestamp, originalStation);
             Assert.IsTrue(updatedStation.economyShares.DeepEquals(new List<EconomyShare>() 
             { 
                 new EconomyShare("Refinery", 0.88M), 
@@ -216,7 +224,7 @@ namespace UnitTests
                 StationService.FromEDName("shop"),
                 StationService.FromEDName("engineer"),
             }));
-            Assert.AreEqual(116, updatedStation.commodities.Count);
+            Assert.AreEqual(117, updatedStation.commodities.Count);
             Assert.IsTrue(new CommodityMarketQuote(CommodityDefinition.FromEDName("Tritium")) 
             { 
                 buyprice = 41179, 

@@ -7,6 +7,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Tests.Properties;
 using Utilities;
 
@@ -289,7 +290,7 @@ namespace UnitTests
             JObject json = DeserializeJsonResource<JObject>(Resources.vehicle);
             Vehicle v0 = Vehicle.FromJson(0, json);
             Assert.AreEqual(0, v0.subslot, "testing v0 subslot from JSON");
-            Assert.AreEqual(v0.localizedName, "SRV Scarab");
+            Assert.AreEqual(v0.localizedName, "Scarab SRV");
             Assert.AreEqual(v0.localizedDescription, "dual plasma repeaters");
 
             Vehicle v1 = Vehicle.FromJson(1, json);
@@ -388,7 +389,7 @@ namespace UnitTests
             Assert.IsTrue(cmdr1Matches);
             Assert.AreEqual("Marty McFly", test1.name);
             Assert.AreEqual("Serf", test1.title);
-            Assert.AreEqual(246486105, test1.credits);
+            Assert.AreEqual((ulong)246486105, test1.credits);
             Assert.AreEqual(24684, test1.debt);
             Assert.AreEqual(2, test1.crimerating);
             Assert.AreEqual(3, test1.combatrating.rank);
@@ -416,7 +417,7 @@ namespace UnitTests
             Assert.IsFalse(cmdr3Matches);
             Assert.AreEqual("Marty McFly", test3.name);
             Assert.AreEqual("Serf", test3.title);
-            Assert.AreEqual(0, test3.credits);
+            Assert.AreEqual((ulong)0, test3.credits);
             Assert.AreEqual(0, test3.debt);
             Assert.AreEqual(0, test3.crimerating);
             Assert.AreEqual(3, test3.combatrating.rank);
@@ -530,11 +531,13 @@ namespace UnitTests
             Assert.AreEqual("Consumer", quote.StatusFlags.First());
         }
 
-        [TestMethod]
-        public void TestDataScanFromEDName()
+        [DataTestMethod]
+        [DataRow("$Datascan_DataPoint;", "Data Point")]
+        [DataRow("$Datascan_Unknown_Uplink;", "Thargoid Uplink")]
+        public void TestDataScanFromEDName(string edName, string invariantName)
         {
-            DataScan dataScan = DataScan.FromEDName("$Datascan_DataPoint;");
-            Assert.AreEqual("Data Point", dataScan.invariantName);
+            DataScan dataScan = DataScan.FromEDName(edName);
+            Assert.AreEqual(invariantName, dataScan.invariantName);
         }
 
         [TestMethod]
@@ -681,6 +684,152 @@ namespace UnitTests
         public void EDSMPlanetClassAliases(string edsmName, string expectedInvariantName)
         {
             Assert.AreEqual(expectedInvariantName, PlanetClass.FromName(edsmName)?.invariantName);
+        }
+
+        [DataTestMethod]
+        // From `FSSSignalDiscovered` events
+        [DataRow("$Aftermath_Large:#index=1;", "Distress Call", 1, 0)]
+        [DataRow("$AttackAftermath;", "Distress Call", 0, 0)]
+        [DataRow("$FIXED_EVENT_CAPSHIP;", "Capital Ship", 0, 0)]
+        [DataRow("$FIXED_EVENT_CHECKPOINT;", "Checkpoint", 0, 0)]
+        [DataRow("$FIXED_EVENT_CONVOY;", "Convoy Beacon", 0, 0)]
+        [DataRow("$FIXED_EVENT_DEBRIS;", "Debris Field", 0, 0)]
+        [DataRow("$FIXED_EVENT_DISTRIBUTIONCENTRE;", "Distribution Center", 0, 0)]
+        [DataRow("$FIXED_EVENT_HIGHTHREATSCENARIO_T5;", "Pirate Activity", 0, 0)]
+        [DataRow("$FIXED_EVENT_HIGHTHREATSCENARIO_T6;", "Pirate Activity", 0, 0)]
+        [DataRow("$FIXED_EVENT_HIGHTHREATSCENARIO_T7;", "Pirate Activity", 0, 0)]
+        [DataRow("$Fixed_Event_Life_Cloud;", "Notable Stellar Phenomena", 0, 0)]
+        [DataRow("$Fixed_Event_Life_Ring;", "Notable Stellar Phenomena", 0, 0)]
+        [DataRow("$Gro_controlScenarioTitle;", "Armed Revolt", 0, 0)]
+        [DataRow("$ListeningPost:#index=1;", "Listening Post", 1, 0)]
+        [DataRow("$MULTIPLAYER_SCENARIO14_TITLE;", "Resource Extraction Site", 0, 0)]
+        [DataRow("$MULTIPLAYER_SCENARIO42_TITLE;", "Nav Beacon", 0, 0)]
+        [DataRow("$MULTIPLAYER_SCENARIO77_TITLE;", "Low Intensity Resource Extraction Site", 0, 0)]
+        [DataRow("$MULTIPLAYER_SCENARIO78_TITLE;", "High Intensity Resource Extraction Site", 0, 0)]
+        [DataRow("$MULTIPLAYER_SCENARIO79_TITLE;", "Hazardous Resource Extraction Site", 0, 0)]
+        [DataRow("$MULTIPLAYER_SCENARIO80_TITLE;", "Compromised Nav Beacon", 0, 0)]
+        [DataRow("$MULTIPLAYER_SCENARIO81_TITLE;", "Salvageable Wreckage", 0, 0)]
+        [DataRow("$NumberStation:#index=2;", "Unregistered Comms Beacon", 2, 0)]
+        [DataRow("$USS_Type_NonHuman; $USS_ThreatLevel:#threatLevel=8;", "Non-Human Signal Source", 0, 8)]
+        [DataRow("$Warzone_PointRace_Low:#index=5;", "Low Intensity Conflict Zone", 5, 0)]
+        [DataRow("$Warzone_PointRace_Med:#index=3;", "Medium Intensity Conflict Zone", 3, 0)]
+        [DataRow("$Warzone_PointRace_High:#index=2;", "High Intensity Conflict Zone", 2, 0)]
+        [DataRow("$Warzone_TG:#index=1;", "AX Conflict Zone", 1, 0)]
+        [DataRow("INV Audacious Dream $Warzone_TG_Med;", "INV Audacious Dream Medium Intensity AX Conflict Zone", 0, 0)]
+        // From `SaaSignalsFound` events and `FSSBodySignals` events
+        [DataRow("$SAA_SignalType_Biological;", "Biological Surface Signal", 0, 0)]
+        [DataRow("$SAA_SignalType_Geological;", "Geological Surface Signal", 0, 0)]
+        [DataRow("$SAA_SignalType_Guardian;", "Guardian Surface Signal", 0, 0)]
+        [DataRow("$SAA_SignalType_Human;", "Human Surface Signal", 0, 0)]
+        [DataRow("$SAA_SignalType_Other;", "Other Surface Signal", 0, 0)]
+        [DataRow("$SAA_SignalType_PlanetAnomaly;", "Planetary Anomaly", 0, 0)]
+        [DataRow("$SAA_SignalType_Thargoid;", "Thargoid Surface Signal", 0, 0)]
+        // From `Touchdown` events
+        [DataRow("$POI_CrashedShip:#index=1;", "Crashed Ship", 1, 0)]
+        [DataRow("$POIScenario_Watson_Abandoned_Buggy_01_Easy;", "Distress Beacon", 0, 1)]
+        [DataRow("$POIScenario_Watson_Abandoned_Buggy_01_Salvage_Easy;", "Distress Beacon", 0, 1)]
+        [DataRow("$POIScenario_Watson_Abandoned_Buggy_01_Salvage_Medium; $USS_ThreatLevel:#threatLevel=2;", "Distress Beacon", 0, 2)]
+        [DataRow("$POIScenario_Watson_Damaged_Eagle_01_Assassination_Easy;", "ENCRYPTED SIGNAL", 0, 1)]
+        [DataRow("$POIScenario_Watson_Damaged_Eagle_01_Assassination_Hard; $USS_ThreatLevel:#threatLevel=3;", "ENCRYPTED SIGNAL", 0, 3)]
+        [DataRow("$POIScenario_Watson_Damaged_Eagle_01_Easy;", "Distress Beacon", 0, 1)]
+        [DataRow("$POIScenario_Watson_Damaged_Eagle_01_Salvage_Easy; $USS_ThreatLevel:#threatLevel=1;", "Distress Beacon", 0, 1)]
+        [DataRow("$POIScenario_Watson_Damaged_Eagle_01_Salvage_Easy;", "Distress Beacon", 0, 1)]
+        [DataRow("$POIScenario_Watson_Damaged_Sidewinder_01_Assassination_Easy; $USS_ThreatLevel:#threatLevel=1;", "ENCRYPTED SIGNAL", 0, 1)]
+        [DataRow("$POIScenario_Watson_Damaged_Sidewinder_01_Assassination_Hard;", "ENCRYPTED SIGNAL", 0, 3)]
+        [DataRow("$POIScenario_Watson_Damaged_Sidewinder_01_Assassination_Medium; $USS_ThreatLevel:#threatLevel=2;", "ENCRYPTED SIGNAL", 0, 2)]
+        [DataRow("$POIScenario_Watson_Damaged_Sidewinder_01_Easy;", "Distress Beacon", 0, 1)]
+        [DataRow("$POIScenario_Watson_Damaged_Sidewinder_01_Salvage_Easy;", "Distress Beacon", 0, 1)]
+        [DataRow("$POIScenario_Watson_Smugglers_Cache_01_Hard;", "Irregular Markers", 0, 3)]
+        [DataRow("$POIScenario_Watson_Smugglers_Cache_01_Medium;", "Irregular Markers", 0, 2)]
+        [DataRow("$POIScenario_Watson_Smugglers_Cache_02_Easy;", "Irregular Markers", 0, 1)]
+        [DataRow("$POIScenario_Watson_Smugglers_Cache_02_Heist_Easy; $USS_ThreatLevel:#threatLevel=1;", "Irregular Markers", 0, 1)]
+        [DataRow("$POIScenario_Watson_Smugglers_Cache_02_Heist_Medium;", "Irregular Markers", 0, 2)]
+        [DataRow("$POIScenario_Watson_Wreckage_Buggy_01_Easy;", "Minor Wreckage", 0, 1)]
+        [DataRow("$POIScenario_Watson_Wreckage_Buggy_01_Hard;", "Minor Wreckage", 0, 3)]
+        [DataRow("$POIScenario_Watson_Wreckage_Buggy_01_Medium;", "Minor Wreckage", 0, 2)]
+        [DataRow("$POIScenario_Watson_Wreckage_Buggy_01_Salvage_Easy;", "Minor Wreckage", 0, 1)]
+        [DataRow("$POIScenario_Watson_Wreckage_Buggy_01_Salvage_Medium; $USS_ThreatLevel:#threatLevel=2;", "Minor Wreckage", 0, 2)]
+        [DataRow("$POIScenario_Watson_Wreckage_Probe_01_Hard;", "Impact Site", 0, 3)]
+        [DataRow("$POIScenario_Watson_Wreckage_Probe_01_Medium;", "Impact Site", 0, 2)]
+        [DataRow("$POIScenario_Watson_Wreckage_Probe_01_Salvage_Easy; $USS_ThreatLevel:#threatLevel=1;", "Impact Site", 0, 1)]
+        [DataRow("$POIScenario_Watson_Wreckage_Satellite_01_Hard;", "Impact Site", 0, 3)]
+        [DataRow("$POIScenario_Watson_Wreckage_Satellite_01_Medium;", "Impact Site", 0, 2)]
+        [DataRow("$POIScenario_Watson_Wreckage_Satellite_01_Salvage_Easy; $USS_ThreatLevel:#threatLevel=1;", "Impact Site", 0, 1)]
+        [DataRow("$POIScenario_Watson_Wreckage_Satellite_01_Salvage_Medium;", "Impact Site", 0, 2)]
+        [DataRow("$POIScenario_Watson_Wrecks_Eagle_01_Hard;", "Crash Site", 0, 3)]
+        [DataRow("$POIScenario_Watson_Wrecks_Eagle_01_Salvage_Easy;", "Crash Site", 0, 1)]
+        [DataRow("$POIScenario_Watson_Wrecks_Sidewinder_01_Salvage_Easy; $USS_ThreatLevel:#threatLevel=1;", "Crash Site", 0, 1)]
+        [DataRow("$POIScenario_Watson_Wrecks_Sidewinder_01_Salvage_Medium;", "Crash Site", 0, 2)]
+        [DataRow("$POIScene_Perimeter_02;", "Active Power Source", 0, 0)]
+        [DataRow("$POIScene_Trap_Cargo_01;", "Irregular Markers", 0, 0)]
+        [DataRow("$POIScene_Trap_Data_02;", "Irregular Markers", 0, 0)]
+        [DataRow("$POIScene_Wreckage_Cargo_03;", "Minor Wreckage", 0, 0)]
+        // From `USSDrop` events
+        [DataRow("$USS_Type_Aftermath;", "Combat Aftermath", 0, 0)]
+        [DataRow("$USS_Type_Anomaly;", "Anomaly", 0, 0)]
+        [DataRow("$USS_Type_Ceremonial;", "Ceremonial Comms", 0, 0)]
+        [DataRow("$USS_Type_Convoy;", "Convoy Dispersal Pattern", 0, 0)]
+        [DataRow("$USS_Type_DistressSignal;", "Distress Call", 0, 0)]
+        [DataRow("$USS_Type_MissionTarget;", "Mission Target", 0, 0)]
+        [DataRow("$USS_Type_NonHuman;", "Non-Human Signal Source", 0, 0)]
+        [DataRow("$USS_Type_Salvage;", "Degraded Emissions", 0, 0)]
+        [DataRow("$USS_Type_TradingBeacon;", "Trading Beacon", 0, 0)]
+        [DataRow("$USS_Type_ValuableSalvage;", "Encoded Emissions", 0, 0)]
+        [DataRow("$USS_Type_VeryValuableSalvage;", "High Grade Emissions", 0, 0)]
+        [DataRow("$USS_Type_WeaponsFire;", "Weapons Fire", 0, 0)]
+        // From `Status` destinations
+        [DataRow("$POIScene_Wreckage_Cargo_03_Skimmers;", "Minor Wreckage", 0, 0)]
+        // Misc
+        [DataRow("Rogue Signal Source", "Rogue Signal Source", 0, 0)]
+        [DataRow("$SomeUnknownSignalSource;", "Signal Source", 0, 0)]
+        public void SignalSourceParsingTest(string edName, string expectedInvariantName, int? expectedIndex, int? expectedThreatLevel)
+        {
+            var source = SignalSource.FromEDName(edName);
+            Assert.AreEqual(expectedInvariantName, source?.invariantName);
+            Assert.AreEqual(expectedIndex, source?.index ?? 0);
+            Assert.AreEqual(expectedThreatLevel, source?.threatLevel ?? 0);
+        }
+
+        [TestMethod]
+        public void BodyNameSerializationTest()
+        {
+            // `bodyname` should be considered a required serialization attribute
+            // except in the case of a main star (where the `bodyname` might still be unknown)
+
+            var starsystem = new StarSystem() { systemname = "Test System" };
+            var body = new Body();
+            starsystem.AddOrUpdateBody(body);
+            Assert.AreEqual(1, starsystem.bodies.Count);
+            try
+            {
+                _ = JsonConvert.SerializeObject(starsystem);
+                Assert.Fail("Serialization should fail - body has neither `bodyname` nor `distance` properties set.");
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
+
+            starsystem.bodies[0].bodyname = "Test body";
+            try
+            {
+                _ = JsonConvert.SerializeObject(starsystem);
+            }
+            catch (Exception)
+            {
+                Assert.Fail("Serialization should not fail - body has `bodyname` property set.");
+            }
+
+            starsystem.bodies[0].bodyname = null;
+            starsystem.bodies[0].distance = 0M;
+            try
+            {
+                _ = JsonConvert.SerializeObject(starsystem);
+            }
+            catch (Exception)
+            {
+                Assert.Fail("Serialization should not fail - body has `distance` property set.");
+            }
         }
     }
 }

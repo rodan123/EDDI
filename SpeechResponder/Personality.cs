@@ -23,8 +23,11 @@ namespace EddiSpeechResponder
             get => _name;
             private set
             {
-                _name = value;
-                OnPropertyChanged();
+                if (_name != value)
+                {
+                    _name = value;
+                    OnPropertyChanged();
+                }
             }
         }
 
@@ -34,8 +37,11 @@ namespace EddiSpeechResponder
             get => _description;
             private set
             {
-                _description = value;
-                OnPropertyChanged();
+                if (_description != value)
+                {
+                    _description = value;
+                    OnPropertyChanged();
+                }
             }
         }
 
@@ -45,11 +51,25 @@ namespace EddiSpeechResponder
             get => _scripts;
             private set
             {
-                _scripts = value;
-                OnPropertyChanged();
+                if (_scripts != value)
+                {
+                    _scripts = value;
+                    OnPropertyChanged();
+                }
             }
         }
 
+        [JsonIgnore]
+        public bool IsCustom
+        {
+            get => _isCustom;
+            set
+            {
+                _isCustom = value;
+                OnPropertyChanged();
+            }
+        }
+        
         [JsonIgnore]
         private string _name;
 
@@ -57,22 +77,54 @@ namespace EddiSpeechResponder
         private string _description;
 
         [JsonIgnore]
-        public bool IsCustom { get; set; }
+        private Dictionary<string, Script> _scripts;
 
         [JsonIgnore]
-        private Dictionary<string, Script> _scripts;
-        
+        private bool _isCustom;        
+
         [JsonIgnore]
         private string dataPath;
 
-        private static readonly string DEFAULT_PATH = new DirectoryInfo(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)).FullName + @"\" + Properties.SpeechResponder.default_personality_script_filename;
+        private static readonly string[] obsoleteScriptKeys = 
+        {
+            "Jumping", // Replaced by "FSD engaged" script
+            "Crew member role change", // This name is mismatched to the key (should be "changed"), so EDDI couldn't match the script name to the .json key correctly. The default script has been corrected.
+            "Ship low fuel", // Accidental duplicate. The real event is called 'Low fuel'
+            "Modification applied", // Event deprecated by FDev, no longer written. 
+            "List launchbays", // Replaced by "Launchbay report" script
+            "Combat promotion", // Replaced by "Commander promotion" script
+            "Empire promotion", // Replaced by "Commander promotion" script
+            "Exploration promotion", // Replaced by "Commander promotion" script
+            "Federation promotion", // Replaced by "Commander promotion" script
+            "Trade promotion", // Replaced by "Commander promotion" script
+            "Ship repurchased" // Replaced by "Respawned" script
+        };
+
+        private static readonly string[] ignoredEventKeys =
+        {
+            // Shares updates with monitors / responders but are not intended to be user facing
+            "Cargo",
+            "Fleet carrier materials",
+            "Market",
+            "Outfitting",
+            "Shipyard",
+            "Squadron startup",
+            "Stored ships",
+            "Stored modules",
+            "Unhandled event"
+        };
+
+        private static readonly string DIRECTORYPATH = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        private static readonly string DEFAULT_PATH = new DirectoryInfo(DIRECTORYPATH).FullName + @"\" + Properties.SpeechResponder.default_personality_script_filename;
         private static readonly string DEFAULT_USER_PATH = Constants.DATA_DIR + @"\personalities\" + Properties.SpeechResponder.default_personality_script_filename;
+
+        private static List<string> upgradedPersonalities = new List<string>();
 
         public Personality(string name, string description, Dictionary<string, Script> scripts)
         {
             // Ensure that the name doesn't have any illegal characters
             string regexSearch = new string(Path.GetInvalidFileNameChars()) + new string(Path.GetInvalidPathChars());
-            Regex r = new Regex(string.Format("[{0}]", Regex.Escape(regexSearch)));
+            Regex r = new Regex($"[{Regex.Escape(regexSearch)}]");
             Name = r.Replace(name, "");
 
             Name = name;
@@ -196,6 +248,61 @@ namespace EddiSpeechResponder
             }
         }
 
+        public static void incrementPersonalityBackups(Personality personality)
+        {
+            if (!personality.IsCustom) { return; }
+
+            var filesToMove = new Dictionary<string, string>(); // Key = FROM, Value = TO
+            var filesToDelete = new List<string>();
+
+            // Obtain files, sorting by last write time to ensure that older files are incremented prior to newer files
+            var personalityDirInfo = new FileInfo(personality.dataPath).Directory;
+            if (personalityDirInfo is null) { return; }
+            foreach (FileInfo file in personalityDirInfo.GetFiles()
+                .Where(f =>
+                    f.Name.StartsWith(personality.Name, StringComparison.InvariantCultureIgnoreCase) &&
+                    f.Name.EndsWith(".bak", StringComparison.InvariantCultureIgnoreCase))
+                .OrderBy(f => f.LastWriteTimeUtc)
+                .ToList())
+            {
+                bool parsed = int.TryParse(file.FullName
+                    .Replace($@"{personality.dataPath}", "")
+                    .Replace(".bak", "")
+                    .Replace(".", ""), out int i);
+                ++i; // Increment our index number
+
+                if (i >= 10)
+                {
+                    filesToDelete.Add(file.FullName);
+                }
+                else
+                {
+                    filesToMove.Add(file.FullName, $@"{personality.dataPath}.{i}.bak");
+                }
+            }
+            try
+            {
+                LockManager.GetLock(nameof(personality.Name), () =>
+                {
+                    foreach (var deleteFilePath in filesToDelete)
+                    {
+                        File.Delete(deleteFilePath);
+                    }
+                    foreach (var moveFilePath in filesToMove)
+                    {
+                        File.Move(moveFilePath.Key, moveFilePath.Value);
+                    }
+                });
+            }
+            catch (Exception)
+            {
+                // Someone may have had the file open when this code executed? Nothing to do, we'll try again on the next run
+            }
+
+            // Save the most recent backup
+            personality.ToFile($"{personality.dataPath}.bak");
+        }
+
         /// <summary>
         /// Create a copy of this file, altering the datapath appropriately
         /// </summary>
@@ -234,127 +341,74 @@ namespace EddiSpeechResponder
         /// </summary>
         private static void fixPersonalityInfo(Personality personality)
         {
+            if (upgradedPersonalities.Contains(personality.dataPath)) { return; }
+
+            // Create or update a simple backup before we begin
+            incrementPersonalityBackups(personality);
+
             // Default personality for reference scripts
             var defaultPersonality = !personality.IsCustom ? null : Default();
 
             var fixedScripts = new Dictionary<string, Script>();
-            // Ensure that every required event is present
+
+            // First, iterate through our default event scripts. Ensure that every required event script is present.
             List<string> missingScripts = new List<string>();
-            foreach (KeyValuePair<string, string> defaultEvent in Events.DESCRIPTIONS)
+            foreach (var defaultEvent in Events.DESCRIPTIONS)
             {
                 personality.Scripts.TryGetValue(defaultEvent.Key, out Script script);
                 Script defaultScript = null;
                 defaultPersonality?.Scripts?.TryGetValue(defaultEvent.Key, out defaultScript);
                 script = UpgradeScript(script, defaultScript);
-                if (script == null)
+                if (!obsoleteScriptKeys.Contains(defaultEvent.Key))
                 {
-                    missingScripts.Add(defaultEvent.Key);
-                }
-                else
-                {
-                    fixedScripts.Add(defaultEvent.Key, script);
-                }
-            }
-            foreach (KeyValuePair<string, Script> kv in personality.Scripts)
-            {
-                if (!fixedScripts.ContainsKey(kv.Key))
-                {
-                    Script defaultScript = null;
-                    defaultPersonality?.Scripts?.TryGetValue(kv.Key, out defaultScript);
-                    Script script = UpgradeScript(kv.Value, defaultScript);
-                    fixedScripts.Add(kv.Key, script);
-                }
-            }
-            if (personality.IsCustom)
-            {
-                // Remove deprecated scripts from the list
-                List<string> scriptHolder = new List<string>();
-                foreach (KeyValuePair<string, Script> kv in fixedScripts)
-                {
-                    if (kv.Key == "Jumping") // Replaced by "FSD engaged" script
+                    if (script == null && !ignoredEventKeys.Contains(defaultEvent.Key))
                     {
-                        scriptHolder.Add(kv.Key);
+                        missingScripts.Add(defaultEvent.Key);
                     }
-                    else if (kv.Value.Name == "Crew member role change") // This name is mismatched to the key (should be "changed"), 
-                                                                         // so EDDI couldn't match the script name to the .json key correctly. The default script has been corrected.
+                    else if (script != null)
                     {
-                        scriptHolder.Add(kv.Key);
-                    }
-                    else if (kv.Value.Name == "Ship low fuel") // Accidental duplicate. The real event is called 'Low fuel'
-                    {
-                        scriptHolder.Add(kv.Key);
-                    }
-                    else if (kv.Value.Name == "Modification applied") // Event deprecated by FDev, no longer written. 
-                    {
-                        scriptHolder.Add(kv.Key);
-                    }
-                    else if (kv.Value.Name == "List launchbays") // Replaced by "Launchbay report" script
-                    {
-                        scriptHolder.Add(kv.Key);
-                    }
-                    else if ( // Replaced by "Commander promotion" script
-                        kv.Value.Name == "Combat promotion" ||
-                        kv.Value.Name == "Empire promotion" ||
-                        kv.Value.Name == "Exploration promotion" ||
-                        kv.Value.Name == "Federation promotion" ||
-                        kv.Value.Name == "Trade promotion"
-                        ) 
-                    {
-                        scriptHolder.Add(kv.Key);
-                    }
-                    else if (kv.Value.Name == "Ship repurchased") // Replaced by "Respawned" script
-                    {
-                        scriptHolder.Add(kv.Key);
-                    }
-                }
-                foreach (string script in scriptHolder)
-                {
-                    fixedScripts.Remove(script);
-                }
-                // Also add any secondary scripts in the default personality that aren't present in the list
-                if (defaultPersonality?.Scripts != null)
-                {
-                    foreach (KeyValuePair<string, Script> kv in defaultPersonality?.Scripts)
-                    {
-                        if (!fixedScripts.ContainsKey(kv.Key))
-                        {
-                            fixedScripts.Add(kv.Key, kv.Value);
-                        }
+                        script.PersonalityIsCustom = personality.IsCustom;
+                        fixedScripts.Add(defaultEvent.Key, script);
                     }
                 }
             }
-
-            // Report missing scripts, except those we have specifically named
-            string[] ignoredEventKeys = {
-
-                // Deprecated events
-                "Belt scanned",
-                "Jumping",
-                "Modification applied",
-                "Status",
-
-                // Shares updates with monitors / responders but are not intended to be user facing
-                "Cargo",
-                "Market",
-                "Outfitting",
-                "Shipyard",
-                "Squadron startup",
-                "Stored ships",
-                "Stored modules",
-                "Unhandled event"
-            };
-
-            Array.Sort(ignoredEventKeys);
-            bool isIgnoredEvent(string t) => Array.BinarySearch(ignoredEventKeys, t) >= 0;
-            missingScripts.RemoveAll(isIgnoredEvent);
+            // Report missing scripts which ought to be present for events, except those we have specifically named
             if (missingScripts.Count > 0)
             {
                 Logging.Info("Failed to find scripts" + string.Join(";", missingScripts));
             }
+            // Also add any secondary scripts present in the default personality but which aren't present in the events list
+            if (defaultPersonality?.Scripts != null)
+            {
+                foreach (var personalityScriptKV in personality.Scripts.Where(s => !fixedScripts.Keys.Contains(s.Key)))
+                {
+                    Script defaultScript = null;
+                    if ((defaultPersonality.Scripts?.TryGetValue(personalityScriptKV.Key, out defaultScript) ?? false) && 
+                        !obsoleteScriptKeys.Contains(personalityScriptKV.Key))
+                    {
+                        var script = UpgradeScript(personalityScriptKV.Value, defaultScript);
+                        script.PersonalityIsCustom = personality.IsCustom;
+                        fixedScripts.Add(personalityScriptKV.Key, script);
+                    }
+                }
+            }
 
-            // Re-order the scripts by name and save to file
+            // Next, iterate through the personality's scripts and add any secondary scripts from the personality.
+            foreach (var kv in personality.Scripts)
+            {
+                // Add non-event scripts from the personality for which we do not have a default
+                if (!fixedScripts.ContainsKey(kv.Key) && !obsoleteScriptKeys.Contains(kv.Key))
+                {
+                    var script = kv.Value;
+                    script.PersonalityIsCustom = personality.IsCustom;
+                    fixedScripts.Add(kv.Key, script);
+                }
+            }
+
+            // Sort scripts and save to file
             personality.Scripts = fixedScripts.OrderBy(s => s.Key).ToDictionary(s => s.Key, s => s.Value);
             personality.ToFile();
+            upgradedPersonalities.Add(personality.dataPath);
         }
 
         public static Script UpgradeScript(Script personalityScript, Script defaultScript)

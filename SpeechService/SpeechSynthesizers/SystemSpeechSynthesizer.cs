@@ -1,12 +1,13 @@
 ﻿using EddiSpeechService.SpeechPreparation;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Speech.Synthesis;
 using System.Threading;
-using Newtonsoft.Json;
 using Utilities;
 
 namespace EddiSpeechService.SpeechSynthesizers
@@ -39,32 +40,54 @@ namespace EddiSpeechService.SpeechSynthesizers
                     .ToList();
                 foreach (var voice in systemSpeechVoices)
                 {
-                    var voiceDetails = new VoiceDetails(voice.VoiceInfo.Name, voice.VoiceInfo.Gender.ToString(),
-                        voice.VoiceInfo.Culture, nameof(System.Speech.Synthesis));
-
-                    // Skip duplicates of voices already added from Windows.Media.SpeechSynthesis
-                    // (for example, if OneCore voices have been added to System.Speech with a registry edit)
-                    if (voiceStore.Any(v => v.name == voiceDetails.name))
+                    try
                     {
-                        continue;
-                    }
+                        Logging.Debug($"Found voice: ", voice.VoiceInfo);
 
-                    // Skip voices "Desktop" variant voices from System.Speech.Synthesis
-                    // where we already have a (newer) OneCore version
-                    if (voiceStore.Any(v => v.name + " Desktop" == voiceDetails.name))
+                        var voiceDetails = new VoiceDetails(voice.VoiceInfo.Name, voice.VoiceInfo.Gender.ToString(),
+                            voice.VoiceInfo.Culture ?? CultureInfo.InvariantCulture, nameof(System));
+
+                        // Skip duplicates of voices already added from Windows.Media.SpeechSynthesis
+                        // (for example, if OneCore voices have been added to System.Speech with a registry edit)
+                        if (voiceStore.Any(v => v.name == voiceDetails.name))
+                        {
+                            continue;
+                        }
+
+                        // Suppress voices "Desktop" variant voices from System.Speech.Synthesis
+                        // where we already have a (newer) OneCore version (without disabling manual invocation of those voices)
+                        if (voiceStore.Any(v => v.name + " Desktop" == voiceDetails.name))
+                        {
+                            voiceDetails.hideVoice = true;
+                        }
+
+                        // Skip Amazon Polly neural voices - these tend to throw an internal error (cause unknown) with the system speech synthesizer and are not currently reliable.
+                        if (!string.IsNullOrEmpty(voiceDetails.name) && voiceDetails.name.StartsWith("Amazon Polly") && voiceDetails.name.EndsWith("Neural"))
+                        {
+                            continue;
+                        }
+
+                        voiceStore.Add(voiceDetails);
+                        Logging.Debug($"Loaded voice: ", voiceDetails);
+                    }
+                    catch (Exception e)
                     {
-                        continue;
+                        if (voice.VoiceInfo.Culture is null)
+                        {
+                            Logging.Warn($"Failed to load {voice.VoiceInfo.Name}, voice culture is not set.", e);
+                        }
+                        else
+                        {
+                            Logging.Error($"Failed to load {voice.VoiceInfo.Name}", e);
+                        }
                     }
-
-                    voiceStore.Add(voiceDetails);
-                    Logging.Debug($"Found voice: {JsonConvert.SerializeObject(voiceDetails)}");
                 }
             }
         }
 
         internal Stream Speak(VoiceDetails voiceDetails, string speech, SpeechServiceConfiguration Configuration)
         {
-            Logging.Debug($"Selecting {nameof(System.Speech.Synthesis)} synthesizer");
+            Logging.Debug($"Selecting {nameof(System)} synthesizer");
             return SystemSpeechSynthesis(voiceDetails, speech, Configuration);
         }
 
@@ -89,7 +112,7 @@ namespace EddiSpeechService.SpeechSynthesizers
                         synth.Rate = Configuration.Rate;
                         synth.Volume = Configuration.Volume;
                         synth.SetOutputToWaveStream(stream);
-                        Logging.Debug(JsonConvert.SerializeObject(Configuration));
+                        Logging.Debug("Speech configuration is: ", Configuration);
                         SpeechFormatter.PrepareSpeech(voice, ref speech, out var useSSML);
                         if (useSSML)
                         {

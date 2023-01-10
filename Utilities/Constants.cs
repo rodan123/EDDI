@@ -10,7 +10,7 @@ namespace Utilities
     {
         public const string EDDI_NAME = "EDDI";
         public const string EDDI_URL_PROTOCOL = "eddi";
-        public static Version EDDI_VERSION = new Version(4, 0, 1);
+        public static Version EDDI_VERSION = new Version(4, 0, 2);
         public const string EDDI_SERVER_URL = "https://edcd.github.io/EDDP/";
         public static readonly string EDDI_SYSTEM_MUTEX_NAME = $"{EDDI_SERVER_URL}/{EDDI_NAME}/{Environment.GetEnvironmentVariable("UserName")}";
 
@@ -29,10 +29,6 @@ namespace Utilities
         public static readonly string VEHICLE_TAXI = "Taxi";
         public static readonly string VEHICLE_MULTICREW = "Multicrew";
 
-        //Option defaults
-        public const int maxStationDistanceDefault = 10000;
-        public const int missionWarningDefault = 60;
-
         // Physical Constants
         public const int lightSpeedMetersPerSecond = 299792458;
         public const int solarRadiusMeters = 695500000;
@@ -47,15 +43,6 @@ namespace Utilities
         public const double gravitationalConstant = 6.67430e-11; // cubic meters / (kilograms * seconds squared)
 
         // Frame Shift Drive Constants
-        public static Dictionary<string, decimal> baseOptimalMass = new Dictionary<string, decimal>()
-        {
-            {"2E", 48.0M}, {"2D", 54.0M}, {"2C", 60.0M}, {"2B", 75.0M}, {"2A", 90.0M},
-            {"3E", 80.0M}, {"3D", 90.0M}, {"3C", 100.0M}, {"3B", 125.0M}, {"3A", 150.0M},
-            {"4E", 280.0M}, {"4D", 315.0M}, {"4C", 350.0M}, {"4B", 438.0M}, {"4A", 525.0M},
-            {"5E", 560.0M}, {"5D", 630.0M}, {"5C", 700.0M}, {"5B", 875.0M}, {"5A", 1050.0M},
-            {"6E", 960.0M}, {"6D", 1080.0M}, {"6C", 1200.0M}, {"6B", 1500.0M}, {"6A", 1800.0M},
-            {"7E", 1440.0M}, {"7D", 1620.0M}, {"7C", 1800.0M}, {"7B", 2250.0M}, {"7A", 2700.0M}
-        };
 
         public static Dictionary<string, decimal> ratingConstantFSD = new Dictionary<string, decimal>()
         {
@@ -65,6 +52,26 @@ namespace Utilities
         public static Dictionary<int, decimal> powerConstantFSD = new Dictionary<int, decimal>()
         {
             {2, 2.00M}, {3, 2.15M}, {4, 2.30M}, {5, 2.45M}, {6, 2.60M}, {7, 2.75M}, {8, 2.90M}
+        };
+
+        public static Dictionary<string, decimal> baseOptimalMass = new Dictionary<string, decimal>()
+        {
+            {"2E", 48.0M}, {"2D", 54.0M}, {"2C", 60.0M}, {"2B", 75.0M}, {"2A", 90.0M},
+            {"3E", 80.0M}, {"3D", 90.0M}, {"3C", 100.0M}, {"3B", 125.0M}, {"3A", 150.0M},
+            {"4E", 280.0M}, {"4D", 315.0M}, {"4C", 350.0M}, {"4B", 438.0M}, {"4A", 525.0M},
+            {"5E", 560.0M}, {"5D", 630.0M}, {"5C", 700.0M}, {"5B", 875.0M}, {"5A", 1050.0M},
+            {"6E", 960.0M}, {"6D", 1080.0M}, {"6C", 1200.0M}, {"6B", 1500.0M}, {"6A", 1800.0M},
+            {"7E", 1440.0M}, {"7D", 1620.0M}, {"7C", 1800.0M}, {"7B", 2250.0M}, {"7A", 2700.0M}
+        };
+        
+        public static Dictionary<string, decimal> baseMaxFuelPerJump = new Dictionary<string, decimal>()
+        {
+            {"2E", 0.60M }, {"2D", 0.60M }, {"2C", 0.60M }, {"2B", 0.80M }, {"2A", 0.90M },
+            {"3E", 1.20M }, {"3D", 1.20M }, {"3C", 1.20M }, {"3B", 1.50M }, {"3A", 1.80M },
+            {"4E", 2.00M }, {"4D", 2.00M }, {"4C", 2.00M }, {"4B", 2.50M }, {"4A", 3.00M },
+            {"5E", 3.30M }, {"5D", 3.30M }, {"5C", 3.30M }, {"5B", 4.10M }, {"5A", 5.00M },
+            {"6E", 5.30M }, {"6D", 5.30M }, {"6C", 5.30M }, {"6B", 6.60M }, {"6A", 8.00M },
+            {"7E", 8.50M }, {"7D", 8.50M }, {"7C", 8.50M }, {"7B", 10.60M}, {"7A", 12.80M}
         };
 
         public static Dictionary<int, decimal> guardianBoostFSD = new Dictionary<int, decimal>()

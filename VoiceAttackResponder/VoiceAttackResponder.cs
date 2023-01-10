@@ -1,7 +1,6 @@
 ﻿using Eddi;
 using EddiCore;
 using EddiEvents;
-using Newtonsoft.Json;
 using System;
 using System.Windows.Controls;
 using Utilities;
@@ -47,7 +46,6 @@ namespace EddiVoiceAttackResponder
                 return;
             }
 
-            Logging.Debug("Received event " + JsonConvert.SerializeObject(@event));
             OnEvent(EventArgs.Empty, @event);
         }
 

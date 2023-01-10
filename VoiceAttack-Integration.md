@@ -2,7 +2,7 @@ EDDI integrates with VoiceAttack in two ways.  Firstly, it generates a large num
 
 # Using EDDI with VoiceAttack
 
-N.B. EDDI requires at least version 1.6.0 of VoiceAttack to function correctly.
+N.B. EDDI requires at least version 1.7.4 of VoiceAttack to function correctly.
 
 For EDDI to work with VoiceAttack it must be installed as a VoiceAttack plugin.  To do this EDDI should be installed within the `Apps` directory of your VoiceAttack installation; by default VoiceAttack installs in one of two locations: 
 - `C:\Program Files (x86)\VoiceAttack` (for standard licenses)
@@ -99,6 +99,8 @@ Where values are indexed (the compartments on a ship for example), the zero-base
   * {BOOL:Status low oxygen} true if you are on foot and oxygen is running low.
   * {BOOL:Status low health} true if you are on foot and health is running low.
   * {TXT:Status on foot temperature} the environment temperature when on foot. May be one of "very cold", "cold", "temperate", "hot", or "very hot".
+  * {TXT:Status destination} the currently selected destination (including in-system destinations)
+  * {TXT:Status localized destination} the localized name of the currently selected destination, if available
 
 ## Ship Variables
 Note: "Tiny" hardpoints are utility slots.
@@ -177,7 +179,7 @@ Note: "Tiny" hardpoints are utility slots.
   * {DEC:Ship sensors discount}: the percentage discount of the purchased sensors against the undiscounted cost
   * {TXT:Ship fuel tank}: the name of the main fuel tank fitted to the ship
   * {INT:Ship fuel tank class}: the class of the main fuel tank fitted to the ship (e.g. 3)
-  * {TXT:Ship fuel tank drive grade}: the grade of the main fuel tank fitted to the ship (e.g. "A")
+  * {TXT:Ship fuel tank grade}: the grade of the main fuel tank fitted to the ship (e.g. "A")
   * {DEC:Ship fuel tank cost}: the purchase cost of the the main fuel tank
   * {DEC:Ship fuel tank value}: the undiscounted cost of the the main fuel tank
   * {DEC:Ship fuel tank discount}: the percentage discount of the purchased main fuel tank against the undiscounted cost
@@ -237,7 +239,7 @@ Note: "Tiny" hardpoints are utility slots.
   * {INT:System outposts}: the total number of orbital outposts in the system
   * {INT:System planetary stations}: the total number of planetary stations (outposts and ports) in the system
   * {INT:System planetary settlements}: the total number of undockable planetary ports in the system, as reported to EDDB.
-  * {INT:System total bodies}: the total number of discoverable bodies within the system.
+  * {INT:System total bodies}: the total number of discoverable bodies within the system (only set after a discovery scan).
   * {INT:System scanned bodies}: the total number of bodies you have scanned within the system.
   * {INT:System mapped bodies}: the total number of bodies you have mapped within the system.
   * {BOOL:System requires permit}: Whether a permit is required to enter the system, as reported to EDDB.
@@ -325,6 +327,25 @@ Note: "Tiny" hardpoints are utility slots.
   * {TXT:Stored ship *\<index\>* system}: the system in which the *\<index\>*th stored ship resides
   * {DEC:Stored ship *\<index\>* distance}: the number of light years between the current system and that where the *\<index\>*th ship resides, to two decimal places
 
+## Fleet Carrier Variables
+
+Data is primarily updated from the `Carrier stats` event and Frontier API data is integrated (if the Frontier API is enabled) after select carrier events.
+
+  * {TXT:Carrier name}: The name of the carrier
+  * {TXT:Carrier callsign}: The callsign (alphanumeric designation) of the carrier
+  * {TXT:Carrier current star system}: The current location (star system) of the carrier
+  * {TXT:Carrier next star system}: The next scheduled location (star system) of the carrier, if any
+  * {INT:Carrier fuel}: The last reported tritium fuel level of the carrier
+  * {INT:Carrier fuel in cargo}: The last reported amount of stored tritium held in the carrier's cargo (requires Frontier API access)
+  * {TXT:Carrier state}: The carrier's current operating state (requires Frontier API access) (one of 'normalOperation', 'debtState' (if services are offline due to lack of funds), or 'pendingDecomission')
+  * {TXT:Carrier docking access}: The carrier's last reported docking access (one of one of 'all', 'squadronfriends', 'friends', or 'none')
+  * {BOOL:Carrier notorious access}: True if the last reported state permits docking access by notorious commanders
+  * {INT:Carrier used capacity}: The last reported total used capacity of the carrier
+  * {INT:Carrier free capacity}: The last reported free capacity of the carrier
+  * {DEC:Carrier bank balance}: The last reported total bank balance of the carrier
+  * {DEC:Carrier bank reserved balance}: The last reported reserved bank balance of the carrier
+  * {DEC:Carrier bank available balance}: The last reported available bank balance of the carrier
+
 ## Miscellaneous Variables
 
   * {TXT:Environment}: the environment the ship is in ("Docked", "Landed", "Normal space", "Supercruise" or "Witch space") 
@@ -336,14 +357,17 @@ Note: "Tiny" hardpoints are utility slots.
   * {BOOL:odyssey}: true if the Odyssey expansion is currently active
   * {TXT:EDDI uri}: uri's for EDDB, EDShipyard, and EDSM are written here when the appropriate plugin command is invoked.
   * {BOOL:EDDI speaking}: true if EDDI is currently speaking
+  * {TXT:EDDI version}: The currently active version of EDDI
 
 # Running Commands on EDDI Events
 
-Whenever EDDI sees a particular event occur it will attempt to run a script.  The name of the script depends on the event, but follows the form:
+Whenever EDDI sees a particular event occur it will attempt to run a command in VoiceAttack.  The name of the command depends on the event, but follows the form:
 
     ((EDDI <event>))
 
-with the \<event\> being in lower-case.  For example, if you wanted VoiceAttack to run a script every time you docked you would create a script called `((EDDI docked))` (note the lower-case d at the beginning of docked).
+with the \<event\> being in lower-case.  For example, if you wanted VoiceAttack to run a command every time you docked you would create a command called `((EDDI docked))` (note the lower-case d at the beginning of docked).
+
+![](images/VoiceAttack-EDDI-Event.jpg)
 
 There are a large number of events available.  Full details of the variables available for each event are available in the individual [event pages](https://github.com/EDCD/EDDI/wiki/Events).  Note that event variables are only valid when the event occurs, and cannot be relied upon to be present or a specific value at any other time.  If you want to use information in an event after the event itself then you should copy the value to another variable.
 
@@ -465,41 +489,51 @@ To use this function in your own commands set the 'Type variable' parameter then
 
 ### route
 
-This function will produce a destination/route for valid mission destinations. It takes one mandatory and up to two optional variables as parameters.
+This function will produce a destination/route. It takes at least one mandatory variable and up to two optional variables as parameters.
 
-- 'Type variable' (text variable) is a mandatory parameter containing the type of update to execute.
+- 'Type variable' (text variable) is a mandatory parameter defining the type of command you are sending to the Navigation Monitor. This variable may be used either to plot a new route or to send commands to control a previously plotted route.
 
-  * `cancel` Cancel the currently stored route.
-  * `encoded` Nearest encoded materials trader.
-  * `expiring` Destination of your next expiring mission.
-  * `facilitator` Nearest 'Legal Facilities' contact.
-  * `farthest` Mission destination farthest from your current location.
-  * `guardian` Nearest guardian technology broker.
-  * `human` Nearest human technology broker.
-  * `manufactured` Nearest manufactured materials trader.
-  * `most` Nearest system with the most missions.
-  * `nearest` Mission destination nearest to your current location.
-  * `next` Next destination in the currently stored route.
-  * `raw` Nearest raw materials trader.
-  * `route` 'Traveling Salesman' (RNNA) route for all active missions.
-  * `scoop` Nearest scoopable star system.
-  * `set` Set destination route to the last star system name returned from a `Route details` event. 
-  * `source` Destination to nearest mission 'cargo source'.
-  * `update` Update to the next mission route destination (use this once all missions in the current system are completed).
+  - Route Plotting Types
+    * `carrier` Plots a fleet carrier route between systems. Parameters:
+      * 'System variable' (mandatory text): Defines the destination system for the fleet carrier.
+      * 'System variable 2' (optional text): If set, defines the starting system for the fleet carrier.
+      * 'Numeric variable' (optional decimal): If set, defines the used capacity of the fleet carrier.
+    * `encoded` Plots a route to the nearest encoded materials trader. Parameters:
+      * 'Numeric variable' (optional decimal): If set, overrides the normal maximum distance from arrival to the station in light seconds.
+    * `expiring` Plots a route to the system containing your earliest expiring active mission. No additional data required.
+    * `facilitator` Plots a route to the nearest 'Legal Facilities' contact. Parameters:
+      * 'Numeric variable' (optional decimal): If set, overrides the normal maximum distance from arrival to the station in light seconds.
+    * `farthest` Plots a route to the active mission system farthest from your current location. No additional data required.
+    * `guardian` Plots a route to the nearest guardian technology broker. Parameters:
+      * 'Numeric variable' (optional decimal): If set, overrides the normal maximum distance from arrival to the station in light seconds.
+    * `human` Plots a route to the nearest human technology broker. Parameters:
+      * 'Numeric variable' (optional decimal): If set, overrides the normal maximum distance from arrival to the station in light seconds.
+    * `manufactured` Plots a route to the nearest manufactured materials trader. Parameters:
+      * 'Numeric variable' (optional decimal): If set, overrides the normal maximum distance from arrival to the station in light seconds.
+    * `most` Plots a route to the system with the most active missions. Parameters:
+      * 'System variable' (optional text): If multiple systems have an equal number of active missions, selects the mission system which is nearest the specified system.
+    * `neutron` Plots a route to a named star system using neutron stars (pulsars) where available. Parameters:
+      * 'System variable' (mandatory text): Defines the destination system for your ship's route.
+    * `nearest` Plots a route to the nearest system with missions. No additional data required.
+    * `raw` Plots a route to the nearest raw materials trader. Parameters:
+      * 'Numeric variable' (optional decimal): If set, overrides the normal maximum distance from arrival to the station in light seconds.
+    * `route` Plots the shortest path between active mission destinations in light years. Parameters:
+      * 'System variable' (optional text): If set, the resulting route shall begin at the specified star system rather than at the current star system.
+    * `scoop` Plots a route to the nearest scoopable star system. Parameters:
+      * 'Numeric variable' (optional decimal): If set, overrides the search radius in light years. Maximum value: 100.
+    * `source` Plots a route to the nearest recently visited mission 'cargo source'. Parameters:
+      * 'System variable' (optional text): If set, the resulting route shall identify cargo source locations near the specified star system rather than near the current star system.
 
-- 'System variable' (text variable) is an optional parameter for the following route update types. 
+  - Control Types
+    * `cancel` Deactivates guidance along the current plotted route.
+    * `set` Activates guidance along the current plotted route. Parameters:
+      * 'System variable' (optional text): If set, plots a `neutron` route to a specified system then activates guidance.
+      * 'Station variable' (optional text): If set, sets the station name in the event output.
+    * `update` If guidance is enabled, updates to the next route destination once the current system contains no more active missions. Recalculates the route as required.
 
-  * `most` If set, the resulting route shall be plotted relative to the specified star system rather than relative to the current star system.
-  * `route` If set, the resulting route shall be plotted relative to the specified star system rather than relative to the current star system.
-  * `set` If set, the resulting route shall proceed directly to the specified single star system rather than to the last star system identified in a route search.
-  * `source` If set, the resulting route shall be plotted relative to the specified star system rather than relative to the current star system.
-  * `update` If set, the specified star system shall be removed from the route rather than removing the prior mission route destination.
+To use this function in your own commands set the 'Type variable' parameter and when appropriate the `System variable`, `System variable 2`, 'Numeric variable', and 'Station variable' parameters then use the 'Execute an external plugin function' command with the plugin context set to 'route'. Upon success, a '((EDDI route details))' event is triggered, providing event data as described [in the appropriate wiki page](https://github.com/EDCD/EDDI/wiki/Route-details-event).
 
-- 'Station variable' (text variable) is an optional parameter for the following route update types
-
-  * `set` If set, the resulting route shall proceed directly to the specified single star system and station rather than to the last star system and station identified in a route search.
-
-To use this function in your own commands set the 'Type variable' parameter and when appropriate the `System variable` and 'Station variable' parameters then use the 'Execute an external plugin function' command with the plugin context set to 'route'. Upon success, a '((EDDI route details))' event is triggered, providing event data as described [in the appropriate wiki page](https://github.com/EDCD/EDDI/wiki/Route-details-event).
+![](images/VoiceAttack-PluginView-Route.jpg)
 
 Upon success of the query, a 'Route details' event is triggered with details from the destination and route.
 

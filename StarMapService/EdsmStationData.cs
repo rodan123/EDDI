@@ -1,5 +1,4 @@
 ﻿using EddiDataDefinitions;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RestSharp;
 using System;
@@ -14,6 +13,7 @@ namespace EddiStarMapService
         public List<Station> GetStarMapStations(string system, long? edsmId = null)
         {
             if (system == null) { return new List<Station>(); }
+            if (currentGameVersion != null && currentGameVersion < minGameVersion) { return new List<Station>(); }
 
             var request = new RestRequest("api-system-v1/stations", Method.POST);
             request.AddParameter("systemName", system);
@@ -21,6 +21,7 @@ namespace EddiStarMapService
             var clientResponse = restClient.Execute<JObject>(request);
             if (clientResponse.IsSuccessful)
             {
+                Logging.Debug("EDSM responded with " + clientResponse.Content);
                 var token = JToken.Parse(clientResponse.Content);
                 if (token is JObject response)
                 {
@@ -40,7 +41,7 @@ namespace EddiStarMapService
             if (response != null)
             {
                 string system = (string)response["name"];
-                long? systemAddress = (long?)response["id64"];
+                ulong? systemAddress = (ulong?)response["id64"];
                 JArray stations = (JArray)response["stations"];
 
                 if (stations != null)
@@ -57,13 +58,15 @@ namespace EddiStarMapService
             return Stations;
         }
 
-        private Station ParseStarMapStation(JObject station, string system, long? systemAddress)
+        private Station ParseStarMapStation(JObject station, string systemName, ulong? systemAddress)
         {
             try
             {
+                Logging.Debug($"Parsing EDSM system {systemName} station", station);
+
                 Station Station = new Station
                 {
-                    systemname = system,
+                    systemname = systemName,
                     systemAddress = systemAddress,
                     name = (string)station["name"],
                     marketId = (long?)station["marketId"],
@@ -101,7 +104,7 @@ namespace EddiStarMapService
                 {
                     stationServices.Add(StationService.FromEDName("Outfitting"));
                 };
-                var services = station["otherServices"].ToObject<List<string>>();
+                var services = station["otherServices"]?.ToObject<List<string>>() ?? new List<string>();
                 foreach (string service in services)
                 {
                     stationServices.Add(StationService.FromName(service));
@@ -137,13 +140,7 @@ namespace EddiStarMapService
             }
             catch (Exception ex)
             {
-                Dictionary<string, object> data = new Dictionary<string, object>
-                            {
-                                {"station", JsonConvert.SerializeObject(station)},
-                                {"exception", ex.Message},
-                                {"stacktrace", ex.StackTrace}
-                            };
-                Logging.Error("Error parsing EDSM station result.", data);
+                Logging.Error($"Error parsing EDSM system {systemName} station result.", ex);
             }
             return null;
         }

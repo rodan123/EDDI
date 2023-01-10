@@ -10,9 +10,8 @@ using EddiCompanionAppService;
 using EddiCore;
 using EddiDataProviderService;
 using EddiEvents;
+using EddiNavigationService;
 using EddiSpeechService;
-using EddiStatusMonitor;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -61,17 +60,17 @@ namespace EddiSpeechResponder.Service
         /// <summary> From a custom store </summary>
         public string resolveFromName(string name, BuiltinStore store, bool isTopLevelScript)
         {
-            Logging.Debug("Resolving script " + name);
-            scripts.TryGetValue(name, out Script script);
-            if (script == null || script.Value == null)
+            Logging.Debug($"Resolving script {name}");
+            if (!scripts.TryGetValue(name, out Script script) || 
+                script?.Value is null)
             {
-                Logging.Debug("No script");
+                Logging.Debug($"No {name} script found");
                 return null;
             }
-            Logging.Debug("Found script");
+            Logging.Debug($"Found script {name}");
             if (script.Enabled == false)
             {
-                Logging.Debug("Script disabled");
+                Logging.Debug($"{name} script disabled");
                 return null;
             }
 
@@ -91,12 +90,17 @@ namespace EddiSpeechResponder.Service
         {
             try
             {
+                Logging.Debug($"Resolving {(isTopLevelScript ? "top level " : "")}script {scriptObject?.Name}: {script}", store);
+
                 var document = new SimpleDocument(script, setting);
                 var result = document.Render(store);
                 // Tidy up the output script
-                result = Regex.Replace(result, " +", " ").Replace(" ,", ",").Replace(" .", ".").Trim();
-                Logging.Debug("Turned script " + script + " in to speech " + result);
-                result = result.Trim() == "" ? null : result.Trim();
+                if (isTopLevelScript)
+                {
+                    result = Regex.Replace(result, " +", " ").Replace(" ,", ",").Replace(" .", ".").Trim();
+                    Logging.Debug("Turned script " + script + " in to speech " + result);
+                    result = result.Trim() == "" ? null : result.Trim();
+                }
 
                 if (isTopLevelScript && result != null)
                 {
@@ -132,7 +136,7 @@ namespace EddiSpeechResponder.Service
             }
             catch (Exception e)
             {
-                Logging.Warn(e.Message, e);
+                Logging.Error(e.Message, e);
                 return $"Error with {scriptObject?.Name ?? "this"} script: {e.Message}";
             }
         }
@@ -155,6 +159,7 @@ namespace EddiSpeechResponder.Service
             {
                 ["capi_active"] = CompanionAppService.Instance?.active ?? false,
                 ["destinationdistance"] = EDDI.Instance.DestinationDistanceLy,
+                ["searchdistance"] = NavigationService.Instance.SearchDistanceLy,
                 ["environment"] = EDDI.Instance.Environment,
                 ["horizons"] = EDDI.Instance.inHorizons,
                 ["odyssey"] = EDDI.Instance.inOdyssey,
@@ -208,11 +213,16 @@ namespace EddiSpeechResponder.Service
                 dict["destinationsystem"] = new ReflectionValue(EDDI.Instance.DestinationStarSystem);
             }
 
-            if (EDDI.Instance.DestinationStation != null)
+            if (NavigationService.Instance.SearchStarSystem != null)
             {
-                dict["destinationstation"] = new ReflectionValue(EDDI.Instance.DestinationStation);
+                dict["searchsystem"] = new ReflectionValue(NavigationService.Instance.SearchStarSystem);
             }
 
+            if (NavigationService.Instance.SearchStation != null)
+            {
+                dict["searchstation"] = new ReflectionValue(NavigationService.Instance.SearchStation);
+            }
+            
             if (EDDI.Instance.CurrentStation != null)
             {
                 dict["station"] = new ReflectionValue(EDDI.Instance.CurrentStation);
@@ -223,9 +233,9 @@ namespace EddiSpeechResponder.Service
                 dict["body"] = new ReflectionValue(EDDI.Instance.CurrentStellarBody);
             }
 
-            if (((StatusMonitor)EDDI.Instance.ObtainMonitor("Status monitor"))?.currentStatus != null)
+            if (EDDI.Instance.FleetCarrier != null)
             {
-                dict["status"] = new ReflectionValue(((StatusMonitor)EDDI.Instance.ObtainMonitor("Status monitor"))?.currentStatus);
+                dict["carrier"] = new ReflectionValue(EDDI.Instance.FleetCarrier);
             }
 
             if (theEvent != null)
@@ -236,7 +246,7 @@ namespace EddiSpeechResponder.Service
             if (EDDI.Instance.State != null)
             {
                 dict["state"] = ScriptResolver.buildState();
-                Logging.Debug("State is " + JsonConvert.SerializeObject(EDDI.Instance.State));
+                Logging.Debug("State is: ", EDDI.Instance.State);
             }
 
             // Obtain additional variables from each monitor
@@ -265,7 +275,7 @@ namespace EddiSpeechResponder.Service
         /// <summary>
         /// Build a store from a list of variables
         /// </summary>
-        private BuiltinStore buildStore(Dictionary<string, Cottle.Value> vars)
+        public BuiltinStore buildStore(Dictionary<string, Cottle.Value> vars = null)
         {
             BuiltinStore store = new BuiltinStore();
             
@@ -282,9 +292,12 @@ namespace EddiSpeechResponder.Service
             }
 
             // Variables
-            foreach (KeyValuePair<string, Cottle.Value> entry in vars)
+            if (vars != null)
             {
-                store[entry.Key] = entry.Value;
+                foreach (KeyValuePair<string, Cottle.Value> entry in vars)
+                {
+                    store[entry.Key] = entry.Value;
+                }
             }
 
             return store;
@@ -303,6 +316,7 @@ namespace EddiSpeechResponder.Service
                 object value = EDDI.Instance.State[key];
                 if (value == null)
                 {
+                    // Null values should not be included in our Cottle state
                     continue;
                 }
                 Type valueType = value.GetType();

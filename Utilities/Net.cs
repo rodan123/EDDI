@@ -1,5 +1,4 @@
 ﻿using Microsoft.Win32;
-using Newtonsoft.Json;
 using System;
 using System.IO;
 using System.Net;
@@ -20,7 +19,7 @@ namespace Utilities
             //
             // TODO: yank this when VoiceAttack updates to .NET 4.7 or later.
             ServicePointManager.SecurityProtocol = 0; // 0 is SecurityProtocolType.SystemDefault
-            foreach (SecurityProtocolType protocol in SecurityProtocolType.GetValues(typeof(SecurityProtocolType)))
+            foreach (SecurityProtocolType protocol in Enum.GetValues(typeof(SecurityProtocolType)))
             {
                 switch (protocol)
                 {
@@ -49,18 +48,50 @@ namespace Utilities
                 }
 
                 // Obtain and parse our response
-                var encoding = response.CharacterSet == ""
+                var encoding = string.IsNullOrEmpty(response.CharacterSet)
                         ? Encoding.UTF8
                         : Encoding.GetEncoding(response.CharacterSet);
 
                 Logging.Debug("Reading response from " + uri);
-                using (var stream = response.GetResponseStream())
+                return ReadResponseString(response, encoding);
+            }
+        }
+
+        private static string ReadResponseString(HttpWebResponse response, Encoding encoding)
+        {
+            string data = null;
+            int attempts = 0;
+            Exception ex = null;
+
+            while (data is null && attempts < 10)
+            {
+                try
                 {
-                    var reader = new StreamReader(stream, encoding);
-                    string data = reader.ReadToEnd();
-                    return data;
+                    using (var stream = response.GetResponseStream())
+                    {
+                        if (stream != null)
+                        {
+                            var reader = new StreamReader(stream, encoding);
+                            data = reader.ReadToEnd();
+                            return data;
+                        }
+                        return null;
+                    }
+                }
+                catch (Exception e)
+                {
+                    attempts++;
+                    Thread.Sleep(50);
+                    ex = e;
                 }
             }
+
+            if (attempts >= 10 && ex != null)
+            {
+                Logging.Warn(ex.Message);
+            }
+
+            return data;
         }
 
         public static string DownloadFile(string uri, string name)
@@ -82,7 +113,7 @@ namespace Utilities
         // Set up a request with the correct parameters for talking to the companion app
         private static HttpWebRequest GetRequest(string url)
         {
-            HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(url);
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             request.Timeout = 10000;
             request.ReadWriteTimeout = 10000;
             return request;
@@ -100,8 +131,7 @@ namespace Utilities
             }
             catch (WebException wex)
             {
-                HttpWebResponse errorResponse = wex.Response as HttpWebResponse;
-                if (errorResponse == null)
+                if (!(wex.Response is HttpWebResponse errorResponse))
                 {
                     // No error response
                     Logging.Warn("Failed to obtain response, error code " + wex.Status);
@@ -118,7 +148,7 @@ namespace Utilities
                     throw;
                 }
             }
-            Logging.Debug("Response is " + JsonConvert.SerializeObject(response));
+            Logging.Debug("Response is: ", response);
             return response;
         }
 
@@ -173,8 +203,8 @@ namespace Utilities
                         Registry.CurrentUser.OpenSubKey(
                         urlAssociation, false);
                     }
-                    var path = CleanifyBrowserPath(browserKey.GetValue(null) as string);
-                    browserKey.Close();
+                    var path = CleanifyBrowserPath(browserKey?.GetValue(null) as string);
+                    browserKey?.Close();
                     Logging.Debug("Browser path (1) is " + path);
                     return path;
                 }
@@ -187,8 +217,8 @@ namespace Utilities
                     // now look up the path of the executable
                     string concreteBrowserKey = browserPathKey.Replace("$BROWSER$", progId);
                     var kp = Registry.ClassesRoot.OpenSubKey(concreteBrowserKey, false);
-                    browserPath = CleanifyBrowserPath(kp.GetValue(null) as string);
-                    kp.Close();
+                    browserPath = CleanifyBrowserPath(kp?.GetValue(null) as string);
+                    kp?.Close();
                     Logging.Debug("Browser path (2) is " + browserPath);
                     return browserPath;
                 }

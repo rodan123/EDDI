@@ -19,7 +19,7 @@ namespace EddiMaterialMonitor.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     public class MaterialMonitor {
@@ -61,15 +61,6 @@ namespace EddiMaterialMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Cancel Destination.
-        /// </summary>
-        public static string cancel_dest_button {
-            get {
-                return ResourceManager.GetString("cancel_dest_button", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Track the amount of materials and generate events when limits are reached..
         /// </summary>
         public static string desc {
@@ -88,47 +79,11 @@ namespace EddiMaterialMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Find Encoded Trader.
+        ///   Looks up a localized string similar to Grade.
         /// </summary>
-        public static string find_encoded_button {
+        public static string grade_header {
             get {
-                return ResourceManager.GetString("find_encoded_button", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Find Guardian Broker.
-        /// </summary>
-        public static string find_guardian_button {
-            get {
-                return ResourceManager.GetString("find_guardian_button", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Find Human Broker.
-        /// </summary>
-        public static string find_human_button {
-            get {
-                return ResourceManager.GetString("find_human_button", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Find Manufactured Trader.
-        /// </summary>
-        public static string find_manufactured_button {
-            get {
-                return ResourceManager.GetString("find_manufactured_button", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Find Raw Trader.
-        /// </summary>
-        public static string find_raw_button {
-            get {
-                return ResourceManager.GetString("find_raw_button", resourceCulture);
+                return ResourceManager.GetString("grade_header", resourceCulture);
             }
         }
         
@@ -192,33 +147,6 @@ namespace EddiMaterialMonitor.Properties {
         public static string p2 {
             get {
                 return ResourceManager.GetString("p2", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Tip: Maximize the allowed station distance to minimize search times..
-        /// </summary>
-        public static string p3 {
-            get {
-                return ResourceManager.GetString("p3", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Set Destination.
-        /// </summary>
-        public static string set_dest_button {
-            get {
-                return ResourceManager.GetString("set_dest_button", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Max Station Distance From Main Star (Ls):.
-        /// </summary>
-        public static string tab_station_distance {
-            get {
-                return ResourceManager.GetString("tab_station_distance", resourceCulture);
             }
         }
         

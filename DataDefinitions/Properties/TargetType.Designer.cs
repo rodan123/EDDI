@@ -19,7 +19,7 @@ namespace EddiDataDefinitions.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class TargetType {
@@ -61,11 +61,29 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Faction Members.
+        /// </summary>
+        internal static string AIHumanoid {
+            get {
+                return ResourceManager.GetString("AIHumanoid", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Bounty Hunter.
         /// </summary>
         internal static string BountyHunter {
             get {
                 return ResourceManager.GetString("BountyHunter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Citizens.
+        /// </summary>
+        internal static string CitizenHumanoid {
+            get {
+                return ResourceManager.GetString("CitizenHumanoid", resourceCulture);
             }
         }
         
@@ -79,11 +97,29 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Deserters.
+        /// </summary>
+        internal static string Deserter {
+            get {
+                return ResourceManager.GetString("Deserter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Deserter.
         /// </summary>
         internal static string DeserterASS {
             get {
                 return ResourceManager.GetString("DeserterASS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Faction Guards.
+        /// </summary>
+        internal static string GuardHumanoid {
+            get {
+                return ResourceManager.GetString("GuardHumanoid", resourceCulture);
             }
         }
         
@@ -147,6 +183,15 @@ namespace EddiDataDefinitions.Properties {
         internal static string Terrorist {
             get {
                 return ResourceManager.GetString("Terrorist", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Terrorist Leader.
+        /// </summary>
+        internal static string TerroristLeader {
+            get {
+                return ResourceManager.GetString("TerroristLeader", resourceCulture);
             }
         }
         

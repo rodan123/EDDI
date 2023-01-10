@@ -87,23 +87,21 @@ namespace EddiEvents
 
         public int? boostused { get; private set; }
 
-        public long systemAddress { get; private set; }
+        public ulong systemAddress { get; private set; }
 
-        public Economy Economy { get; private set; } = Economy.None;
+        public Economy Economy { get; private set; }
 
-        public Economy Economy2 { get; private set; } = Economy.None;
+        public Economy Economy2 { get; private set; }
 
         public Faction controllingfaction { get; private set; }
 
-        public SecurityLevel securityLevel { get; private set; } = SecurityLevel.None;
-
-        public FactionState factionState { get; private set; } = FactionState.None;
+        public SecurityLevel securityLevel { get; private set; }
 
         public Power Power { get; private set; }
 
         public PowerplayState powerState { get; private set; }
 
-        public JumpedEvent(DateTime timestamp, string system, long systemAddress, decimal x, decimal y, decimal z, string star, decimal distance, decimal fuelused, decimal fuelremaining, int? boostUsed, Faction controllingfaction, List<Faction> factions, List<Conflict> conflicts, Economy economy, Economy economy2, SecurityLevel security, long? population, Power powerplayPower, PowerplayState powerplayState, bool? taxi, bool? multicrew) : base(timestamp, NAME)
+        public JumpedEvent(DateTime timestamp, string system, ulong systemAddress, decimal x, decimal y, decimal z, string star, decimal distance, decimal fuelused, decimal fuelremaining, int? boostUsed, Faction controllingfaction, List<Faction> factions, List<Conflict> conflicts, Economy economy, Economy economy2, SecurityLevel security, long? population, Power powerplayPower, PowerplayState powerplayState, bool? taxi, bool? multicrew) : base(timestamp, NAME)
         {
             this.system = system;
             this.systemAddress = systemAddress;

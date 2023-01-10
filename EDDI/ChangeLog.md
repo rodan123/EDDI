@@ -2,28 +2,224 @@
 
 Full details of the variables available for each noted event, and VoiceAttack integrations, are available in the individual [event pages](https://github.com/EDCD/EDDI/wiki/Events).
 
-### 4.0.1
+## 4.0.2
+  * Core
+    * Fix on-foot missions not redirecting appropriately to origin.
+    * Fix a crash that could occur when selecting a destination without a localized name.
+    * Various other minor bug fixes
+  * Speech Responder
+    * Changes to existing scripts
+      * `Module swapped` revised to identify pluralized module names (e.g. "sensors") as a "package" (for real this time).
+      * `System materials report` touched up again to improve grammar for systems containing only one reportable body.
+
+## 4.0.2-rc1
+  * Core
+    * Various minor bug fixes
+  * Speech Responder
+    * Changes to existing scripts
+      * `Body report summary` revised to add optional temperature scale selection. #2235
+      * `Module arrived`, `Module purchased`, `Module retrieved`, `Module sold`, `Module sold from storage`, `Module stored`, `Module swapped`, and `Module transfer` revised to identify pluralized module names (e.g. "sensors") as a "package".
+      * `Module retrieved`, `Module sold`, `Module sold from storage`, `Module stored`, `Module swapped`, and `Module transfer` revised to identify loaned modules (with zero value). #2441
+      * `Ring mapped` revised to omit reserve level if reserve level is not known.
+      * `System materials report` revised again per player feedback. #2466
+      * `Touchdown` revised to make reporting coordinates an opt-in feature and add optional temperature reporting for Odyssey on-foot expeditions. #2463
+
+## 4.0.2-b5
+  * Core
+    * Fixed some translations into Spanish reverting to English. #2452
+    * Fixed the `influence` property in `FactionPresence` objects sometimes being reported on a scale from 0-1 and sometimes being reported on a scale from 0-100. Should be 0-100 only moving forwards.
+    * Various minor bug fixes
+  * Speech Responder
+    * UI
+      * Fixed a bug whereby syntax coloring was not initiated until an Edit window was opened. #2447
+    * Changes to existing scripts
+      * `Nav route` updated with minor gramatical touch-ups.
+      * `Star report` fixed mispelling of "luminosity". #2445
+      * `System materials report` updated to correct incorrect variable invocations and enhance in accordance with player feedback. #2454
+      * `System scan complete` updated to use the contextual system rather than a mixture of the current system and contextual system. #2458
+
+## 4.0.2-b4
+  * Core
+    * Fixed a nasty bug that would reset customized versions of non-event Speech Responder scripts to default values.
+    * EDDI now backs up personality files on each run prior to upgrading scripts, keeping the most recent 10 backups available in case you need to roll back scripts (similar to how EDDI logs are cycled).
+
+## 4.0.2-b3
+  * Core
+    * Fixed a crash that could occur when invoking the `RouteDetails()` function when the commander did not own a fleet carrier.
+    * Various other bug fixes
+  * Navigation Monitor
+    * Fixed having `destinationdistance` set to the wrong value after plotting an in-game route.
+  * Ship Monitor
+    * Add new ship roles: Anti-Xeno Combat, Anti-Xeno Support, Evacuation, Repair, Stealth, Tourism
+  * Speech Responder
+    * Stopped the text filter from resetting when switching personalities.
+    * Functions
+      * `VoiceDetails()` function revised. Zero arguments now returns details of the current voice, rather than a list of voice details. One numeric argument now provides the list of available voices, using the provided number as a seed to sort the list. One string arument now returns details about the named voice.
+    * Changes to existing scripts
+      * `Message received` updated to use the updated `VoiceDetails()` function and a new `seed` property to select NPC voices. 
+
+## 4.0.2-b2
+  * Core
+    * Fixed bugs that would cause carrier events not to trigger if the commander hadn't already obtained fleet carriier data from the Frontier API.
+    * Various services, monitors, and responders shall be disabled or send/receive data from different endpoints when running a legacy Elite game version (less than 4.0). Disabled services shall be noted by EDDI logs. 
+  * Speech Responder
+    * Functions
+      * `CargoDetails()` shall now provide a generic commodity definition even when the commodity is not included in the current cargo manifest.
+      * `CommodityMarketDetails()` shall now provide a generic commodity definition even when the commodity is not found in the current station inventory.
+    * Changes to existing scripts
+      * `Carrier docking permission` corrected occasional grammar issue.
+      * `Carrier service changed` corrected occasional grammar issue.
+      * `Fuel check` added checks to prevent `Object reference not an instance of an object` errors.
+      * `Ship interdicted` updated to add a default script (for real this time).
+  * Status Monitor
+    * Corrected documentation of new status destination name variables (e.g. "destination_name" rather than "destinationName").
+
+## 4.0.2-b1
+  * Core
+    * Improved transitions between voices being handled by different speech synthesizers.
+    * Improved parsing of Odyssey settlements from EDSM API data.
+    * Don't assume that bodies retrieved from EDSM have already been mapped.
+    * Overhauled route plotting functions.
+    * `Ring` objects now contain `mapped` and `hotspots` properties to allow tracking mapped rings and hotspots within a system.
+    * Add a top-level `carrier` object updated from the Frontier API and various journal events (note that carrier cargo / material inventories are not yet supported).
+  * Crime Monitor
+    * Fixed a bug that could identify a fleet carrier as a faction station.
+    * Moved navigation functions to the Navigation Monitor
+  * EDDN Responder
+    * Updated schema support to include all current schemas from https://github.com/EDCD/EDDN/tree/master/schemas.
+  * Inara Responder
+    * Fixed an issue with asset data not being reported correctly.
+  * Material Monitor
+    * Moved navigation functions to the Navigation Monitor
+  * Mission Monitor
+    * Moved navigation functions to the Navigation Monitor
+  * Navigation Monitor
+    * Added new Navigation Monitor with support for planetary and galactic bookmarking, ship and carrier route planning, and galactic POIs.
+    * The `DestinationSystem` object has been revised to match your current in-game route's final destination.
+    * The `DestinationStation` object has been removed.
+    * Navigation commands (e.g. via `RouteDetails()` or the `route` VoiceAttack command) will no longer generate a route in EDDI independent of your in-game routing.
+  * Speech Responder
+    * Events
+      * `Bookmark details` added, triggered when a navigation bookmark is added in the Navigation Monitor.
+      * `Carrier bank transfer` added, triggered when you transfer money to or from your fleet carrier.
+      * `Carrier decommission cancelled` added, triggered when you cancel the decommissioning of your fleet carrier.
+      * `Carrier decommission scheduled` added, triggered when you request the decommissioning of your fleet carrier.
+      * `Carrier docking permission` added, triggered when changing the docking permission criteria at your fleet carrier.
+      * `Carrier finance` added, triggered when changing tax rates or reserve funds at your fleet carrier.
+      * `Carrier fuel deposit` added, triggered when depositing fuel at your fleet carrier.
+      * `Carrier name changed` added, triggered when your fleet carrier's name is changed.
+      * `Carrier purchased` added, triggered when you purchase a fleet carrier.
+      * `Carrier service changed` added, triggered when you change the services available at your fleet carrier.
+      * `Carrier stats` added, triggered when you open the carrier management screen.
+      * `Carrier jump engaged` updated to add a new `docked` property.
+      * `Location` updated to add `faction` and `conflicts` properties (like the `Jumped` event).
+      * `Route details` updated to add `tritiumused` property for fleet carrier tritium consumption.
+      * `SRV docked` updated to add properties `srvType` and `srvTypeInvariant`.
+      * `SRV launched` updated to add properties `srvType` and `srvTypeInvariant`.
+      * `Surface signals detected` event updated to add a new property `detectionType` with values "FSS" or "SAA".
+      * `Mission accepted` updated to add `tags` and `invariantTags` properties.
+      * `Nav route` added, triggered when a route is plotted in the Galaxy Map.
+      * `Near bookmark` added, triggered when entering or departing the (customizable) nearby radius of a bookmark.
+      * `Next destination` added, triggered when selecting an in-system destination.
+      * `Permit acquired` added, triggered when you acquire a permit from the mission board.
+      * `Vehicle destroyed` updated to add properties `srvType` and `srvTypeInvariant` when vehicle is an SRV
+    * Functions
+      * Fixed a bug that could cause the `ShipDetails()` function to fail to resolve some ship model names.
+      * Fixed a bug that could cause the `TrafficDetails()` function to fail.
+      * Fixed a bug that prevented `Pause()` from affecting `Play()`.
+      * The `SetState()` function now allows variables to be set to `void`.
+      * `RouteDetails()` revised to remove obsolete `next` type and to add `carrier`, `neutron`, `recalculating`, `scorpion`, and `scoop` types.
+    * Changes to existing scripts
+      * `Asteroid prospected` updated to conform to an in-game name change from `Void Opals` to `Void Opal`
+      * `Bodies to map` updated to prevent re-recommending bodies we've already mapped.
+      * `Body atmosphere report` revised to correct some issues around reporting for class 1 gas giants.
+      * `Body materials report` revised to special case hard-to-find Selenium.
+      * `Body report` revised to improve grammar (around "days") and skip the `Body materials report` by default.
+      * `Body report summary` revised to improve grammar (around "days") and skip the `Body materials report` by default.
+      * `Carrier jump engaged` updated use new `docked` property and carrier name.
+      * `Carrier jumped` updated to replace references to `destinationsystem` with references to `searchsystem`.
+      * `Commodity purchased` updated to increase variety and lightly reduce verbosity.
+      * `Community goal` updated to refine responses upon goal completion.
+      * `Crime check station` updated to remove obsolete references to `shipid`.
+      * `Crime check system` updated to better distinguish fines and bounties.
+      * `Discovery scan` updated to incorporate new `System materials report` invoked script.
+      * `Docking denied` updated to add new `DockOffline` reason.
+      * `Docking granted` revised to reference automated docking if such a module is installed.
+      * `Engineer contributed` revised to correct grammar when contributing materials to an engineer unlock.
+      * `Entered normal space` revised to correct grammar when dropping out near a ring.
+      * `Entered signal source` revised to correct obsolete signal source names.
+      * `Entered supercruise` revised to reset a state variable after updating you on your crime status.
+      * `Fuel check` revised to move relevant data to the `Route details` script.
+      * `FSD Engaged` revised to move some speech to the `Jumped` event.
+      * `Glide` updated to remove gravity warnings (e.g. "Danger", "Caution", etc.) when approaching a body in a taxi or dropship.
+      * `Jumped` revised to remove jump count reporting (to slightly reduce verbosity), report the distance to your carrier when you have a carrier but no home system, and add speech moved from the `FSD engaged` event.
+      * `Location` updated to add local reputation, system state, and system engineer details and to remove redundant mission information.
+      * `Material required report` updated to fix a typo.
+      * `Market Information updated` updated to fix a typo.
+      * `Module purchased` updated to fix broken weapon mount details.
+      * `Module retrieved` updated to fix broken weapon mount details.
+      * `Module sold` updated to fix broken weapon mount details.
+      * `Module sold from storage` updated to fix broken weapon mount details.
+      * `Module stored` updated to fix broken weapon mount details.
+      * `Module swapped` updated to fix broken weapon mount details.
+      * `Module transfer` updated to fix broken weapon mount details and refine time estimates.
+      * `Modules stored` updated to fix broken weapon mount details.
+      * `Mission abandoned` updated to fix broken community goal abandonment and to observe mission abandonment fines.
+      * `Mission accepted` updated to remove mission counting and reduce verbosity
+      * `Mission check station` updated to improve grammar.
+      * `Mission check system` updated to improve grammar.
+      * `Mission check galaxy` updated to remain silent if you have no active or claimable missions.
+      * `Mission completed` updated to reduce verbosity by only sometimes referencing faction state info.
+      * `Mission faction state` updated to correct incorrect faction names and reduce verbosity.
+      * `Mission failed` updated to prevent speech if no mission is found matching the mission id.
+      * `Route details` revised to remove obsolete `next` type and to add `carrier`, `neutron`, `recalculating`, `scorpion`, and `scoop` types.
+      * `Ship interdicted` updated to add a default script.
+      * `Ship repaired` updated to fix broken weapon mount details.
+      * `Ship transfer initiated` updated to refine time estimates.
+      * `Signal detected` revised to correct the "Convoy Dispersal Pattern" source and to report Compromised Nav Beacons by default.
+      * `SRV docked` updated to make use of the new `srvType` property.
+      * `SRV launched` updated to make use of the new `srvType` property.
+      * `Star report` revised to correct a grammar bug when reporting star class.
+      * `Star scanned` revised to report primary stars unknown to Universal Cartographics.
+      * `Surface signals detected` updated to indicate the body containing the signals, when available.
+      * `System materials report` added.
+      * `System report` updated to include alliance superpower, improve several government descriptors, and add local reputation details.
+      * `System scan complete` updated to invoke the `System materials report` script when appropriate.
+      * `System state report` updated to facilitate localization, add several newer faction states, and improve grammar around recent conflicts.
+      * `Undocked` updated to invoke RouteDetails("update").
+  * Status Monitor
+    * Fixed a bug that caused fuel percent calculations to not calculate immediately after a vehicle change.
+    * Added new `status` property `credit_balance`.
+    * Added new `status` property `on_foot_in_hangar`.
+    * Added new `status` property `on_foot_social_space`.
+    * Added new `status `property `breathable_atmosphere`.
+    * Added new `status` property `telepresence_multicrew`.
+    * Added new `status` property `physical_multicrew`.
+  * VoiceAttack Responder
+    * The `setstate` plugin function now allows variables to be set to `Not set`.
+
+## 4.0.1
   * Core
     * Promote 4.0.1-rc1 to 4.0.1
 
-### 4.0.1-rc1
+## 4.0.1-rc1
   * Core
     * Promote 4.0.1-b5 to rc1
 
-### 4.0.1-b5
+## 4.0.1-b5
   * Core
     * Improve speech service detection of older Windows versions. 
 
-### 4.0.1-b4
+## 4.0.1-b4
   * Core
     * Added a speculative fix for a bug that could prevent speech when the same voice is available from multiple speech synthesizers.
     * Refactored to try to improve compatibility with older Windows versions.    
 
-### 4.0.1-b3
+## 4.0.1-b3
   * Core
     * Fixed a bug that would cause speech volume for some voices to be either 0% or 100%.
 
-### 4.0.1-b2
+## 4.0.1-b2
   * Core
     * Unlocked *most* previously unavailable Windows voices.
     * Added support for custom user lexicons (to learn more, search the wiki for "lexicons").
@@ -66,7 +262,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
       * `Mission warning` script revised to use mission tags.
       * `Route details` script revised to use mission tags.
 
-### 4.0.1-b1
+## 4.0.1-b1
   * Core
     * Richer event variable documentation (for both the Speech Responder and VoiceAttack).
   * Mission Monitor
@@ -81,11 +277,11 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Fixed scripts invoked from the VoiceAttack `speech` context having priority 5 rather than priority 3 by default.
     * Standard variables (e.g. current system variables) are updated immediately after a change rather than with the next event.
 
-### 4.0.0
+## 4.0.0
   * Core
     * Promote 4.0.0-rc1 to final
 
-### 4.0.0-rc1
+## 4.0.0-rc1
   * Inara Responder
     * Incorporated Inara API updates for Odyssey (except suit loadouts will be implemented later)
   * Speech Responder
@@ -112,7 +308,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * User Interface
       * The current script selection is now remembered after accepting an edited script.
 
-### 4.0.0-b3
+## 4.0.0-b3
   * Core
     * Fixed a bug that caused EDDI to fail to look up engineer systems after new engineers were added to the game.
     * Added new microbiologist and mercenary ranks
@@ -127,14 +323,14 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Scripts
       * `Engineer report` script updated to more gracefully handle engineers without defined specialties.
 
-### 4.0.0-b2
+## 4.0.0-b2
   * Inara Responder
     * Fixed a missing .dll file that caused the Inara Responder not to load. 
   * Speech Responder
     * Events
       * `Suit purchased` event added
 
-### 4.0.0-b1
+## 4.0.0-b1
   * Core
     * Added 3 new vehicle types:
       * On Foot
@@ -214,21 +410,21 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Added system variables `{INT:System scanned bodies}` and `{INT:System mapped bodies}`.
     * Added boolean values for `odyssey` and `horizons` game states.
 
-### 3.7.3
+## 3.7.3
   * Treat alpha game clients just the same as beta game clients, i.e. do not upload data to live endpoints.
 
-### 3.7.2
+## 3.7.2
   * Promote 3.7.2-rc3 to final
 
-### 3.7.2-rc3
+## 3.7.2-rc3
   * Core
     * Fixed a bug with parsing float / decimal commodity prices.
 
-### 3.7.2-rc2
+## 3.7.2-rc2
   * Core
     * Fixed a bug that caused the `Signal detected` event to identify non-unique signals as unique rather than the reverse.
 
-### 3.7.2-rc1
+## 3.7.2-rc1
   * Frontier API
     * Fixed a bug that would re-play the speech "Frontier API connection operational" when the token was refreshed.
   * Speech Responder
@@ -249,7 +445,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
       * `Star report` updated to apply the List() function for notable features.
       * `System state report` updated to remove "the" prefixing faction names (to correct pronunciation of faction names like "The Fatherhood"). 
 
-### 3.7.2-b2
+## 3.7.2-b2
   * Speech Responder
     * Functions
       * `Humanise()` revised to leave the interpretation of simple whole numbers like 1000 and 10000 to the culture-specific voice.
@@ -270,7 +466,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
       * `Signal detected` updated to more consistently apply the P() function.
       * `System state report` updated to more consistently apply the P() function.
 
-### 3.7.2-b1
+## 3.7.2-b1
   * Core
     * Fixed a bug that caused certain faction names (e.g. "Brazilian Armada X") to throw an exception when passed through the `P()` function.
   * Cargo Monitor
@@ -355,7 +551,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
       * Revised `$-` output to more clearly render commander phonetic name
       * Updated VoiceAttack wiki documentation to document implicit variables `$=` and `$-` as variables representing phonetic ship and commander names.
 
-### 3.7.1
+## 3.7.1
   * Core
     Fixed an exception when calculating distances if the second system were null (for example if a home star system were not set).
   * Mission monitor
@@ -367,7 +563,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * VoiceAttack responder
     * Updated EDDI.vap to correct an issue with landing pads not being reported correctly when queried.
 
-### 3.7.1-b1
+## 3.7.1-b1
   * Core
     * If you cancel a jump in your fleet carrier, a one minute cooldown is initiated. A `Carrier cooldown` event is now triggered to signal that this cooldown is complete.
     * Integrated monitors can no longer be disabled. The EDDP and Galnet monitors operate independently and can still be disabled.
@@ -415,37 +611,37 @@ Full details of the variables available for each noted event, and VoiceAttack in
       * Updated the `Signal detected` event and script to include a new `unique` property and fix a typo
       * Updated the `System report` script to separate carriers from stations
 
-### 3.7.0
+## 3.7.0
   * Promote 3.7.0-rc1 to final
   * Fixed a bug that could cause the `Ship loadout` event not to fire if piloting an Eagle with a module slotted in the military slot
   * Added an alpha channel to the splash screen
 
-### 3.7.0-rc1
+## 3.7.0-rc1
   * Core
     * EDDI standalone now displays a splash screen while bringing up the full UI, to give users immediate feedback that it is launching.
     * `Carrier cooldown` event is now sent to the carrier's owner even if they were not aboard for the jump.
     * Corrected the timing of the `Carrier cooldown` event.
     * `Carrier pads locked` and `Carrier jump engaged` events are now correctly cancelled if the carrier's jump is cancelled.
 
-### 3.5.3-b7
+## 3.5.3-b7
   * Speech responder
     * Fixed text-to-speech errors introduced in b5 and b6 by reverting the Cottle text rendering package to the old version..
 
-### 3.5.3-b6
+## 3.5.3-b6
   * Frontier API
     * Fixed missing client ID in 3.5.3-b5
   * Speech responder
     * ~~Fixed Speech Responder always reporting that script errors are at line zero.~~
     * Fixed a typo in the `Mission check galaxy` script.
 
-### 3.5.3-b5
+## 3.5.3-b5
   * Core
     * ~~Updated Rollbar telemetry service to reduce web traffic when idle and to add some additional context from preceeding eddi.log entries.~~
     * Various bug fixes, including fixing a bug that could cause the UI to become de-coupled from the true speech configuration. 
   * Speech responder
     * ~~Updated Cottle text rendering package to the latest version.~~
 
-### 3.5.3-b4
+## 3.5.3-b4
   * Core
     * Implemented new `Asteroid cracked` and `Asteroid prospected` events. 
     * Nanomedicines are now designated as a rare commodity.
@@ -456,7 +652,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * When the update server is unreachable, the voice message now says that "EDDI" rather than "I" could not reach it.
     * Fixed some edge cases around ship model pronounciation, notably Roman numerals.
 
-### 3.5.3-b3
+## 3.5.3-b3
   * Cargo Monitor
     * Fixed a bug where the `need` property of mission-related cargo did not properly update for `Collect` mission types.
   * Core
@@ -477,11 +673,11 @@ Full details of the variables available for each noted event, and VoiceAttack in
       * `Touchdown`
     * Updated the community translation of the default personality for Brazilian Portuguese.
 
-### 3.5.3-b2
+## 3.5.3-b2
   * Frontier API
     * Fixed an issue whereby the login process would try to launch a second instance of EDDI and fail.
 
-### 3.5.3-b1
+## 3.5.3-b1
   * Core
     * Added support for all documented events etc for the Fleet Carriers update.
     * Behave gracefully rather than crashing to desktop when the EDSM servers are timing out.
@@ -510,7 +706,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Fixed an exception that could occur when closing VoiceAttack.
     * Fixed a bug ([#1666](https://github.com/EDCD/EDDI/issues/1666)) that could prevent variables `{DEC:System X} {DEC:System Y} {DEC:System Z}` from populating upon first entry into a system.
 
-### 3.5.2
+## 3.5.2
   * Speech responder
     * UI
       * **Implemented syntax coloring** (and there was much rejoicing). The engine is fully customizable: the UI for that will come later.
@@ -536,7 +732,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * Core
     * Fixed shield state events not triggering ([#1605](https://github.com/EDCD/EDDI/issues/1605)).
 
-### 3.5.1
+## 3.5.1
   * Core
     * Ensured that all translation resources are now correctly incorporated.
   * EDSM responder
@@ -547,10 +743,10 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * VoiceAttack Responder
     * Fixed a regression in 3.5.0: EDDI not remembering window position or tab position when running as a VoiceAttack plugin.
 
-### 3.5.0
+## 3.5.0
   * Promote 3.5.0-rc1 to final
 
-### 3.5.0-rc1
+## 3.5.0-rc1
   * Core
     * Updated commodity definitions, including adding Agronomic Treatments.
   * EDSM Responder
@@ -560,7 +756,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * VoiceAttack Responder
     * Added a VoiceAttack system variable for total bodies.
 
-### 3.5.0-b2
+## 3.5.0-b2
   * Core
     * Fixed incorrect conversion to the local time zone when parsing timestamps from the journal and cAPI.
   * Ship Monitor
@@ -568,7 +764,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * VoiceAttack Responder
     * Fixed memory leaks when opening and closing EDDI's main window under VoiceAttack 
 
-### 3.5.0-b1
+## 3.5.0-b1
   * Core
     * Added new `Inara Responder`.
     * Language setting are now preserved across both Standalone and Voice Attack modes of operation.
@@ -621,11 +817,11 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Added new `Status slope` property (relative to the horizon and only if near a surface)
     * Fixed 'cadmium' typo in EDDI.vap file
 
-### 3.4.3
+## 3.4.3
   * Core
     * Removed in-process .dll accidentally included with release 3.4.3-b1.
 
-### 3.4.3-b1
+## 3.4.3-b1
   * Core
     * Reinstated the `Glide` event.
     * Fixed a bug preventing the `Material use report` script from executing correctly. 
@@ -633,7 +829,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Fixed display artefacts on the priority column when scrolling.
     * Touched up spacing irregularities in the `Material use report`.
 
-### 3.4.2
+## 3.4.2
   * Core
     * Fixed issues around navigation routing, including the `Jumped` script not updating correctly.
   * Material monitor
@@ -642,7 +838,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Fixed a bug with speech queues that could in some circumstances cause EDDI to crash in the middle of combat.
     * Revised `Route details` script.
 
-### 3.4.2-b1
+## 3.4.2-b1
   * Core
     * Application startup no longer waits for network operations to respond before displaying the UI.
     * Added vehicle (SLF & SRV) definition and loadout description localization
@@ -660,10 +856,10 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * VoiceAttack responder
     * Updated EDDI.vap commands for invoking the `Blueprint make report` and `Blueprint material report` scripts.
 
-### 3.4.1
+## 3.4.1
   * Amended a configuration error in the Frontier API module.
 
-### 3.4.1-rc2
+## 3.4.1-rc2
   * Cargo monitor
     * Fixed a bug that could disable the cargo monitor with translated versions of EDDI.
   * EDSM responder
@@ -676,7 +872,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * Ship monitor
     * Reinstated ship export to [EDShipyard](https://www.edsy.org), as its developer has returned. 
 
-### 3.4.1-rc1
+## 3.4.1-rc1
   * EDSM responder
     * Improved EDSM synchronization for system visits and comments
   * Speech responder
@@ -686,7 +882,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Revised the `Body report summary script` script to resolve a couple of minor bugs.
     * Revised the `System scan complete` script to reduce verbosity and increase variety.
 
-### 3.4.1-b2
+## 3.4.1-b2
   * Core
     * Reconfigured the installer to improve backwards compatibility between EDDI versions
     * Fixed a bug with deep-space system look-ups of EDSM data (where EDSM returns no results)
@@ -694,7 +890,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Revised the `Mission faction state` script to gracefully handle faction states like "None".
     * Fixed a bug with the `MaterialDetails()` function when only one parameter was supplied.
 
-### 3.4.1-b1
+## 3.4.1-b1
   * Core
     * All 'Location' events are now processed (repeats of this event are no longer suppressed).
     * Added `Docked` and `Landed` Environment states. Note that the `Environment` variable follows the ship and `Vehicle` variable follows the commander.
@@ -829,7 +1025,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
 
     \* For noted properties, old property names are preserved for legacy script compatibility
 
-### 3.4
+## 3.4
   * Core
     * Added localised names for the Advanced Docking Computer and Supercruise Assist modules.
   * Galnet monitor
@@ -842,15 +1038,15 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * Voice Attack
     * Fixed a bug that would incorrectly disable invoked speech while `disablespeechresponder` was set.
 
-### 3.3.7
+## 3.3.7
   * Speech responder
     * Preliminary Portuguese version of the default personality script.
 
-### 3.3.7-rc1
+## 3.3.7-rc1
   * Speech responder
     * Fixed some minor errors re plurals etc in the mission reports and fuel check scripts.
 
-### 3.3.7-b2
+## 3.3.7-b2
   * Commander details
     * Added auto-complete for the home system and squadron system and catered for two-character system names such as 'Ix'.
   * GalNet monitor
@@ -865,7 +1061,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * VoiceAttack responder
     * Reduced CPU utilization significantly in some cases, particularly when interacting with the ship monitor and when loading the last journal file.
 
-### 3.3.7-b1
+## 3.3.7-b1
   * Core
     * Fixed a bug whereby names of materials (Carbon, Iron, Conductive Components, etc) were not always localized.
   * Cargo & Mission monitors
@@ -897,11 +1093,11 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Revised VoiceAttack integration documents with updated guidance on accessing home and squadron variables.
     * Documented methods for using speech priorities with `say` and `speech` plugin functions. 
 
-### 3.3.6
+## 3.3.6
   * Frontier API
     * Fixed missing client ID in 3.3.5
 
-### 3.3.5
+## 3.3.5
   * Core
     * Miscellaneous minor bug fixes.
     * Added Russian translations.
@@ -915,7 +1111,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Improved variable setting efficiency by adding granularity via 'Update' event handling.
     * Added information command to EDDI.vap to test status variables.
 
-### 3.3.4
+## 3.3.4
   * Speech responder
     * Fixed a bug that would cause star scans to accumulate until the FSS scanner was opened.
     * Fixed a bug that could prevent proper lookup of bodies using the `BodyDetails()` function.
@@ -924,11 +1120,11 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * VoiceAttack  
     * Added new `Next system` variables
     
-### 3.3.4-rc3
+## 3.3.4-rc3
   * Frontier API
     * Fixed missing client ID in 3.3.4-rc2.
 
-### 3.3.4-rc2
+## 3.3.4-rc2
   * Core
     * Added `SquadronStartup` event handler.
     * `Docked`, `FSDJump`, and `Location` events now pass Faction objects. Localized state, government & allegiance properties are still derived for use in Cottle & VA.
@@ -936,7 +1132,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Fixed crashing bug in the Italian localization.
     * Added Russian localization (no translations yet).
 
-### 3.3.4-rc1
+## 3.3.4-rc1
   * Bug fixes for database transactions
   * Bug fixes for changes to journal events in Elite Dangerous patch 3.3.03
   * Speech responder
@@ -946,7 +1142,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
       * the "starsystem" channel defaults to false to prevent overwhelming EDDI with messages in systems with high player counts.
     * Revised the `System report` script so that it won't report a "None" government type.
 
-### 3.3.4-b1
+## 3.3.4-b1
   * Core
     * Added manual market, outfitting and shipyard updates, upon docking. Associated EDDN message is sent.
     * EDDI will now sync to the most current journal on startup (dramatically improving the accuracy of data available after startup)
@@ -967,33 +1163,33 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * VoiceAttack plugin
     * EDDI will no longer lose track of position data when you pass through a system where your squadron minor faction has influence.
 
-### 3.3.3
+## 3.3.3
   * Emergency hotfix for a breaking change in the way fuel levels are reported.
 
 
-### 3.3.2
+## 3.3.2
   * EDDN responder
     * Made revisions to guard against reporting inaccurate star position data to EDDN.
     * The EDDN responder will now provide an audible warning if it detects that location data is in an invalid state.
   * Mission monitor
     * Updated the mission monitor to fix a parsing error for donation mission entries created by a change in how these are recorded. 
 
-### 3.3.1
+## 3.3.1
   * EDDN responder
     * `CodexEntry` events are bugged and always return a SystemAddress of 1. These must be ignored by the EDDN responder to prevent sending bad data.
 
-### 3.3
+## 3.3
   * Speech responder
     * Fixed a bug in the way that the status of friends is tracked, and fixed the broken `Test` button for the `Friends status` event.
 
-### 3.3-rc2
+## 3.3-rc2
   * Core
     * All drop-down menus are now sorted appropriately.
     * Internal fixes and efficiency improvements.
   * EDDN responder
     * Corrected an issue that was preventing certain event types from being sent to EDDN.
 
-### 3.3-rc1
+## 3.3-rc1
   * Core
     * Fixed a bug that could result in rotational and orbital periods being reported as much faster than they really were.
     * Fixed very low hab zone values in `Star scanned` events
@@ -1046,7 +1242,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
       * Fuel time remaining (in seconds)
       * Cargo carried (in tons)
 
-### 3.3-b1
+## 3.3-b1
   * Core
     * Fixed a bug that could reset system comments, visits, and the date last visited while refreshing star system data. 
   * Material monitor
@@ -1071,13 +1267,13 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * The `Voice()` function now tolerates incomplete voice names (EDDI will return the first matching voice) and casing no longer matters.
     * Added new function `VoiceDetails()` for accessing details of installed voices while scripting.
 
-### 3.1.2
+## 3.1.2
   * Localization
     * Material locations have been moved from the update server to the app and are now a translatable resource.
   * Speech responder
     * Tweaked pronunciations of "Megaship" and "Orbis" in English. Tweaked pronuncations are available via the `P()` function.
 
-### 3.1.1
+## 3.1.1
   * Core
     * Fixed crash to desktop when the folder `%APPDATA%\EDDI` does not exist.
   * Localization
@@ -1086,7 +1282,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Tweaked pronunciations of "Megaship" and "Orbis" in English.
     * Amended "Entered normal space" script for cases when dropping near a non-station settlement.
 
-### 3.1
+## 3.1
   * Core
     * Fixed scan message spam upon scanning a Nav Beacon.
   * Localization
@@ -1094,11 +1290,11 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * VoiceAttack responder
     * Fixed a bug that prevented the `shutup` command from firing correctly.
 
-### 3.1-rc1
+## 3.1-rc1
   * Localization
     * Added resource files for Japanese (no translations yet).
 
-### 3.1.0-b5
+## 3.1.0-b5
   * Core
     * EDDI now uses EDSM as the primary backend for server data (rather than the no longer maintained server set up by EDDI's original creator)
     * Strings returned from the player journal and from server data have been standardized and should match each other much more closely than they have in the past.
@@ -1113,7 +1309,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * VoiceAttack responder
     * Amended reporting of cargo & limpets carried.
 
-### 3.1.0-b4
+## 3.1.0-b4
   * Speech responder
     * Fixed an error converting a string, such as a ship ID, to the ICAO alphabet that was empty or all symbols (an empty string should result).
   * Ship monitor
@@ -1127,7 +1323,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * When commands for EDDB, EDShipyard, or Coriolis are invoked, the applicable uri will be written to `{TXT:EDDI uri}`.
     * Updated EDDI.vap to set the optional boolean `{BOOL:EDDI open uri in browser}` in applicable commands for EDDB, EDShipyard, and Coriolis. If set to false, EDDI shall not open the browser.
     
-### 3.1.0-b3
+## 3.1.0-b3
   * Core
     * Fixed a bug in our JSON deserialization code that led to variables changing which were expected to remain constant. This manifested in various ways, including:
       * Ship roles changing in unexpected ways
@@ -1142,7 +1338,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * Speech responder
     * Fixed Mission warning 'minutes' remaining and 'Entered normal space' script for planetary ports.
 
-### 3.1.0-b2
+## 3.1.0-b2
   * Core
     * Implemented log rotation. EDDI will now create a new log file every time it starts, and shall retain no more than 10 log files before it starts clearing the old logs. Immense log files are a thing of the past.  
     * Added data definitions for Guardian fighters.
@@ -1169,7 +1365,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * Voice Attack plugin / Speech synthesizer
     * Improved stability by switching to using a single speech synthesizer instance (kudos to VoiceAttack's developer for working with us on this). 
 
-### 3.1.0-b1
+## 3.1.0-b1
   * UI
     * Tabs are now shown on the the left, and all but the first "EDDI" tab are sorted alphabetically according to the rules of the current locale.
   * New Mission monitor feature, tracking all mission parameters. Check the Speech responder `Variables` window for details.
@@ -1195,17 +1391,17 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * Voice Attack plugin
     * New `missionsroute` external function to query for various mission routes from VA. See RouteDetails() above for query types.
 
-### 3.0.3
+## 3.0.3
   * Core
     * Added data definitions for Beyond Chapter 3 (game v3.2).
   * Cargo monitor
     * Added support for solo delivery missions using the mission depot.
 
-### 3.0.2
+## 3.0.2
   * Additional Italian translations.
   * Fixed an exception that occurs during location events if not docked.
 
-### 3.0.2-b1
+## 3.0.2-b1
   * Core
     * Fixed a bug that was preventing some events from being passed to EDSM.
     * Added more Italian localization.
@@ -1239,15 +1435,15 @@ Full details of the variables available for each noted event, and VoiceAttack in
       * Fixed a typo in the description of the `((EDDI: station variables))` command
       * Fixed a missing `;` in the command `Please repeat that;What was that?;Could you say that again?;Say that again`
 
-### 3.0.1
+## 3.0.1
   * Released!
 
-### 3.0.1-rc6
+## 3.0.1-rc6
   * EDDN responder
     * Fixed symbol for Krait Mk II in shipyard data.
     * Release builds of EDDI will now use the live EDDN endpoints.
 
-### 3.0.1-rc5
+## 3.0.1-rc5
   * Core
     * Fixed some sitations on which hull health was incorrectly being set to 100%. Unfortuntely not all sources of hull damage are currently reported in real-time in the journal, so EDDI may sometimes remain unaware of new damage for a while.
     * Fixed a bug that could occur when hull and module values aren't present in the `Loadout` event.
@@ -1258,7 +1454,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * VoiceAttack responder
     * Found and fixed the remaining cause of excessive CPU load. It should now be back to 3.0.0 levels.
 
-### 3.0.1-rc4
+## 3.0.1-rc4
   * Core
     * Removed `insurance excess` from the user interface and the `insurance` property from the top level `commander` variable. FDev now gives us rebuy values directly, so this is no longer needed.
   * Ship monitor
@@ -1276,15 +1472,15 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * VoiceAttack responder
     * Dramatically reduced CPU load. 
 
-### 3.0.1-rc3
+## 3.0.1-rc3
   * Core
     * Added data definitions for the new ships and modules in Chapter 2.
 
-### 3.0.1-rc2
+## 3.0.1-rc2
   * Core
     * Revised EDDI's logging code and removed an unintended recursion that could cause the log to bloat.
 
-### 3.0.1-rc1
+## 3.0.1-rc1
   * Core
     * The Search and rescue event was having its `commodity` property set to just the commodity name, rather than the commodity definition object that scripts expect. Fixed.
     * Updated the `Ship refueled` event to include new boolean value `full`. True if this is a full refill and false if this is a partial refill.
@@ -1311,7 +1507,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * VoiceAttack
     * The Search and rescue event has a new variable `{TXT:localizedcommodityname}` because the `commodity` varaible is now an object.
 
-### 3.0.1-b4
+## 3.0.1-b4
   * Core
     * Fixed issues arising in betas 2 and 3: data written to file by old code was not being read correctly by new code. This manifested in various ways: too many to list.
     * As a by-product, we now have rather more test coverage.
@@ -1324,7 +1520,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Updated the localizations for French, Spanish, German, Hungarian and Italian. 
       * You can join up at https://crowdin.com/project/eddi to help.
 
-### 3.0.1-b3
+## 3.0.1-b3
   * Core 
     * Fixed a bug that was preventing chromaticity and various stellar probabilities from being set in some circumstances.
     * EDDI will now track the nearest stellar body and make that data available to EDDI's Speech Responder via the `body` variable (planet, moon, etc.).  
@@ -1379,7 +1575,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
       * `{TXT:Body planet type}` 
       * `{TXT:Body reserves}` 
 
-### 3.0.1-b2
+## 3.0.1-b2
   * Localization
     * EDDI is now localized! You can choose your language in the EDDI tab or just go with the system default.
     * Added French and Spanish localizations, complete at the time of writing, except for the personality scripts.
@@ -1390,11 +1586,11 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * Ship monitor
     * Made sure we are using human readable ship names in all scripts (e.g. "Imperial Eagle" rather than "Empire_Eagle").
 
-### 3.0.1-b1
+## 3.0.1-b1
   * Completely re-written Cargo Monitor. Cargo and limpets should now be tracked accurately.
   * Exports to Coriolis and EDShipyard now send data in `Loadout` journal event format, rather than in the old Frontier API format.
 
-### 3.0.0
+## 3.0.0
   * Core
     * Fixed the reporting of the Location event to EDDB. Was using the current body when it should have used the current station.
     * Tuned the new logging to Rollbar for quicker startup in some situaitons.
@@ -1407,7 +1603,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
       * Figher cockpit weapons and armor
       * Meta Alloy Hull Reinforcement
 
-### 3.0.0-rc2
+## 3.0.0-rc2
   * Core
     * The EDSM responder has been updated to send data to EDSM per their revised API. 
     * Switched error reporting to [Rollbar](https://rollbar.com/).
@@ -1418,7 +1614,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Added `Material trade` event
     * Added `Technology broker` event
 
-### 3.0.0-rc1
+## 3.0.0-rc1
   * Core
     * Incorporated new data definitions for 3.0.
   * Installer
@@ -1433,12 +1629,12 @@ Full details of the variables available for each noted event, and VoiceAttack in
       * `{BOOL:EDDI speaking}` True if EDDI is speaking, false otherwise. Useful for synchronizing speech between EDDI and other sources in VoiceAttack.
     * Fixed a bug whereby `cmdr.title` was not being initialised. 
 
-### 3.0.0-b3
+## 3.0.0-b3
   * Core
     * Fixed a crash upon startup when the EDSM responder was not configured.
     * Fixed a crash upon shipyard refresh when any ships had been sold while EDDI was not running.
 
-### 3.0.0-b2
+## 3.0.0-b2
   * Core
     * Squashed a bug that was preventing EDDI from correctly registering changes to the shipyard.
     * Squashed a bug with the status monitor that was preventing events from being detected in VoiceAttack and was messing up some other variables.
@@ -1456,7 +1652,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Added the following new variables
       * `{TXT:Gender}` the preferred gender of the commander for pronouns and titles. One of "Male", "Female", or "Neither".
 
-### 3.0.0-b1
+## 3.0.0-b1
   * UI
     * If EDDI is run as a standalone app, its entire window state is now preserved. If EDDI is invoked via VoiceAttack commands, we only remember whether it was maximised and don't disturb the rest.
   * Core
@@ -1547,7 +1743,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
       * {DEC:Status altitude} a decimal value indicating the ship's current altitude (if in flight near a surface)
       * {DEC:Status heading} a decimal value indicating the ship's current heading (if near a surface)
 
-### 2.4.6-b3
+## 2.4.6-b3
   * Core
     * Improved window size and position handling for multi-display setups. 
     * EDDI's UI now clearly shows whether EDDI has found your home system and station (if they haven't been found, the associated objects will not be populated). If EDDI cannot find a match, the textbox will display a red border and the contents will not be saved.
@@ -1581,7 +1777,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * Galnet Monitor
     * Default the galnet monitor plugin to 'off' in favor of the in-game Galnet Audio. The plugin still can be enabled if desired.
 
-### 2.4.6-b2
+## 2.4.6-b2
   * Core
     * Added support for the large AX weapons and the Type 10 Defender (export to EDShipyard and Coriolis should be compatible and work just as soon as they are ready).
     * EDDI will now remember and restore its window size and position, the selected tab, and its minimized / maximized status on startup (and there was much rejoicing).
@@ -1624,7 +1820,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
   * Galnet monitor
     * Add a checkbox to the Galnet monitor to toggle whether the Galnet monitor will update all of the time or only if the game has posted a journal event in the last ten minutes. This option prevents Galnet spam upon starting EDDI.
 
-### 2.4.6-b1
+## 2.4.6-b1
   * The Galnet monitor will now check the player journal for recent activity prior to updating - VoiceAttack users rejoice!
   * VoiceAttack
     * Updated EDDI.VAP to include a new command for marking Galnet article categories as read (documented in [the Galnet Monitor documentation](https://github.com/EDCD/EDDI/wiki/Galnet-Monitor).
@@ -1655,19 +1851,19 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Added the following Cottle functions, documented in [the SpeechResponder documentation](https://github.com/EDCD/EDDI/blob/master/SpeechResponder/Help.md):
       * `List()`: returns a humanised list of items from an array (e.g. "this, that, and the other thing").
 
-### 2.4.5
+## 2.4.5
   * Core
     * Added defensive coding so that EDDI will not crash on startup if it has trouble reading the configuration files.
   * Material Monitor
     * Added definitions for some previously unknown materials found at crash sites.
     * Added defensive coding so that EDDI will not crash when unknown materials are encountered in future.
 
-### 2.4.4
+## 2.4.4
   * Speech Responder
     * Fixed a bug that was causing some SSML related functions (e.g. Pause()) to not render correctly.
     * Fixed unit conversion of the star's age in star scans. They should no longer report every star as "one of the oldest".
 
-### 2.4.3
+## 2.4.3
   * Core
     * We will no longer ask users to send logs for commodity definition errors (and there was much rejoicing). 
     * Fixed a time zone snafu that was causing the "Report an issue" button to export empty log files for west of GMT locales.
@@ -1692,17 +1888,17 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * Worked around non-compliance of CereProc voices with industry standards that would cause EDDI to revert to a system default voice.
     * Fixed a bug that was preventing the Play() function from working properly
 
-### 2.4.2
+## 2.4.2
   * Core
     * Revised EDDN updating for naming changes in ED 2.4. This makes EDDI 2.4.2 a mandatory update.
     * Revised error reporting. The 'Send EDDI log to developers' button is now called 'Report an Issue' and routes users to our Github issues page. If verbose logging is enabled, a zipped and truncated log file is placed on the desktop so that it may be attached to the Github issue.
   * Material Monitor
     * Fixed a bug that prevented EDDI from recognizing and removing old versions of some data from the Material Monitor.
 
-### 2.4.1
+## 2.4.1
   * We just needed to bump the version number to flush out 2.4.0 builds that didn't understand that 'rc' means 'release candidate'. (Because it's a computer and, guess what, we have to tell it stuff like that.)
 
-### 2.4.0
+## 2.4.0
   * Core
     * Eliminated the approx 7 second delay on app startup that was introduced in rc1.
   * Speech Responder
@@ -1713,7 +1909,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
       * 'Market information updated'
         * Delay 4.5 seconds before speaking market data on docking.
 
-### 2.4.0-rc1
+## 2.4.0-rc1
   * Core
     * EDDI will now take commander ratings/rankings from the journal in addition to from the API.
     * EDDN market and outfitting updating restored, accomodating 2.4 cAPI changes. Bonus - now sending shipyard data to EDDN!
@@ -1739,7 +1935,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
       * 'Empire promotion' - new script
       * 'Federation promotion' - new script
 
-### 2.4.0-b5
+## 2.4.0-b5
   * Core
     * EDDI can once again track how many limpets you have (and there was much rejoicing).
     * The shipyard should now be populated correctly.
@@ -1757,7 +1953,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
       * 'Search and rescue' event - revised script to use commodity object variables (beta users, please refresh the default script)
       * 'Touchdown' event - latitude & longitude are only written to the journal when the ship is player controlled, script revised to not give erroneous information if the ship isn't player controlled
       
-### 2.4.0-b4
+## 2.4.0-b4
   * Core
     * Revised EDDI's methods for detecting in-game betas
   * Events
@@ -1770,7 +1966,7 @@ Full details of the variables available for each noted event, and VoiceAttack in
       * If you scan without a DSS, the 'Body Report' script no longer falsely claims that all bodies are unsuitable for landing
       * 'Module swapped' event - revised script to better handle swapping to an empty slot
 
-### 2.4.0-b3
+## 2.4.0-b3
   * Core
     * EDDI's version number is now shown in the application's title bar
     * Module events now update the ship object
@@ -1790,11 +1986,11 @@ Full details of the variables available for each noted event, and VoiceAttack in
     * 'Module transfer' event new script
     * 'Modules stored' event - new script
 
-### 2.4.0-b2
+## 2.4.0-b2
   * Installer
     * Fixed: the installer was missing some of the documentation files. This was causing the app to pine for the fjords. And the documentation files.
 
-### 2.4.0-b1
+## 2.4.0-b1
   * Core
     * Add 'DataScan' definition for types of datalink scans
     * Add new roles to the Ship Monitor

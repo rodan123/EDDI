@@ -263,61 +263,29 @@
   </data>
   <data name="FIXED_EVENT_HIGHTHREATSCENARIO_T6" xml:space="preserve">
     <value>Pirate Activity</value>
-    <comment>Pirate Activity</comment>
+    <comment>Pirate Activity Detected [Threat 6]</comment>
   </data>
   <data name="FIXED_EVENT_HIGHTHREATSCENARIO_T7" xml:space="preserve">
     <value>Pirate Activity</value>
-    <comment>Pirate Activity</comment>
+    <comment>Pirate Activity Detected [Threat 7]</comment>
   </data>
   <data name="SAA_SignalType_Guardian" xml:space="preserve">
     <value>Guardian Surface Signal</value>
     <comment>Guardian Surface Signal</comment>
   </data>
-  <data name="Ancient_Tiny_003" xml:space="preserve">
-    <value>Guardian Structure</value>
-    <comment>Guardian Structure</comment>
-  </data>
   <data name="Ancient" xml:space="preserve">
     <value>Ancient Ruins</value>
     <comment>Ancient (Guardian) Ruins</comment>
   </data>
-  <data name="Ancient_Small_005" xml:space="preserve">
+  <data name="Ancient_Small" xml:space="preserve">
     <value>Guardian Structure</value>
     <comment>Guardian Structure</comment>
   </data>
-  <data name="Ancient_Small_001" xml:space="preserve">
+  <data name="Ancient_Tiny" xml:space="preserve">
     <value>Guardian Structure</value>
     <comment>Guardian Structure</comment>
   </data>
-  <data name="Ancient_Tiny_001" xml:space="preserve">
-    <value>Guardian Structure</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Small_002" xml:space="preserve">
-    <value>Guardian Structure</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Small_003" xml:space="preserve">
-    <value>Guardian Structure</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Tiny_002" xml:space="preserve">
-    <value>Guardian Structure</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Medium_003" xml:space="preserve">
-    <value>Guardian Structure</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Small_004" xml:space="preserve">
-    <value>Guardian Structure</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Medium_001" xml:space="preserve">
-    <value>Guardian Structure</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Medium_002" xml:space="preserve">
+  <data name="Ancient_Medium" xml:space="preserve">
     <value>Guardian Structure</value>
     <comment>Guardian Structure</comment>
   </data>
@@ -348,5 +316,105 @@
   <data name="AttackAftermath" xml:space="preserve">
     <value>Distress Call</value>
     <comment>Distress Call</comment>
+  </data>
+  <data name="Abandoned_Buggy" xml:space="preserve">
+    <value>Distress Beacon</value>
+    <comment>Distress Beacon</comment>
+  </data>
+  <data name="Damaged_Eagle_Assassination" xml:space="preserve">
+    <value>ENCRYPTED SIGNAL</value>
+    <comment>ENCRYPTED SIGNAL</comment>
+  </data>
+  <data name="Damaged_Sidewinder_Assassination" xml:space="preserve">
+    <value>ENCRYPTED SIGNAL</value>
+    <comment>ENCRYPTED SIGNAL</comment>
+  </data>
+  <data name="Damaged_Eagle" xml:space="preserve">
+    <value>Distress Beacon</value>
+    <comment>Distress Beacon</comment>
+  </data>
+  <data name="Damaged_Sidewinder" xml:space="preserve">
+    <value>Distress Beacon</value>
+    <comment>Distress Beacon</comment>
+  </data>
+  <data name="Smugglers_Cache" xml:space="preserve">
+    <value>Irregular Markers</value>
+    <comment>Irregular Markers</comment>
+  </data>
+  <data name="Trap_Cargo" xml:space="preserve">
+    <value>Irregular Markers</value>
+    <comment>Irregular Markers</comment>
+  </data>
+  <data name="Wreckage_Buggy" xml:space="preserve">
+    <value>Minor Wreckage</value>
+    <comment>Minor Wreckage</comment>
+  </data>
+  <data name="Wreckage_Probe" xml:space="preserve">
+    <value>Impact Site</value>
+    <comment>Impact Site</comment>
+  </data>
+  <data name="Wreckage_Satellite" xml:space="preserve">
+    <value>Impact Site</value>
+    <comment>Impact Site</comment>
+  </data>
+  <data name="Wreckage_Cargo" xml:space="preserve">
+    <value>Minor Wreckage</value>
+    <comment>Minor Wreckage</comment>
+  </data>
+  <data name="Wrecks_Eagle" xml:space="preserve">
+    <value>Crash Site</value>
+    <comment>Crash Site</comment>
+  </data>
+  <data name="Wrecks_Sidewinder" xml:space="preserve">
+    <value>Crash Site</value>
+    <comment>Crash Site</comment>
+  </data>
+  <data name="CrashedShip" xml:space="preserve">
+    <value>Crashed Ship</value>
+    <comment>POI CrashedShip</comment>
+  </data>
+  <data name="Gro_controlScenarioTitle" xml:space="preserve">
+    <value>Armed Revolt</value>
+    <comment>Gro_controlScenarioTitle</comment>
+  </data>
+  <data name="Trap_Data" xml:space="preserve">
+    <value>Irregular Markers</value>
+    <comment>Irregular Markers</comment>
+  </data>
+  <data name="Perimeter" xml:space="preserve">
+    <value>Active Power Source</value>
+    <comment>Active Power Source</comment>
+  </data>
+  <data name="GenericSignalSource" xml:space="preserve">
+    <value>Signal Source</value>
+    <comment>When the signal source may be one of several types</comment>
+  </data>
+  <data name="SAA_SignalType_PlanetAnomaly" xml:space="preserve">
+    <value>Planetary Anomaly</value>
+    <comment>Planetary Anomaly Surface Signal</comment>
+  </data>
+  <data name="Cargo" xml:space="preserve">
+    <value>Minor Wreckage</value>
+    <comment>Minor Wreckage</comment>
+  </data>
+  <data name="Warzone_TG_Med" xml:space="preserve">
+    <value>Medium Intensity AX Conflict Zone</value>
+    <comment>Medium Intensity Thargoid Conflict Zone</comment>
+  </data>
+  <data name="Warzone_TG_Low" xml:space="preserve">
+    <value>Low Intensity AX Conflict Zone</value>
+    <comment>Low Intensity Thargoind Conflict Zone</comment>
+  </data>
+  <data name="Warzone_TG_High" xml:space="preserve">
+    <value>High Intensity AX Conflict Zone</value>
+    <comment>High Intensity Thargoid Conflict Zone</comment>
+  </data>
+  <data name="Warzone_TG_VeryHigh" xml:space="preserve">
+    <value>Very High Intensity AX Conflict Zone</value>
+    <comment>Very High Intensity AX Conflict Zone</comment>
+  </data>
+  <data name="Wreckage_AncientProbe" xml:space="preserve">
+    <value>Minor Wreckage</value>
+    <comment>Minor Wreckage</comment>
   </data>
 </root>

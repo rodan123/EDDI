@@ -1,7 +1,9 @@
-﻿using EddiCore;
+﻿using EddiConfigService;
+using EddiCore;
 using EddiDataDefinitions;
 using EddiDataProviderService;
 using EddiEvents;
+using JetBrains.Annotations;
 using NetMQ;
 using NetMQ.Sockets;
 using Newtonsoft.Json.Linq;
@@ -17,12 +19,16 @@ namespace EddiEddpMonitor
     /// <summary>
     /// An EDDI monitor to watch the EDDP feed for changes to the state of systems and stations
     /// </summary>
+    [UsedImplicitly]
     public class EddpMonitor : EDDIMonitor
     {
-        private bool running = false;
-        private bool reloading = false;
+        private bool running;
+        private bool reloading;
 
         private EddpConfiguration configuration;
+
+        // This monitor currently requires game version 4.0 or later.
+        private static readonly System.Version minGameVersion = new System.Version(4, 0);
 
         /// <summary>
         /// The name of the monitor; shows up in EDDI's configuration window
@@ -42,7 +48,7 @@ namespace EddiEddpMonitor
         /// </summary>
         public string MonitorDescription()
         {
-            return Properties.EddpResources.desc;
+            return "(Currently under maintenance and disabled) " + Properties.EddpResources.desc;
         }
 
         public bool IsRequired()
@@ -60,9 +66,29 @@ namespace EddiEddpMonitor
         /// </summary>
         public void Start()
         {
-            configuration = EddpConfiguration.FromFile();
-            running = true;
+            configuration = ConfigService.Instance.eddpConfiguration;
+            EDDI.Instance.GameVersionUpdated += OnGameVersionUpdated;
+            running = false; //true;
             monitor();
+        }
+
+        private void OnGameVersionUpdated(object sender, EventArgs e)
+        {
+            if (sender is System.Version currentGameVersion)
+            {
+                if (currentGameVersion < minGameVersion)
+                {
+                    Logging.Warn($"Monitor disabled. Game version is {currentGameVersion}, monitor may only receive data for version {minGameVersion} or later.");
+                    Stop();
+                }
+                else
+                {
+                    if (!running)
+                    {
+                        Start();
+                    }
+                }
+            }
         }
 
         public void Stop()
@@ -76,7 +102,7 @@ namespace EddiEddpMonitor
         public void Reload()
         {
             // Reload the configuration and let the monitor know that we have done so
-            configuration = EddpConfiguration.FromFile();
+            configuration = ConfigService.Instance.eddpConfiguration;
             reloading = true;
         }
 
@@ -208,13 +234,12 @@ namespace EddiEddpMonitor
             }
         }
 
-
         /// <summary>
         /// Find a matching watch for a given set of parameters
         /// </summary>
         private string match(string systemname, string stationname, decimal x, decimal y, decimal z, string oldfaction, string newfaction, FactionState oldstate, FactionState newstate)
         {
-            foreach (Watch watch in configuration.watches)
+            foreach (BgsWatch watch in configuration.watches)
             {
                 if (watch.System != null && watch.System != systemname)
                 {

@@ -11,16 +11,17 @@ namespace EddiStarMapService
     public partial class StarMapService
     {
         /// <summary> Exactly one system name is required. </summary>
-        public StarSystem GetStarMapSystem(string system, bool showCoordinates = true, bool showSystemInformation = true)
+        public StarSystem GetStarMapSystem(string system, bool showCoordinates = true)
         {
             if (system == null) { return null; }
-            return GetStarMapSystems(new[] { system }, showCoordinates, showSystemInformation)?.FirstOrDefault();
+            return GetStarMapSystems(new[] { system }, showCoordinates)?.FirstOrDefault();
         }
 
         /// <summary> At least one system name is required. </summary>
-        public List<StarSystem> GetStarMapSystems(string[] systems, bool showCoordinates = true, bool showSystemInformation = true)
+        public List<StarSystem> GetStarMapSystems(string[] systems, bool showCoordinates = true)
         {
             if (systems == null) { return new List<StarSystem>(); }
+            if (currentGameVersion != null && currentGameVersion < minGameVersion) { return new List<StarSystem>(); }
 
             var request = new RestRequest("api-v1/systems", Method.POST);
             foreach (string system in systems)
@@ -29,11 +30,12 @@ namespace EddiStarMapService
             }
             request.AddParameter("showId", 1);
             request.AddParameter("showCoordinates", showCoordinates ? 1 : 0);
-            request.AddParameter("showInformation", showSystemInformation ? 1 : 0);
-            request.AddParameter("showPermit", showSystemInformation ? 1 : 0);
+            request.AddParameter("showInformation", 1); 
+            request.AddParameter("showPermit", 1);
             var clientResponse = restClient.Execute<List<JObject>>(request);
             if (clientResponse.IsSuccessful)
             {
+                Logging.Debug("EDSM responded with " + clientResponse.Content);
                 var token = JToken.Parse(clientResponse.Content);
                 if (token is JArray responses)
                 {
@@ -52,44 +54,15 @@ namespace EddiStarMapService
             return new List<StarSystem>();
         }
 
-        /// <summary> Partial of system name is required. </summary>
-        public List<StarSystem> GetStarMapSystemsPartial(string system, bool showCoordinates = true, bool showSystemInformation = true)
-        {
-            if (system == null) { return new List<StarSystem>(); }
-
-            var request = new RestRequest("api-v1/systems", Method.POST);
-
-            // Wildcard '%' is needed for partial system name's next character
-            request.AddParameter("systemName", system + "%");
-            request.AddParameter("showId", 1);
-            request.AddParameter("showCoordinates", showCoordinates ? 1 : 0);
-            request.AddParameter("showInformation", showSystemInformation ? 1 : 0);
-            request.AddParameter("showPermit", showSystemInformation ? 1 : 0);
-            var clientResponse = restClient.Execute<List<JObject>>(request);
-            if (clientResponse.IsSuccessful)
-            {
-                var token = JToken.Parse(clientResponse.Content);
-                if (token is JArray responses)
-                {
-                    List<StarSystem> starSystems = responses
-                        .AsParallel()
-                        .Select(s => ParseStarMapSystem(s.ToObject<JObject>()))
-                        .Where(s => s != null)
-                        .ToList();
-                    return starSystems;
-                }
-            }
-            else
-            {
-                Logging.Debug("EDSM responded with " + clientResponse.ErrorMessage, clientResponse.ErrorException);
-            }
-            return new List<StarSystem>();
-        }
-
-        /// <summary> Get star systems around a specified system in a sphere or shell, with a maximum radius of 200 light years. </summary>
-        public List<Dictionary<string, object>> GetStarMapSystemsSphere(string starSystem, int minRadiusLy = 0, int maxRadiusLy = 200, bool showEdsmId = true, bool showCoordinates = true, bool showPrimaryStar = true, bool showInformation = true, bool showPermit = true)
+        /// <summary> Get star systems around a specified system in a sphere or shell, with a maximum radius of 100 light years. </summary>
+        public List<Dictionary<string, object>> GetStarMapSystemsSphere(string starSystem, int minRadiusLy = 0, int maxRadiusLy = 100, bool showEdsmId = true, bool showCoordinates = true, bool showPrimaryStar = true, bool showPermit = true)
         {
             if (starSystem == null) { return new List<Dictionary<string, object>>(); }
+            if (maxRadiusLy > 100)
+            {
+                maxRadiusLy = 100;
+                Logging.Warn("The maximum allowable sphere radius is 100 LY. Results are automatically truncated.");
+            }
 
             var request = new RestRequest("api-v1/sphere-systems", Method.POST);
             request.AddParameter("systemName", starSystem);
@@ -98,7 +71,7 @@ namespace EddiStarMapService
             request.AddParameter("showId", showEdsmId ? 1 : 0);
             request.AddParameter("showCoordinates", showCoordinates ? 1 : 0);
             request.AddParameter("showPrimaryStar", showPrimaryStar ? 1 : 0);
-            request.AddParameter("showInformation", showInformation ? 1 : 0);
+            request.AddParameter("showInformation", 1);
             request.AddParameter("showPermit", showPermit ? 1 : 0);
             var clientResponse = restClient.Execute<List<JObject>>(request);
             if (clientResponse.IsSuccessful)
@@ -126,17 +99,22 @@ namespace EddiStarMapService
         }
 
         /// <summary> Get star systems around a specified system in a cube, with a maximum cube size of 200 light years. </summary>
-        public List<StarSystem> GetStarMapSystemsCube(string starSystem, int cubeLy = 200, bool showEdsmId = true, bool showCoordinates = true, bool showPrimaryStar = true, bool showInformation = true, bool showPermit = true)
+        public List<StarSystem> GetStarMapSystemsCube(string starSystem, int cubeLy = 200, bool showEdsmId = true, bool showCoordinates = true, bool showPrimaryStar = true, bool showPermit = true)
         {
             if (starSystem == null) { return new List<StarSystem>(); }
-
+            if (cubeLy > 200)
+            {
+                cubeLy = 200;
+                Logging.Warn("The maximum allowable cube size is 100 LY. Results are automatically truncated.");
+            }
+            
             var request = new RestRequest("api-v1/cube-systems", Method.POST);
             request.AddParameter("systemName", starSystem);
             request.AddParameter("size", cubeLy);
             request.AddParameter("showId", showEdsmId ? 1 : 0);
             request.AddParameter("showCoordinates", showCoordinates ? 1 : 0);
             request.AddParameter("showPrimaryStar", showPrimaryStar ? 1 : 0);
-            request.AddParameter("showInformation", showInformation ? 1 : 0);
+            request.AddParameter("showInformation", 1);
             request.AddParameter("showPermit", showPermit ? 1 : 0);
             var clientResponse = restClient.Execute<List<JObject>>(request);
             if (clientResponse.IsSuccessful)
@@ -157,16 +135,16 @@ namespace EddiStarMapService
 
         public StarSystem ParseStarMapSystem(JObject response)
         {
-            StarSystem starSystem = new StarSystem
+            var starSystem = new StarSystem
             {
                 systemname = (string)response["name"],
-                systemAddress = (long?)response["id64"],
+                systemAddress = (ulong?)response["id64"],
                 EDSMID = (long?)response["id"]
             };
 
             if (response["coords"] is JObject)
             {
-                var coords = response["coords"].ToObject<Dictionary<string, decimal?>>();
+                var coords = response["coords"]?.ToObject<Dictionary<string, decimal?>>() ?? new Dictionary<string, decimal?>();
                 starSystem.x = coords["x"];
                 starSystem.y = coords["y"];
                 starSystem.z = coords["z"];

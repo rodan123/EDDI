@@ -32,7 +32,7 @@ namespace EddiDataDefinitions
             {"wrongtarget", "assassinate"},
         };
 
-        private static readonly List<string> ORGRETURN = new List<string>()
+        public static readonly List<string> ORGRETURN = new List<string>()
         {
             "altruism",
             "altruismcredits",
@@ -51,6 +51,7 @@ namespace EddiDataDefinitions
             "massacrewing",
             "mining",
             "miningwing",
+            "onfoot",
             "piracy",
             "rescue",
             "salvage",
@@ -70,6 +71,7 @@ namespace EddiDataDefinitions
             set
             {
                 _name = value;
+                SetFactionState();
                 SetTypes();
             }
         }
@@ -89,6 +91,7 @@ namespace EddiDataDefinitions
             {
                 _localisedname = value;
                 GetDestinationStation();
+                GetTargetFaction();
                 OnPropertyChanged();
             }
         }
@@ -96,7 +99,7 @@ namespace EddiDataDefinitions
         // The type of mission
 
         [JsonIgnore]
-        public List<MissionType> tagsList { get; set; }
+        public List<MissionType> tagsList { get; set; } = new List<MissionType>();
 
         [Utilities.PublicAPI, JsonIgnore]
         public List<string> invariantTags => tagsList.Select(t => t.invariantName ?? "Unknown").ToList();
@@ -119,7 +122,7 @@ namespace EddiDataDefinitions
         // Status of the mission
         public string statusEDName
         {
-            get => statusDef.edname;
+            get => statusDef?.edname;
             set
             {
                 MissionStatus sDef = MissionStatus.FromEDName(value);
@@ -136,6 +139,7 @@ namespace EddiDataDefinitions
             set
             {
                 _statusDef = value;
+                UpdateExpiry();
                 OnPropertyChanged("localizedStatus");
             }
         }
@@ -166,7 +170,6 @@ namespace EddiDataDefinitions
         [JsonProperty("factionstate")]
         public string factionstate
         {
-
             get => FactionState?.localizedName ?? FactionState.None.localizedName;
             set
             {
@@ -211,8 +214,31 @@ namespace EddiDataDefinitions
         [Utilities.PublicAPI]
         public long? reward { get; set; }
 
-        [Utilities.PublicAPI]
-        public string commodity { get; set; }
+        [Utilities.PublicAPI, JsonProperty("commodity")]
+        public string commodity
+        {
+            get => CommodityDefinition?.localizedName;
+            set
+            {
+                var comDef = CommodityDefinition.FromName(value);
+                this.CommodityDefinition = comDef;
+            }
+        }
+        [JsonIgnore]
+        public CommodityDefinition CommodityDefinition { get; set; }
+
+        [Utilities.PublicAPI, JsonProperty("microresource")]
+        public string microresource
+        {
+            get => MicroResourceDefinition?.localizedName;
+            set
+            {
+                var resDef = MicroResource.FromName(value);
+                this.MicroResourceDefinition = resDef;
+            }
+        }
+        [JsonIgnore]
+        public MicroResource MicroResourceDefinition { get; set; }
 
         [Utilities.PublicAPI]
         public int? amount { get; set; }
@@ -260,7 +286,7 @@ namespace EddiDataDefinitions
         // Destination systems for chained missions
 
         [Utilities.PublicAPI]
-        public List<DestinationSystem> destinationsystems { get; set; }
+        public List<NavWaypoint> destinationsystems { get; set; }
 
         // Community goal details, if applicable
         public int communalPercentileBand { get; set; }
@@ -269,7 +295,7 @@ namespace EddiDataDefinitions
         
         // The mission time remaining
         [JsonIgnore]
-        public TimeSpan? timeRemaining => expiry != null && statusEDName == "Active" ? TimeSpanNearestSecond(expiry - DateTime.UtcNow) : null;
+        public TimeSpan? timeRemaining => expiry != null ? TimeSpanNearestSecond(expiry - DateTime.UtcNow) : null;
 
         private TimeSpan? TimeSpanNearestSecond(TimeSpan? utcNow)
         {
@@ -321,7 +347,7 @@ namespace EddiDataDefinitions
             this.statusDef = Status;
             this.shared = Shared;
             this.expiring = false;
-            destinationsystems = new List<DestinationSystem>();
+            destinationsystems = new List<NavWaypoint>();
         }
 
         public void UpdateTimeRemaining()
@@ -337,15 +363,38 @@ namespace EddiDataDefinitions
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)); 
         }
 
+        private void SetFactionState()
+        {
+            if (string.IsNullOrEmpty(name)) { return; }
+
+            // Get the faction state (Boom, Bust, Civil War, etc), if available
+            for (int i = 2; i < name.Split('_').Count(); i++)
+            {
+                string element = name.Split('_')
+                    .ElementAtOrDefault(i)?
+                    .ToLowerInvariant();
+
+                // Might be a faction state
+                FactionState factionState = FactionState
+                    .AllOfThem
+                    .Find(s => s.edname.ToLowerInvariant() == element);
+                if (factionState != null)
+                {
+                    factionstate = factionState.localizedName;
+                    break;
+                }
+            }
+        }
+
         private void SetTypes()
         {
             if (string.IsNullOrEmpty(name)) { return; }
 
             var tidiedName = name.ToLowerInvariant()
+                .Replace("agriculture", "agri") // to match the `agri` economy definition
                 .Replace("altruismcredits", "altruism_credits")
+                .Replace("elections", "election") // to match the `election` faction state definition
                 .Replace("assassinationillegal", "assassinate_illegal")
-                .Replace("conflict_civilwar", "conflictcivilwar")
-                .Replace("conflict_war", "conflictwar")
                 .Replace("massacreillegal", "massacre_illegal")
                 .Replace("onslaughtillegal", "onslaught_illegal")
                 .Replace("salvageillegal", "salvage_illegal")
@@ -365,29 +414,33 @@ namespace EddiDataDefinitions
                 t == "mb"
             );
 
-            // Skip faction state elements
-            elements.RemoveAll(t => FactionState
-                .AllOfThem
-                .Select(s => s.edname)
-                .Contains(t, StringComparer.InvariantCultureIgnoreCase));
-
-            // Skip government elements
-            elements.RemoveAll(t => Government
-                .AllOfThem
-                .Select(s => s.edname)
-                .Contains(t, StringComparer.InvariantCultureIgnoreCase));
-
-            // Skip economy elements
-            elements.RemoveAll(t => Economy
-                .AllOfThem
-                .Select(s => s.edname)
-                .Contains(t, StringComparer.InvariantCultureIgnoreCase));
+            // Some elements should not be removed but should be moved to the end of the list.
+            // Do that here.
+            foreach (var elementToMove in new[] { "tw" })
+            {
+                if (elements.FirstOrDefault() == elementToMove)
+                {
+                    elements.Remove(elementToMove);
+                    elements.Add(elementToMove);
+                }
+            }
 
             // Skip passenger elements (we'll fill these using the `Passengers` event)
             elements.RemoveAll(t => PassengerType
                 .AllOfThem
                 .Select(s => s.edname)
                 .Contains(t, StringComparer.InvariantCultureIgnoreCase));
+
+            // Tidy up any government name embedded in the elements
+            for (var index = 0; index < elements.Count; index++)
+            {
+                var gov = Government.AllOfThem
+                    .FirstOrDefault(e => e.edname.ToLowerInvariant() == $"$government_{elements[index]};");
+                if (gov != null)
+                {
+                    elements[index] = gov.edname;
+                }
+            }
 
             // Skip numeric elements
             elements.RemoveAll(t => int.TryParse(t, out _));
@@ -398,60 +451,65 @@ namespace EddiDataDefinitions
                 if (CHAINED.ContainsKey(e)) { e = CHAINED[e]; }
             });
 
-            this.tagsList = new List<MissionType>();
-            foreach (var type in elements)
+            foreach (var element in elements)
             {
-                var typeDef = MissionType.FromEDName(type);
+                var typeDef = MissionType.FromEDName(element);
                 if (typeDef != null)
                 {
-                    this.tagsList.Add(typeDef);
+                    tagsList.Add(typeDef);
                 }
             }
         }
+
         private void GetDestinationStation()
         {
             if (string.IsNullOrEmpty(localisedname) || !string.IsNullOrEmpty(destinationstation)) { return; }
 
-            var settlementNamePrefixes = new List<Tuple<string, string>>
-            {
-                Tuple.Create("Acquire a sample from ", ""),
-                Tuple.Create("Digital Infiltration: Breach the ", " network"),
-                Tuple.Create("Exterminate scavengers at ", ""),
-                Tuple.Create("Heist: Acquire a sample from ", ""),
-                Tuple.Create("Heist: Take a sample from ", ""),
-                Tuple.Create("Reactivation: Find a regulator for ", ""),
-                Tuple.Create("Reactivation: Turn on power at ", ""),
-                Tuple.Create("Restore: Find a regulator and prepare ", ""),
-                Tuple.Create("Restore: Prepare ", " for operation"),
-                Tuple.Create("Sabotage: Disrupt production at ", ""),
-                Tuple.Create("Sabotage: Halt production at ", ""),
-                Tuple.Create("Settlement Raid: Exterminate scavengers at ", ""),
-                Tuple.Create("Shutdown: Disable power at ", ""),
-                Tuple.Create("Shutdown: Switch off power at ", "")
-            };
-
-            var tidiedLocalizedName = localisedname
+            var tidiedName = localisedname
                 .Replace("Covert ", "")
                 .Replace("Nonviolent ", "")
-            ;
-            string settlementName = null;
+                .Replace("Digital Infiltration: ", "")
+                .Replace("Heist: ", "")
+                .Replace("Reactivation: ", "")
+                .Replace("Restore: ", "")
+                .Replace("Sabotage: ", "")
+                .Replace("Settlement Raid: ", "")
+                .Replace("Shutdown: ", "")
+                ;
 
-            foreach (var prefixSuffix in settlementNamePrefixes)
+            var prefixesSuffixes = new List<Tuple<string, string>>
             {
-                if (tidiedLocalizedName.StartsWith(prefixSuffix.Item1, StringComparison.InvariantCultureIgnoreCase) 
-                    && tidiedLocalizedName.EndsWith(prefixSuffix.Item2, StringComparison.InvariantCultureIgnoreCase))
+                Tuple.Create("Acquire a sample from ", ""),
+                Tuple.Create("Breach the ", " network"),
+                Tuple.Create("Disable power at ", ""),
+                Tuple.Create("Disrupt production at ", ""),
+                Tuple.Create("Exterminate scavengers at ", ""),
+                Tuple.Create("Find a regulator for ", ""),
+                Tuple.Create("Find a regulator and prepare ", ""),
+                Tuple.Create("Halt production at ", ""),
+                Tuple.Create("Prepare ", " for operation"),
+                Tuple.Create("Switch off power at ", ""),
+                Tuple.Create("Take a sample from ", ""),
+                Tuple.Create("Turn on power at ", "")
+            };
+
+            string settlementName = null;
+            foreach (var prefixSuffix in prefixesSuffixes)
+            {
+                if (tidiedName.StartsWith(prefixSuffix.Item1, StringComparison.InvariantCultureIgnoreCase) 
+                    && tidiedName.EndsWith(prefixSuffix.Item2, StringComparison.InvariantCultureIgnoreCase))
                 {
                     if (prefixSuffix.Item1.Length > 0)
                     {
-                        tidiedLocalizedName = tidiedLocalizedName
+                        tidiedName = tidiedName
                             .Replace(prefixSuffix.Item1, "");
                     }
                     if (prefixSuffix.Item2.Length > 0)
                     {
-                        tidiedLocalizedName = tidiedLocalizedName
+                        tidiedName = tidiedName
                             .Replace(prefixSuffix.Item2, "");
                     }
-                    settlementName = tidiedLocalizedName;
+                    settlementName = tidiedName;
                     break;
                 }
             }
@@ -459,6 +517,59 @@ namespace EddiDataDefinitions
             if (!string.IsNullOrEmpty(settlementName))
             {
                 destinationstation = settlementName;
+                OnPropertyChanged(nameof(destinationstation));
+            }
+        }
+
+        private void GetTargetFaction()
+        {
+            if (string.IsNullOrEmpty(localisedname) || !string.IsNullOrEmpty(targetfaction)) { return; }
+
+            var tidiedName = localisedname
+                .Replace("Settlement ", "")
+                .Replace("Massacre: ", "")
+                .Replace("Raid: ", "")
+            ;
+
+            var prefixesSuffixes = new List<Tuple<string, string>>
+            {
+                Tuple.Create("Exterminate ", " members"),
+                Tuple.Create("Take out ", " personnel"),
+            };
+
+            string factionName = null;
+            foreach (var prefixSuffix in prefixesSuffixes)
+            {
+                if (tidiedName.StartsWith(prefixSuffix.Item1, StringComparison.InvariantCultureIgnoreCase)
+                    && tidiedName.EndsWith(prefixSuffix.Item2, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    if (prefixSuffix.Item1.Length > 0)
+                    {
+                        tidiedName = tidiedName
+                            .Replace(prefixSuffix.Item1, "");
+                    }
+                    if (prefixSuffix.Item2.Length > 0)
+                    {
+                        tidiedName = tidiedName
+                            .Replace(prefixSuffix.Item2, "");
+                    }
+                    factionName = tidiedName;
+                    break;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(factionName))
+            {
+                targetfaction = factionName;
+                OnPropertyChanged(nameof(targetfaction));
+            }
+        }
+
+        private void UpdateExpiry()
+        {
+            if (statusDef != MissionStatus.Active && !onfoot)
+            {
+                expiry = null;
             }
         }
     }

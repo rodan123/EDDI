@@ -125,7 +125,7 @@ namespace EddiDataDefinitions
         private decimal weightedAvgPrice;
 
         // The commodity category, localized
-        public string localizedCategory => commodityDef?.Category?.localizedName ?? null;
+        public string localizedCategory => commodityDef?.Category?.localizedName;
 
         // deprecated commodity category (exposed to Cottle and VA)
         [PublicAPI, Obsolete("Please use localizedCategory instead")]

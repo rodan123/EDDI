@@ -154,7 +154,7 @@
     <value>Lebenserhaltungen</value>
   </data>
   <data name="LimpetControllers" xml:space="preserve">
-    <value>Drohnencontroller</value>
+    <value>Drohnensteuerungen</value>
   </data>
   <data name="Mines" xml:space="preserve">
     <value>Minen</value>
@@ -169,7 +169,7 @@
     <value>Plasmabeschleuniger</value>
   </data>
   <data name="PointDefence" xml:space="preserve">
-    <value>Punktverteidigungen</value>
+    <value>Punktverteidigung</value>
   </data>
   <data name="PowerDistributors" xml:space="preserve">
     <value>Energieverteiler</value>

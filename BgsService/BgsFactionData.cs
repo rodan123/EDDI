@@ -80,11 +80,6 @@ namespace EddiBgsService
             };
         }
 
-        public Faction GetFaction(string endpoint, List<KeyValuePair<string, object>> queryList)
-        {
-            return GetFactions(endpoint, queryList).FirstOrDefault();
-        }
-
         public List<Faction> GetFactions(string endpoint, List<KeyValuePair<string, object>> queryList)
         {
             if (queryList.Count > 0)
@@ -94,7 +89,7 @@ namespace EddiBgsService
                 if (responses?.Count > 0)
                 {
                     List<Faction> factions = ParseFactionsParallel(responses);
-                    return factions.OrderBy(x => x.name).ToList();
+                    return factions?.OrderBy(x => x.name).ToList();
                 }
             }
             return null;
@@ -159,7 +154,7 @@ namespace EddiBgsService
                         {
                             FactionTrendingState pTrendingState = new FactionTrendingState(
                                 FactionState.FromEDName(JsonParsing.getString(pendingState, "state")) ?? FactionState.None,
-                                JsonParsing.getInt(pendingState, "trend")
+                                JsonParsing.getOptionalInt(pendingState, "trend")
                             );
                             factionPresence.PendingStates.Add(pTrendingState);
                         }
@@ -174,7 +169,7 @@ namespace EddiBgsService
                         {
                             FactionTrendingState rTrendingState = new FactionTrendingState(
                                 FactionState.FromEDName(JsonParsing.getString(recoveringState, "state")) ?? FactionState.None,
-                                JsonParsing.getInt(recoveringState, "trend")
+                                JsonParsing.getOptionalInt(recoveringState, "trend")
                             );
                             factionPresence.RecoveringStates.Add(rTrendingState);
                         }
@@ -187,12 +182,7 @@ namespace EddiBgsService
             }
             catch (Exception ex)
             {
-                Dictionary<string, object> data = new Dictionary<string, object>()
-                {
-                    { "input", response },
-                    { "exception", ex }
-                };
-                Logging.Error("Failed to parse BGS faction data.", data);
+                Logging.Error("Failed to parse BGS faction data.", ex);
                 return null;
             }
         }

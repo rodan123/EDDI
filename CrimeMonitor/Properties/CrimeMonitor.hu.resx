@@ -123,23 +123,27 @@
   <data name="add_button_desc" xml:space="preserve">
     <value>Kisebb frakcióról való bejegyzés kézi hozzáadását teszi lehetővé.</value>
   </data>
-  
   <data name="blank_faction" xml:space="preserve">
     <value>Frakció neve</value>
   </data>
-  
+  <data name="crime_monitor_desc" xml:space="preserve">
+    <value>Nyomon követheti a bűnügyi nyilvántartásban szereplő információkat.</value>
+  </data>
   <data name="crime_monitor_name" xml:space="preserve">
     <value>Bűntett figyelő</value>
   </data>
-  
+  <data name="find_button" xml:space="preserve">
+    <value>Jogi létesítmények keresése</value>
+  </data>
   <data name="find_button_desc" xml:space="preserve">
     <value>A legközelebbi Interstellar Factor rendszerre és állomásra indít keresést.</value>
   </data>
-  
   <data name="header_bounties" xml:space="preserve">
     <value>Vérdíjak</value>
   </data>
-  
+  <data name="header_claims" xml:space="preserve">
+    <value>Tulajdon</value>
+  </data>
   <data name="header_faction" xml:space="preserve">
     <value>Frakció</value>
   </data>
@@ -152,25 +156,16 @@
   <data name="header_system" xml:space="preserve">
     <value>Rendszer</value>
   </data>
-  
-  
   <data name="remove_button" xml:space="preserve">
     <value>Törlés</value>
   </data>
   <data name="remove_button_desc" xml:space="preserve">
     <value>Kisebb frakcióról való bejegyzés kézi eltávolítását teszi lehetővé.</value>
   </data>
-  <data name="remove_button_text" xml:space="preserve">
-    <value>Törlés:</value>
-  </data>
-  
   <data name="update_button" xml:space="preserve">
     <value>Frissítés</value>
   </data>
   <data name="update_button_desc" xml:space="preserve">
     <value>Kisebb frakció információját (rendszer, állomás, stb.) frissíti.</value>
-  </data>
-  <data name="update_button_text" xml:space="preserve">
-    <value>Frissítés:</value>
   </data>
 </root>

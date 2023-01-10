@@ -1,10 +1,9 @@
 using Eddi;
+using EddiConfigService;
 using EddiCore;
 using EddiDataDefinitions;
-using EddiDataProviderService;
 using EddiEvents;
 using EddiStarMapService;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -29,16 +28,10 @@ namespace EddiMissionMonitor
 
         // Observable collection for us to handle changes
         public ObservableCollection<Mission> missions { get; private set; }
+        private List<Mission> communityGoalHolder = new List<Mission>();
 
         private DateTime updateDat;
-        public int goalsCount;
-        public int missionsCount;
         public int? missionWarning;
-        public string missionsRouteList;
-        public decimal missionsRouteDistance;
-
-        private readonly IEdsmService edsmService;
-        private readonly DataProviderService dataProviderService;
 
         private static readonly object missionsLock = new object();
         public event EventHandler MissionUpdatedEvent;
@@ -68,8 +61,6 @@ namespace EddiMissionMonitor
 
         public MissionMonitor(IEdsmService edsmService)
         {
-            this.edsmService = edsmService ?? new StarMapService();
-            dataProviderService = new DataProviderService(edsmService);
             missions = new ObservableCollection<Mission>();
             BindingOperations.CollectionRegistering += Missions_CollectionRegistering;
             initializeMissionMonitor();
@@ -129,7 +120,7 @@ namespace EddiMissionMonitor
 
                 foreach (Mission mission in missionsList)
                 {
-                    if (mission.expiry != null && mission.statusEDName == "Active")
+                    if (mission.expiry != null && mission.statusDef == MissionStatus.Active)
                     {
                         // Generate 'Expired' and 'Warning' events when conditions met
                         if (mission.expiry < DateTime.UtcNow)
@@ -142,7 +133,7 @@ namespace EddiMissionMonitor
                                 }
                                 else
                                 {
-                                    mission.statusDef = MissionStatus.FromEDName("Claim"); 
+                                    mission.statusDef = MissionStatus.Claim;
                                 }
                             }
                             else
@@ -150,7 +141,7 @@ namespace EddiMissionMonitor
                                 EDDI.Instance.enqueueEvent(new MissionExpiredEvent(DateTime.UtcNow, mission.missionid, mission.name)); 
                             }
                         }
-                        else if (mission.expiry < DateTime.UtcNow.AddMinutes(missionWarning ?? Constants.missionWarningDefault))
+                        else if (missionWarning > 0 && mission.expiry < DateTime.UtcNow.AddMinutes((double)missionWarning))
                         {
                             if (!mission.expiring && mission.timeRemaining != null)
                             {
@@ -191,71 +182,69 @@ namespace EddiMissionMonitor
         public void PostHandle(Event @event)
         {
             // Use the post-handler to remove missions from the missions list only after we have reacted to them.
-            if (@event is MissionAbandonedEvent)
+            if (@event is MissionAbandonedEvent missionAbandonedEvent)
             {
-                postHandleMissionAbandonedEvent((MissionAbandonedEvent)@event);
+                postHandleMissionAbandonedEvent(missionAbandonedEvent);
             }
-            else if (@event is MissionCompletedEvent)
+            else if (@event is MissionCompletedEvent missionCompletedEvent)
             {
-                postHandleMissionCompletedEvent((MissionCompletedEvent)@event);
+                postHandleMissionCompletedEvent(missionCompletedEvent);
             }
-            else if (@event is MissionFailedEvent)
+            else if (@event is MissionFailedEvent missionFailedEvent)
             {
-                postHandleMissionFailedEvent((MissionFailedEvent)@event);
+                postHandleMissionFailedEvent(missionFailedEvent);
             }
         }
 
         public void PreHandle(Event @event)
         {
-            Logging.Debug("Received pre-event " + JsonConvert.SerializeObject(@event));
-
             // Handle the events that we care about
-            if (@event is DataScannedEvent)
+            if (@event is DataScannedEvent dataScannedEvent)
             {
-                handleDataScannedEvent((DataScannedEvent)@event);
+                handleDataScannedEvent(dataScannedEvent);
             }
-            else if (@event is PassengersEvent)
+            else if (@event is PassengersEvent passengersEvent)
             {
-                handlePassengersEvent((PassengersEvent)@event);
+                handlePassengersEvent(passengersEvent);
             }
-            else if (@event is MissionsEvent)
+            else if (@event is MissionsEvent missionsEvent)
             {
-                handleMissionsEvent((MissionsEvent)@event);
+                handleMissionsEvent(missionsEvent);
             }
-            else if (@event is CommunityGoalsEvent)
+            else if (@event is CommunityGoalsEvent communityGoalsEvent)
             {
-                handleCommunityGoalsEvent((CommunityGoalsEvent)@event);
+                handleCommunityGoalsEvent(communityGoalsEvent);
             }
-            else if (@event is CargoDepotEvent)
+            else if (@event is CargoDepotEvent cargoDepotEvent)
             {
-                handleCargoDepotEvent((CargoDepotEvent)@event);
+                handleCargoDepotEvent(cargoDepotEvent);
             }
-            else if (@event is MissionAcceptedEvent)
+            else if (@event is MissionAcceptedEvent missionAcceptedEvent)
             {
-                handleMissionAcceptedEvent((MissionAcceptedEvent)@event);
+                handleMissionAcceptedEvent(missionAcceptedEvent);
             }
-            else if (@event is MissionRedirectedEvent)
+            else if (@event is MissionRedirectedEvent missionRedirectedEvent)
             {
-                handleMissionRedirectedEvent((MissionRedirectedEvent)@event);
+                handleMissionRedirectedEvent(missionRedirectedEvent);
             }
-            else if (@event is MissionExpiredEvent)
+            else if (@event is MissionExpiredEvent missionExpiredEvent)
             {
-                handleMissionExpiredEvent((MissionExpiredEvent)@event);
+                handleMissionExpiredEvent(missionExpiredEvent);
             }
 
             // Change the mission status here, remove the missions after the events resolve using the post-handler
-            if (@event is MissionAbandonedEvent)
+            if (@event is MissionAbandonedEvent missionAbandonedEvent)
             {
-                handleMissionAbandonedEvent((MissionAbandonedEvent)@event);
+                handleMissionAbandonedEvent(missionAbandonedEvent);
             }
-            else if (@event is MissionCompletedEvent)
+            else if (@event is MissionCompletedEvent missionCompletedEvent)
             {
-                handleMissionCompletedEvent((MissionCompletedEvent)@event);
+                handleMissionCompletedEvent(missionCompletedEvent);
             }
 
-            else if (@event is MissionFailedEvent)
+            else if (@event is MissionFailedEvent missionFailedEvent)
             {
-                handleMissionFailedEvent((MissionFailedEvent)@event);
+                handleMissionFailedEvent(missionFailedEvent);
             }
         }
 
@@ -282,22 +271,22 @@ namespace EddiMissionMonitor
                     foreach (var type in mission.edTags)
                     {
                         var exitLoop = false;
-                        switch (type)
+                        switch (type.ToLowerInvariant())
                         {
                             // A `MissionRedirected` journal event isn't written for each waypoint in multi-destination passenger missions, so we handle those here.
                             case "sightseeing":
                             {
-                                DestinationSystem system = mission.destinationsystems
-                                    .FirstOrDefault(s => s.name == EDDI.Instance?.CurrentStarSystem?.systemname);
+                                var system = mission.destinationsystems
+                                    .FirstOrDefault(s => s.systemName == EDDI.Instance?.CurrentStarSystem?.systemname);
                                 if (system != null)
                                 {
                                     system.visited = true;
                                     string waypointSystemName = mission.destinationsystems?
-                                        .FirstOrDefault(s => s.visited == false)?.name;
+                                        .FirstOrDefault(s => s.visited == false)?.systemName;
                                     if (!string.IsNullOrEmpty(waypointSystemName))
                                     {
                                         // Set destination system to next in chain & trigger a 'Mission redirected' event
-                                        EDDI.Instance.enqueueEvent(new MissionRedirectedEvent(DateTime.UtcNow,
+                                        EDDI.Instance?.enqueueEvent(new MissionRedirectedEvent(DateTime.UtcNow,
                                             mission.missionid, mission.name, null, null, waypointSystemName,
                                             EDDI.Instance?.CurrentStarSystem?.systemname));
                                     }
@@ -341,17 +330,26 @@ namespace EddiMissionMonitor
                     {
                         case "Active":
                             {
-                                if (missionEntry.statusEDName == "Failed" || missionEntry.statusEDName == "Claim")
+                                if (missionEntry.statusDef == MissionStatus.Failed)
                                 {
                                     if (mission.expiry > missionEntry.expiry)
                                     {
                                         // Fix status if erroneously reported as failed
                                         missionEntry.expiry = mission.expiry;
-                                        missionEntry.statusDef = MissionStatus.FromEDName("Active");
+                                        missionEntry.statusDef = MissionStatus.Active;
                                         update = true;
                                     }
                                 }
-                                else if (missionEntry.statusEDName == "Active")
+                                else if (missionEntry.statusDef == MissionStatus.Claim)
+                                {
+                                    if (mission.expiry > missionEntry.expiry)
+                                    {
+                                        // Fix expiry if it has been extended by completion
+                                        missionEntry.expiry = mission.expiry;
+                                        update = true;
+                                    }
+                                }
+                                else if (missionEntry.statusDef == MissionStatus.Active)
                                 {
                                     // Update status on a missed 'redirect'
                                     update = UpdateRedirectStatus(missionEntry);
@@ -389,7 +387,7 @@ namespace EddiMissionMonitor
                 else
                 {
                     // Starter zone missions have no consistent 'accepted' or 'completed' events, so exclude them from the mission log
-                    if (!mission.edTags.Contains("StartZone"))
+                    if (!mission.edTags.Contains("StartZone", StringComparer.InvariantCultureIgnoreCase))
                     {
                         AddMission(mission);
                         update = true;
@@ -400,8 +398,19 @@ namespace EddiMissionMonitor
             // Remove strays from the mission log
             foreach (Mission missionEntry in missions.ToList())
             {
-                // Community goals aren't written by the `Missions` event so we exclude them from pruning
-                if (missionEntry.communal) { continue; }
+                // Community goals aren't written by the `Missions` event. We'll keep them until they expire, then once they expire we'll
+                // move them to a holder until we see another CommunityGoal event. If there is none, the entry is automatically removed.
+                if (missionEntry.communal)
+                {
+                    if (missionEntry.expiry is null)
+                    {
+                        communityGoalHolder.Add(missionEntry);
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                }
                 
                 Mission mission = @event.missions.FirstOrDefault(m => m.missionid == missionEntry.missionid);
                 if (mission == null || mission.name.Contains("StartZone"))
@@ -441,7 +450,7 @@ namespace EddiMissionMonitor
                 {
                     // Dummy mission to populate 'Passengers' parameters
                     // 'Missions' event will populate 'name', 'status', 'type' & 'expiry'
-                    MissionStatus status = MissionStatus.FromEDName("Active");
+                    MissionStatus status = MissionStatus.Active;
                     mission = new Mission(passenger.missionid, "Mission_None", DateTime.UtcNow.AddDays(1), status)
                     {
                         passengertypeEDName = passenger.type,
@@ -467,7 +476,7 @@ namespace EddiMissionMonitor
         public void _handleCommunityGoalsEvent(CommunityGoalsEvent @event)
         {
             // Prune community goals not reported from the CommunityGoalsEvent.
-            foreach (var cgMissionID in missions.Where(m => m.communal).Select(m => m.missionid))
+            foreach (var cgMissionID in missions.ToList().Where(m => m.communal).Select(m => m.missionid))
             {
                 if (!@event.goals.Select(cg => (long)cg.cgid).Contains(cgMissionID))
                 {
@@ -479,10 +488,19 @@ namespace EddiMissionMonitor
             foreach (var goal in @event.goals)
             {
                 // Find or create our mission (excluding completed goals without contributions)
-                Mission mission = missions.FirstOrDefault(m => m.missionid == goal.cgid);
+                var mission = communityGoalHolder.FirstOrDefault(m => m.missionid == goal.cgid);
+                if (mission != null)
+                {
+                    communityGoalHolder.Remove(mission);
+                    missions.Add(mission);
+                }
+                else
+                {
+                    mission = missions.FirstOrDefault(m => m.missionid == goal.cgid);
+                }
                 if (mission == null && (!goal.iscomplete || goal.iscomplete && goal.contribution > 0))
                 {
-                    mission = new Mission(goal.cgid, "MISSION_CommunityGoal", goal.expiryDateTime, MissionStatus.FromEDName("Active"));
+                    mission = new Mission(goal.cgid, "MISSION_CommunityGoal", goal.expiryDateTime, MissionStatus.Active);
                     AddMission(mission);
                 }
 
@@ -520,7 +538,7 @@ namespace EddiMissionMonitor
                     mission.originstation = goal.station;
                     mission.destinationsystem = goal.system;
                     mission.destinationstation = goal.station;
-                    mission.reward = goal.tierreward;
+                    mission.reward = goal.contribution > 0 ? goal.tierreward : 0;
                     mission.communal = true;
                     mission.communalPercentileBand = goal.percentileband;
                     mission.communalTier = goal.tier;
@@ -529,7 +547,7 @@ namespace EddiMissionMonitor
                     {
                         if (goal.contribution > 0)
                         {
-                            mission.statusDef = MissionStatus.FromEDName("Claim");
+                            mission.statusDef = MissionStatus.Claim;
                         }
                         else
                         {
@@ -561,7 +579,7 @@ namespace EddiMissionMonitor
                     if (mission == null)
                     {
                         // Add shared mission not previously instantiated
-                        MissionStatus status = MissionStatus.FromEDName("Active");
+                        MissionStatus status = MissionStatus.Active;
                         mission = new Mission(@event.missionid ?? 0, "MISSION_DeliveryWing", null, status, true)
                         {
                             amount = @event.totaltodeliver,
@@ -586,7 +604,7 @@ namespace EddiMissionMonitor
                         if (amountRemaining > 0)
                         {
                             // If requirements not yet satisfied, add shared mission not previously instantiated
-                            MissionStatus status = MissionStatus.FromEDName("Active");
+                            MissionStatus status = MissionStatus.Active;
                             string type = @event.startmarketid == 0 ? "MISSION_CollectWing" : "MISSION_DeliveryWing";
                             mission = new Mission(@event.missionid ?? 0, type, null, status, true)
                             {
@@ -619,34 +637,34 @@ namespace EddiMissionMonitor
                     else if (amountRemaining == 0)
                     {
                         // Update 'owned' mission status to 'Claim'
-                        MissionStatus status = MissionStatus.FromEDName("Claim");
+                        MissionStatus status = MissionStatus.Claim;
                         mission.statusDef = status;
                     }
                 }
             }
         }
-        
+
         public void handleMissionAbandonedEvent(MissionAbandonedEvent @event)
         {
-            if (@event.missionid != null)
+            if (@event.timestamp >= updateDat)
             {
-                Mission mission = missions.FirstOrDefault(m => m.missionid == @event.missionid);
-                if (mission != null)
+                updateDat = @event.timestamp;
+                if (@event.missionid != null)
                 {
-                    mission.statusDef = MissionStatus.FromEDName("Failed");
+                    Mission mission = missions.FirstOrDefault(m => m.missionid == @event.missionid);
+                    if (mission != null)
+                    {
+                        mission.statusDef = MissionStatus.Failed;
+                    }
                 }
             }
         }
 
         private void postHandleMissionAbandonedEvent(MissionAbandonedEvent @event)
         {
-            if (@event.timestamp >= updateDat)
+            if (_postHandleMissionAbandonedEvent(@event))
             {
-                updateDat = @event.timestamp;
-                if (_postHandleMissionAbandonedEvent(@event))
-                {
-                    writeMissions();
-                }
+                writeMissions();
             }
         }
 
@@ -686,102 +704,7 @@ namespace EddiMissionMonitor
             bool valid = !string.IsNullOrEmpty(@event.name) && !@event.name.Contains("StartZone");
             if (!exists && valid)
             {
-                MissionStatus status = MissionStatus.FromEDName("Active");
-                Mission mission = new Mission(@event.missionid ?? 0, @event.name, @event.expiry, status)
-                {
-                    // Common parameters
-                    localisedname = @event.localisedname,
-                    amount = @event.amount ?? 0,
-                    influence = @event.influence,
-                    reputation = @event.reputation,
-                    reward = @event.reward ?? 0,
-                    communal = @event.communal,
-
-                    // Get the minor faction stuff
-                    faction = @event.faction,
-                    factionstate = FactionState.FromEDName("None").localizedName,
-
-                    // Set mission origin to to the current system & station
-                    originsystem = @event.communal ? @event.destinationsystem : EDDI.Instance?.CurrentStarSystem?.systemname,
-                    originstation = @event.communal ? null : EDDI.Instance?.CurrentStation?.name,
-
-                    // Missions with commodities
-                    commodity = @event.commodity,
-
-                    // Missions with targets
-                    targetTypeEDName = @event.targettype?.Split('_').ElementAtOrDefault(2),
-                    target = @event.target,
-                    targetfaction = @event.targetfaction,
-
-                    // Missions with passengers
-                    passengertypeEDName = @event.passengertype,
-                    passengervips = @event.passengervips,
-                    passengerwanted = @event.passengerwanted
-                };
-
-                // Get the faction state (Boom, Bust, Civil War, etc), if available
-                for (int i = 2; i < mission.name.Split('_').Count(); i++)
-                {
-                    string element = mission.name.Split('_')
-                        .ElementAtOrDefault(i)?
-                        .ToLowerInvariant();
-
-                    // Might be a faction state
-                    FactionState factionState = FactionState
-                        .AllOfThem
-                        .Find(s => s.edname.ToLowerInvariant() == element);
-                    if (factionState != null)
-                    {
-                        mission.factionstate = factionState.localizedName;
-                        break;
-                    }
-                }
-
-                // Missions with multiple destinations
-                if (@event.destinationsystem != null && @event.destinationsystem.Contains("$MISSIONUTIL_MULTIPLE"))
-                {
-                    // If 'chained' mission, get the destination systems
-                    string[] systems = @event.destinationsystem
-                        .Replace("$MISSIONUTIL_MULTIPLE_INNER_SEPARATOR;", "#")
-                        .Replace("$MISSIONUTIL_MULTIPLE_FINAL_SEPARATOR;", "#")
-                        .Split('#');
-
-                    foreach (string system in systems)
-                    {
-                        mission.destinationsystems.Add(new DestinationSystem(system));
-                    }
-
-                    // Load the first destination system.
-                    mission.destinationsystem = mission.destinationsystems.ElementAtOrDefault(0).name;
-                }
-                else
-                {
-                    // Populate destination system and station, depending on mission type
-                    foreach (var type in mission.edTags)
-                    {
-                        bool exitLoop;
-                        switch (type)
-                        {
-                            case "altruism":
-                            case "altruismcredits":
-                            {
-                                mission.destinationsystem = mission.originsystem;
-                                mission.destinationstation = mission.originstation;
-                                exitLoop = true;
-                                break;
-                            }
-                            default:
-                            {
-                                mission.destinationsystem = @event.destinationsystem;
-                                mission.destinationstation = @event.destinationstation;
-                                exitLoop = true;
-                                break;
-                            }
-                        }
-                        if (exitLoop) { break; }
-                    }
-                }
-                AddMission(mission);
+                AddMission(@event.Mission);
                 update = true;
             }
             return update;
@@ -789,25 +712,25 @@ namespace EddiMissionMonitor
 
         public void handleMissionCompletedEvent(MissionCompletedEvent @event)
         {
-            if (@event.missionid != null)
+            if (@event.timestamp >= updateDat)
             {
-                Mission mission = missions.FirstOrDefault(m => m.missionid == @event.missionid);
-                if (mission != null)
+                updateDat = @event.timestamp;
+                if (@event.missionid != null)
                 {
-                    mission.statusDef = MissionStatus.FromEDName("Complete");
+                    Mission mission = missions.FirstOrDefault(m => m.missionid == @event.missionid);
+                    if (mission != null)
+                    {
+                        mission.statusDef = MissionStatus.Complete;
+                    }
                 }
             }
         }
 
         private void postHandleMissionCompletedEvent(MissionCompletedEvent @event)
         {
-            if (@event.timestamp >= updateDat)
+            if (_postHandleMissionCompletedEvent(@event))
             {
-                updateDat = @event.timestamp;
-                if (_postHandleMissionCompletedEvent(@event))
-                {
-                    writeMissions();
-                }
+                writeMissions();
             }
         }
 
@@ -838,10 +761,13 @@ namespace EddiMissionMonitor
         private void handleMissionExpiredEvent(MissionExpiredEvent @event)
         {
             // 'Expired' is a non-journal event and not subject to 'LogLoad'
-            updateDat = @event.timestamp;
-            if (_handleMissionExpiredEvent(@event))
+            if (@event.timestamp >= updateDat)
             {
-                writeMissions();
+                updateDat = @event.timestamp;
+                if (_handleMissionExpiredEvent(@event))
+                {
+                    writeMissions();
+                }
             }
         }
 
@@ -855,12 +781,12 @@ namespace EddiMissionMonitor
                 {
                     if (mission.communal && mission.communalPercentileBand != 100)
                     {
-                        mission.statusDef = MissionStatus.FromEDName("Claim");
+                        mission.statusDef = MissionStatus.Claim;
                         update = true;
                     }
-                    else
+                    else if (mission.statusDef != MissionStatus.Claim)
                     {
-                        mission.statusDef = MissionStatus.FromEDName("Failed");
+                        mission.statusDef = MissionStatus.Failed;
                         update = true;
                     }
                 }
@@ -870,25 +796,25 @@ namespace EddiMissionMonitor
 
         public void handleMissionFailedEvent(MissionFailedEvent @event)
         {
-            if (@event.missionid != null)
+            if (@event.timestamp >= updateDat)
             {
-                Mission mission = missions.FirstOrDefault(m => m.missionid == @event.missionid);
-                if (mission != null)
+                updateDat = @event.timestamp;
+                if (@event.missionid != null)
                 {
-                    mission.statusDef = MissionStatus.FromEDName("Failed");
+                    Mission mission = missions.FirstOrDefault(m => m.missionid == @event.missionid);
+                    if (mission != null)
+                    {
+                        mission.statusDef = MissionStatus.Failed;
+                    }
                 }
             }
         }
 
         private void postHandleMissionFailedEvent(MissionFailedEvent @event)
         {
-            if (@event.timestamp >= updateDat)
+            if (_postHandleMissionFailedEvent(@event))
             {
-                updateDat = @event.timestamp;
-                if (_postHandleMissionFailedEvent(@event))
-                {
-                    writeMissions();
-                }
+                writeMissions();
             }
         }
 
@@ -937,37 +863,31 @@ namespace EddiMissionMonitor
 
         public IDictionary<string, object> GetVariables()
         {
-            IDictionary<string, object> variables = new Dictionary<string, object>
+            lock (missionsLock)
             {
-                ["goalsCount"] = goalsCount,
-                ["missions"] = new List<Mission>(missions),
-                ["missionsCount"] = missionsCount,
-                ["missionWarning"] = missionWarning,
-                ["routeList"] = missionsRouteList,
-                ["routeDistance"] = missionsRouteDistance
-            };
-            return variables;
+                IDictionary<string, object> variables = new Dictionary<string, object>
+                {
+                    ["goalsCount"] = missions.Count(m => m.communal),
+                    ["missions"] = new List<Mission>(missions),
+                    ["missionsCount"] = missions.Count(m => !m.shared && !m.communal),
+                    ["missionWarning"] = missionWarning
+                };
+                return variables;
+            }
         }
 
         public void writeMissions()
         {
             lock (missionsLock)
             {
-                // Write missions configuration with current missions log
-                goalsCount = missions.Count(m => m.communal);
-                missionsCount = missions.Count(m => !m.shared && !m.communal);
-                MissionMonitorConfiguration configuration = new MissionMonitorConfiguration
-                {
-                    updatedat = updateDat,
-                    missions = missions,
-                    goalsCount = goalsCount,
-                    missionsCount = missionsCount,
-                    missionWarning = missionWarning,
-                    missionsRouteList = missionsRouteList,
-                    missionsRouteDistance = missionsRouteDistance
-
-                };
-                configuration.ToFile();
+                // Write bookmarks configuration with current list
+                var missionsConfig = ConfigService.Instance.missionMonitorConfiguration;
+                missionsConfig.missions = missions;
+                missionsConfig.goalsCount = missions.Count(m => m.communal);
+                missionsConfig.missionsCount = missions.Count(m => !m.shared && !m.communal);
+                missionsConfig.missionWarning = missionWarning;
+                missionsConfig.updatedat = updateDat;
+                ConfigService.Instance.missionMonitorConfiguration = missionsConfig;
             }
             // Make sure the UI is up to date
             RaiseOnUIThread(MissionUpdatedEvent, missions);
@@ -977,19 +897,16 @@ namespace EddiMissionMonitor
         {
             lock (missionsLock)
             {
-                // Obtain current missions inventory from configuration
-                configuration = configuration ?? MissionMonitorConfiguration.FromFile();
-                missionsCount = configuration.missionsCount;
-                missionWarning = configuration.missionWarning ?? Constants.missionWarningDefault;
-                missionsRouteList = configuration.missionsRouteList;
-                missionsRouteDistance = configuration.missionsRouteDistance;
-                updateDat = configuration.updatedat;
+                // Obtain current missions log from configuration
+                var missionsConfig = configuration ?? ConfigService.Instance.missionMonitorConfiguration;
+                missionWarning = missionsConfig.missionWarning;
+                updateDat = missionsConfig.updatedat;
 
                 // Build a new missions log
                 List<Mission> newMissions = new List<Mission>();
 
                 // Start with the missions we have in the log
-                foreach (Mission mission in configuration.missions)
+                foreach (Mission mission in missionsConfig.missions)
                 {
                     newMissions.Add(mission);
                 }
@@ -1006,30 +923,9 @@ namespace EddiMissionMonitor
             }
         }
 
-        public Mission GetMissionWithMissionId(long missionid)
-        {
-            return missions.FirstOrDefault(m => m.missionid == missionid);
-        }
-
-        public List<long> GetSystemMissionIds(string system)
-        {
-            List<long> missionids = new List<long>();       // List of mission IDs for the system
-
-            if (system != null)
-            {
-                // Get mission IDs associated with the system
-                foreach (Mission mission in missions.Where(m => m.destinationsystem == system
-                    || (m.originreturn && m.originsystem == system)).ToList())
-                {
-                    missionids.Add(mission.missionid);
-                }
-            }
-            return missionids;
-        }
-
         private void AddMission(Mission mission)
         {
-            if (mission == null)
+            if (mission == null || missions.Any(m => m.missionid == mission.missionid))
             {
                 return;
             }
@@ -1060,491 +956,21 @@ namespace EddiMissionMonitor
             }
         }
 
-        public void CancelRoute()
-        {
-            // Clear route and destination variables
-            missionsRouteList = null;
-            missionsRouteDistance = 0;
-            string destination = EDDI.Instance?.DestinationStarSystem?.systemname;
-            UpdateDestinationData(null, null, 0);
-
-            EDDI.Instance?.enqueueEvent(new RouteDetailsEvent(DateTime.UtcNow, "cancel", destination, null, null, 0, 0, 0, null));
-        }
-
-        public string GetMissionsRoute(string homeSystem = null)
-        {
-            string nextSystem = null;
-            decimal nextDistance = 0;
-            int routeCount = 0;
-
-            List<string> systems = new List<string>();      // List of eligible mission destintaion systems
-            List<long> missionids = new List<long>();       // List of mission IDs for the next system
-
-            if (missions.Count > 0)
-            {
-                // Add current star system first
-                string currentSystem = EDDI.Instance?.CurrentStarSystem?.systemname;
-                systems.Add(currentSystem);
-
-                // Add origin systems for 'return to origin' missions to the 'systems' list
-                foreach (Mission mission in missions.Where(m => m.statusEDName != "Failed").ToList())
-                {
-                    if (mission.originreturn && !systems.Contains(mission.originsystem))
-                    {
-                        systems.Add(mission.originsystem);
-                    }
-                }
-
-                // Add destination systems for applicable mission types to the 'systems' list
-                foreach (Mission mission in missions.Where(m => m.statusEDName == "Active").ToList())
-                {
-                    foreach (var type in mission.edTags)
-                    {
-                        var exitLoop = false;
-                        switch (type)
-                        {
-                            case "assassinate":
-                            case "courier":
-                            case "delivery":
-                            case "disable":
-                            case "hack":
-                            case "massacre":
-                            case "passengerbulk":
-                            case "passengervip":
-                            case "rescue":
-                            case "salvage":
-                            case "scan":
-                            case "sightseeing":
-                            case "smuggle":
-                            {
-                                if (!(mission.destinationsystems?.Any() ?? false))
-                                {
-                                    if (!systems.Contains(mission.destinationsystem))
-                                    {
-                                        systems.Add(mission.destinationsystem);
-                                    }
-                                }
-                                else
-                                {
-                                    foreach (DestinationSystem system in mission.destinationsystems)
-                                    {
-                                        if (!systems.Contains(system.name))
-                                        {
-                                            systems.Add(system.name);
-                                        }
-                                    }
-                                }
-                                exitLoop = true;
-                                break;
-                            }
-                        }
-                        if (exitLoop) { break; }
-                    }
-                }
-
-                // Calculate the missions route using the 'Repetitive Nearest Neighbor' Algorithim (RNNA)
-                if (CalculateRNNA(systems, homeSystem))
-                {
-                    nextSystem = missionsRouteList?.Split('_')[0];
-                    nextDistance = CalculateDistance(currentSystem, nextSystem) ?? 0;
-                    routeCount = missionsRouteList.Split('_').Count();
-
-                    Logging.Debug("Calculated Route Selected = " + missionsRouteList + ", Total Distance = " + missionsRouteDistance);
-                    writeMissions();
-
-                    // Get mission IDs for 'next' system
-                    missionids = GetSystemMissionIds(nextSystem);
-                }
-                else
-                {
-                    Logging.Debug("Unable to meet missions route calculation criteria");
-                }
-            }
-            EDDI.Instance?.enqueueEvent(new RouteDetailsEvent(DateTime.UtcNow, "route", nextSystem, null, missionsRouteList, routeCount, nextDistance, missionsRouteDistance, missionids));
-            return nextSystem;
-        }
-
-        public bool CalculateRNNA(List<string> systems, string homeSystem)
-        {
-            // Clear route list & distance
-            missionsRouteList = null;
-            missionsRouteDistance = 0;
-            bool found = false;
-
-            int numSystems = systems.Count();
-            if (numSystems > 1)
-            {
-                List<string> bestRoute = new List<string>();
-                decimal bestDistance = 0;
-
-                // Pre-load all system distances
-                if (homeSystem != null)
-                {
-                    systems.Add(homeSystem);
-                }
-                List<StarSystem> starsystems = dataProviderService.GetSystemsData(systems.ToArray(), true, false, false, false, false);
-                decimal[][] distMatrix = new decimal[systems.Count][];
-                for (int i = 0; i < systems.Count; i++)
-                {
-                    distMatrix[i] = new decimal[systems.Count];
-                }
-                for (int i = 0; i < systems.Count - 1; i++)
-                {
-                    StarSystem curr = starsystems.Find(s => s.systemname == systems[i]);
-                    for (int j = i + 1; j < systems.Count; j++)
-                    {
-                        StarSystem dest = starsystems.Find(s => s.systemname == systems[j]);
-                        decimal? distance = CalculateDistance(curr, dest) ?? 0;
-                        distMatrix[i][j] = (decimal)distance;
-                        distMatrix[j][i] = (decimal)distance;
-                    }
-                }
-
-                // Repetitive Nearest Neighbor Algorithm (RNNA)
-                // Iterate through all possible routes by changing the starting system
-                for (int i = 0; i < numSystems; i++)
-                {
-                    // If starting system is a destination for a 'return to origin' mission, then not a viable route
-                    if (DestinationOriginReturn(systems[i])) { continue; }
-
-                    List<string> route = new List<string>();
-                    decimal totalDistance = 0;
-                    int currIndex = i;
-
-                    // Repeat until all systems (except starting system) are in the route
-                    while (route.Count() < numSystems - 1)
-                    {
-                        SortedList<decimal, int> nearestList = new SortedList<decimal, int>();
-
-                        // Iterate through the remaining systems to find nearest neighbor
-                        for (int j = 1; j < numSystems; j++)
-                        {
-                            // Wrap around the list
-                            int destIndex = i + j < numSystems ? i + j : i + j - numSystems;
-                            if (homeSystem != null && destIndex == 0) { destIndex = numSystems; }
-
-                            // Check if destination system previously added to the route
-                            if (route.IndexOf(systems[destIndex]) == -1)
-                            {
-                                decimal distance = distMatrix[currIndex][destIndex];
-                                if (!nearestList.ContainsKey(distance))
-                                {
-                                    nearestList.Add(distance, destIndex);
-                                }
-                            }
-                        }
-                        // Set the 'Nearest' system as the new 'current' system
-                        currIndex = nearestList.Values.FirstOrDefault();
-
-                        // Add 'nearest' system to the route list and add its distance to total distance traveled
-                        route.Add(systems[currIndex]);
-                        totalDistance += nearestList.Keys.FirstOrDefault();
-                    }
-
-                    // Add 'starting system' to complete the route & add its distance to total distance traveled
-                    int startIndex = homeSystem != null && i == 0 ? numSystems : i;
-                    route.Add(systems[startIndex]);
-                    if (currIndex == numSystems) { currIndex = 0; }
-                    totalDistance += distMatrix[currIndex][startIndex];
-                    Logging.Debug("Build Route Iteration #" + i + " - Route = " + string.Join("_", route) + ", Total Distance = " + totalDistance);
-
-                    // Use this route if total distance traveled is less than previous iterations
-                    if (bestDistance == 0 || totalDistance < bestDistance)
-                    {
-                        bestRoute.Clear();
-                        int homeIndex = route.IndexOf(systems[homeSystem != null ? numSystems : 0]);
-                        if (homeIndex < route.Count - 1)
-                        {
-                            // Rotate list to place homesystem at the end
-                            bestRoute = route.Skip(homeIndex + 1)
-                                .Concat(route.Take(homeIndex + 1))
-                                .ToList();
-                        }
-                        else
-                        {
-                            bestRoute = route.ToList();
-                        }
-                        bestDistance = totalDistance;
-                    }
-                }
-
-                if (bestRoute.Count == numSystems)
-                {
-                    missionsRouteList = string.Join("_", bestRoute);
-                    missionsRouteDistance = bestDistance;
-                    found = true;
-                }
-            }
-            return found;
-        }
-
-        public string SetNextInRoute()
-        {
-            string nextSystem = missionsRouteList?.Split('_')[0];
-            decimal? nextDistance = 0;
-            int count = 0;
-            List<long> missionids = new List<long>();       // List of mission IDs for the next system
-
-            if (nextSystem != null)
-            {
-                StarSystem curr = EDDI.Instance?.CurrentStarSystem;
-                StarSystem dest = StarSystemSqLiteRepository.Instance.GetOrFetchStarSystem(nextSystem, true);
-                nextDistance = CalculateDistance(curr, dest);
-                count = missionsRouteList.Split('_').Count();
-
-                // Get mission IDs for 'next' system
-                missionids = GetSystemMissionIds(nextSystem);
-
-                // Set destination variables
-                UpdateDestinationData(nextSystem, null, nextDistance ?? 0);
-            }
-            EDDI.Instance?.enqueueEvent(new RouteDetailsEvent(DateTime.UtcNow, "set", nextSystem, null, missionsRouteList, count, nextDistance ?? 0, missionsRouteDistance, missionids));
-            return nextSystem;
-        }
-
-        public string UpdateRoute(string updateSystem = null)
-        {
-            bool update;
-            string nextSystem = null;
-            decimal nextDistance = 0;
-            List<long> missionids = new List<long>();       // List of mission IDs for the next system
-            string currentSystem = EDDI.Instance?.CurrentStarSystem?.systemname;
-            List<string> route = missionsRouteList?.Split('_').ToList() ?? new List<string>();
-
-            if (route.Count == 0) { update = false; }
-            else if (updateSystem == null)
-            {
-                updateSystem = route[0];
-
-                // Determine if the 'update' system in the missions route list is the current system & has no pending missions
-                update = currentSystem == updateSystem ? !SystemPendingMissions(updateSystem) : false;
-            }
-            else { update = route.Contains(updateSystem); }
-
-            // Remove 'update' system from the missions route list
-            if (update)
-            {
-                if (RemoveSystemFromRoute(updateSystem))
-                {
-                    nextSystem = missionsRouteList?.Split('_')[0];
-                    if (nextSystem != null)
-                    {
-                        nextDistance = CalculateDistance(currentSystem, nextSystem) ?? 0;
-
-                        // Get mission IDs for 'next' system
-                        missionids = GetSystemMissionIds(nextSystem);
-                    }
-                    Logging.Debug("Route Updated = " + missionsRouteList + ", Total Distance = " + missionsRouteDistance);
-                    writeMissions();
-
-                    // Set destination variables
-                    UpdateDestinationData(nextSystem, null, nextDistance);
-                }
-            }
-            EDDI.Instance?.enqueueEvent(new RouteDetailsEvent(DateTime.UtcNow, "update", nextSystem, null, missionsRouteList, route.Count, nextDistance, missionsRouteDistance, missionids));
-            return nextSystem;
-        }
-
-        private bool RemoveSystemFromRoute(string system)
-        {
-            List<string> route = missionsRouteList?.Split('_').ToList();
-            if (route is null || route.Count == 0) { return false; }
-
-            int index = route.IndexOf(system);
-            if (index > -1)
-            {
-                // Do not remove the 'home' system unless last in list
-                if (route.Count > 1 && index == route.Count - 1) { return false; }
-
-                route.RemoveAt(index);
-                if (route.Count > 0)
-                {
-                    // If other than 'next' system removed, recalculate the route
-                    if (route.Count > 2 && index > 0)
-                    {
-                        // Use copy to keep the original intact.
-                        List<string> systems = new List<string>(route);
-
-                        // Build systems list
-                        string homeSystem = systems.Last();
-                        systems.RemoveAt(systems.Count - 1);
-                        systems.Insert(0, EDDI.Instance?.CurrentStarSystem?.systemname);
-
-                        if (CalculateRNNA(systems, homeSystem)) { return true; }
-                    }
-                    missionsRouteList = string.Join("_", route);
-                    missionsRouteDistance = CalculateRouteDistance();
-                }
-                else
-                {
-                    missionsRouteList = null;
-                    missionsRouteDistance = 0;
-                }
-                return true;
-            }
-            return false;
-        }
-
-        public decimal? CalculateDistance(string currentSystem, string destinationSystem)
-        {
-            StarSystem curr = StarSystemSqLiteRepository.Instance.GetOrFetchStarSystem(currentSystem, true);
-            StarSystem dest = StarSystemSqLiteRepository.Instance.GetOrFetchStarSystem(destinationSystem, true);
-            return CalculateDistance(curr, dest);
-        }
-
-        public decimal? CalculateDistance(StarSystem curr, StarSystem dest)
-        {
-            return Functions.DistanceFromCoordinates(curr.x, curr.y, curr.z, dest.x, dest.y, dest.z);
-        }
-
-        private decimal CalculateRouteDistance()
-        {
-            List<string> route = missionsRouteList?.Split('_').ToList();
-            decimal distance = 0;
-
-            if (route?.Count > 0)
-            {
-                StarSystem curr = EDDI.Instance?.CurrentStarSystem;
-
-                // Get all the route coordinates from EDSM in one request
-                List<StarSystem> starsystems = dataProviderService.GetSystemsData(route.ToArray(), true, false, false, false, false);
-
-                // Get distance to the next system
-                StarSystem dest = starsystems.Find(s => s.systemname == route[0]);
-                distance = CalculateDistance(curr, dest) ?? 0;
-
-                // Calculate remaining route distance
-                for (int i = 0; i < route.Count() - 1; i++)
-                {
-                    curr = starsystems.Find(s => s.systemname == route[i]);
-                    dest = starsystems.Find(s => s.systemname == route[i + 1]);
-                    distance += CalculateDistance(curr, dest) ?? 0;
-                }
-            }
-            return distance;
-        }
-
-        private bool DestinationOriginReturn(string destination)
-        {
-            foreach (Mission mission in missions.Where(m => m.originreturn).ToList())
-            {
-                if (mission.destinationsystems == null)
-                {
-                    if (mission.destinationsystem == destination)
-                    {
-                        return true;
-                    }
-                }
-                else
-                {
-                    DestinationSystem system = mission.destinationsystems.FirstOrDefault(ds => ds.name == destination);
-                    if (system != null)
-                    {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        public void SetMissionsRouteData(string list, decimal distance)
-        {
-            missionsRouteList = list;
-            missionsRouteDistance = distance;
-            writeMissions();
-        }
-
-        private bool SystemPendingMissions(string system)
-        {
-            foreach (Mission mission in missions.Where(m => m.statusEDName != "Fail").ToList())
-            {
-                foreach (var type in mission.edTags)
-                {
-                    var exitLoop = false;
-                    switch (type)
-                    {
-                        case "assassinate":
-                        case "courier":
-                        case "delivery":
-                        case "disable":
-                        case "hack":
-                        case "massacre":
-                        case "passengerbulk":
-                        case "passengervip":
-                        case "rescue":
-                        case "salvage":
-                        case "scan":
-                        case "sightseeing":
-                        case "smuggle":
-                        {
-                            // Check if the system is origin system for 'Active' and 'Claim' missions
-                            if (mission.originsystem == system) { return true; }
-
-                            // Check if the system is destination system for 'Active' missions
-                            else if (mission.statusEDName == "Active")
-                            {
-                                if (mission.destinationsystems?.Any() ?? false)
-                                {
-                                    if (mission.destinationsystems.Any(d => d.name == system)) { return true; }
-                                }
-                                else if (mission.destinationsystem == system) { return true; }
-                            }
-                            exitLoop = true;
-                            break;
-                        }
-                    }
-                    if (exitLoop) { break; }
-                }
-            }
-            return false;
-        }
-
         public bool UpdateRedirectStatus(Mission mission)
         {
             if (mission.originreturn && mission.originsystem == mission.destinationsystem
                 && mission.originstation == mission.destinationstation)
             {
-                foreach (var type in mission.edTags)
+                if (mission.edTags.Any(t => Mission.ORGRETURN.Contains(t, StringComparer.InvariantCultureIgnoreCase)))
                 {
-                    var exitLoop = false;
-                    switch (type)
+                    if (mission.statusDef != MissionStatus.Claim)
                     {
-                        case "assassinate":
-                        case "assassinatewing":
-                        case "disable":
-                        case "disablewing":
-                        case "massacre":
-                        case "massacrethargoid":
-                        case "massacrewing":
-                        case "hack":
-                        case "longdistanceexpedition":
-                        case "passengervip":
-                        case "piracy":
-                        case "rescue":
-                        case "salvage":
-                        case "scan":
-                        case "sightseeing":
-                        {
-                            if (mission.statusEDName != "Claim")
-                            {
-                                mission.statusDef = MissionStatus.FromEDName("Claim");
-                                return true;
-                            }
-                            exitLoop = true;
-                            break;
-                        }
+                        mission.statusDef = MissionStatus.Claim;
+                        return true;
                     }
-                    if (exitLoop) { break; }
                 }
             }
             return false;
-        }
-
-        public void UpdateDestinationData(string system, string station, decimal distance)
-        {
-            EDDI.Instance.updateDestinationSystem(system);
-            EDDI.Instance.DestinationDistanceLy = distance;
-            EDDI.Instance.updateDestinationStation(station);
         }
 
         static void RaiseOnUIThread(EventHandler handler, object sender)

@@ -1,4 +1,6 @@
-﻿using EddiCore;
+﻿using System;
+using EddiConfigService;
+using EddiCore;
 using EddiDataProviderService;
 using EddiEvents;
 using EddiStarMapService;
@@ -16,6 +18,9 @@ namespace EddiEdsmResponder
         private readonly IEdsmService edsmService;
         private readonly DataProviderService dataProviderService;
 
+        // This responder currently requires game version 4.0 or later.
+        private static readonly System.Version minGameVersion = new System.Version(4, 0);
+
         public string ResponderName()
         {
             return "EDSM responder";
@@ -31,7 +36,7 @@ namespace EddiEdsmResponder
             return Properties.EDSMResources.desc;
         }
 
-        public EDSMResponder() : this(new StarMapService())
+        public EDSMResponder() : this(new StarMapService(null, true))
         { }
 
         public EDSMResponder(IEdsmService edsmService)
@@ -73,7 +78,7 @@ namespace EddiEdsmResponder
                 if (updateThread == null && edsmService.EdsmCredentialsSet())
                 {
                     // Spin off a thread to download & sync flight logs & system comments from EDSM in the background 
-                    updateThread = new Thread(() => dataProviderService.syncFromStarMapService(StarMapConfiguration.FromFile()?.lastFlightLogSync))
+                    updateThread = new Thread(() => dataProviderService.syncFromStarMapService(ConfigService.Instance.edsmConfiguration?.lastFlightLogSync))
                     {
                         IsBackground = true,
                         Name = "EDSM updater"
@@ -94,6 +99,12 @@ namespace EddiEdsmResponder
             if (EDDI.Instance.gameIsBeta)
             {
                 // We don't send data whilst in beta
+                return;
+            }
+
+            if (EDDI.Instance.GameVersion is null || EDDI.Instance.GameVersion < minGameVersion)
+            {
+                // We don't sent data whilst running a lower game version than the minimum required by EDSM
                 return;
             }
 
@@ -203,42 +214,49 @@ namespace EddiEdsmResponder
             }
 
             // Supplement with metadata from the tracked game state, as applicable
-            if (EDDI.Instance.CurrentStarSystem != null)
+            var currentStarSystem = EDDI.Instance.CurrentStarSystem?.Copy();
+            if (currentStarSystem != null)
             {
                 if (!eventObject.ContainsKey("_systemAddress"))
                 {
-                    eventObject.Add("_systemAddress", EDDI.Instance.CurrentStarSystem.systemAddress);
+                    eventObject.Add("_systemAddress", currentStarSystem.systemAddress);
                 }
+
                 if (!eventObject.ContainsKey("_systemName"))
                 {
-                    eventObject.Add("_systemName", EDDI.Instance.CurrentStarSystem.systemname);
+                    eventObject.Add("_systemName", currentStarSystem.systemname);
                 }
+
                 if (!eventObject.ContainsKey("_systemCoordinates"))
                 {
                     List<decimal?> _coordinates = new List<decimal?>
                     {
-                    EDDI.Instance.CurrentStarSystem.x,
-                    EDDI.Instance.CurrentStarSystem.y,
-                    EDDI.Instance.CurrentStarSystem.z
+                        currentStarSystem.x,
+                        currentStarSystem.y,
+                        currentStarSystem.z
                     };
                     eventObject.Add("_systemCoordinates", _coordinates);
                 }
-
             }
-            if (EDDI.Instance.CurrentStation != null)
+
+            var currentStation = EDDI.Instance.CurrentStation?.Copy();
+            if (currentStation != null)
             {
                 if (!eventObject.ContainsKey("_marketId"))
                 {
-                    eventObject.Add("_marketId", EDDI.Instance.CurrentStation.marketId);
+                    eventObject.Add("_marketId", currentStation.marketId);
                 }
+
                 if (!eventObject.ContainsKey("_stationName"))
                 {
-                    eventObject.Add("_stationName", EDDI.Instance.CurrentStation.name);
+                    eventObject.Add("_stationName", currentStation.name);
                 }
             }
-            if (EDDI.Instance.CurrentShip != null && !eventObject.ContainsKey("_shipId"))
+
+            var currentShip = EDDI.Instance.CurrentShip?.Copy();
+            if (currentShip != null && !eventObject.ContainsKey("_shipId"))
             {
-                eventObject.Add("_shipId", EDDI.Instance.CurrentShip.LocalId);
+                eventObject.Add("_shipId", currentShip.LocalId);
             }
 
             return eventObject;
@@ -246,7 +264,7 @@ namespace EddiEdsmResponder
 
         public UserControl ConfigurationTabItem()
         {
-            return new ConfigurationWindow();
+            return new ConfigurationWindow(this);
         }
     }
 }

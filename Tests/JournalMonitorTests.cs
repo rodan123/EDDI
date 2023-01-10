@@ -1,11 +1,8 @@
 ﻿using EddiCore;
-using EddiCrimeMonitor;
 using EddiDataDefinitions;
 using EddiDataProviderService;
 using EddiEvents;
 using EddiJournalMonitor;
-using EddiMissionMonitor;
-using EddiShipMonitor;
 using EddiStarMapService;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
@@ -56,7 +53,7 @@ namespace UnitTests
             Assert.AreEqual("Grea Bloae HH-T d4-44 4", ev.bodyname);
             Assert.AreEqual((decimal)703.763611, ev.distance);
             Assert.IsNotNull(ev.tidallylocked);
-            Assert.IsFalse((bool)ev.tidallylocked);
+            Assert.IsFalse(ev.tidallylocked);
             Assert.AreEqual("Candidate for terraforming", ev.terraformState.invariantName);
             Assert.AreEqual("High metal content world", ev.planetClass.invariantName);
             Assert.IsNotNull(ev.volcanism);
@@ -64,18 +61,18 @@ namespace UnitTests
             Assert.AreEqual("Iron", ev.volcanism.invariantComposition);
             Assert.AreEqual("Minor", ev.volcanism.invariantAmount);
             Assert.AreEqual((decimal)2.171783, ev.earthmass);
-            Assert.AreEqual((double)7622.170500000M, (double)ev.radius, 0.01);
+            Assert.AreEqual((double)7622.170500000M, (double?)ev.radius ?? 0, 0.01);
             Assert.AreEqual(Utilities.ConstantConverters.ms2g((decimal)14.899396), ev.gravity);
             Assert.AreEqual((decimal)836.165466, ev.temperature);
-            Assert.AreEqual(325.986, (double)ev.pressure, 0.01);
+            Assert.AreEqual(325.986, (double?)ev.pressure ?? 0, 0.01);
             Assert.IsNotNull(ev.landable);
-            Assert.IsFalse((bool)ev.landable);
-            Assert.AreEqual(703.679898444943, (double)ev.semimajoraxis, 0.01);
+            Assert.IsFalse(ev.landable);
+            Assert.AreEqual(703.679898444943, (double?)ev.semimajoraxis ?? 0, 0.01);
             Assert.AreEqual((decimal)0.000248, ev.eccentricity);
             Assert.AreEqual((decimal)0.015659, ev.inclination);
             Assert.AreEqual((decimal)104.416656, ev.periapsis);
-            Assert.AreEqual(564.827, (double)ev.orbitalperiod, 0.01);
-            Assert.AreEqual(0.91947, (double)ev.rotationalperiod, 0.01);
+            Assert.AreEqual(564.827, (double?)ev.orbitalperiod ?? 0, 0.01);
+            Assert.AreEqual(0.91947, (double?)ev.rotationalperiod ?? 0, 0.01);
         }
 
         [TestMethod]
@@ -173,7 +170,7 @@ namespace UnitTests
             Assert.IsNull(theEvent.orbitalperiod);
             Assert.AreEqual(692146.368000000M, theEvent.radius);
             Assert.IsNull(theEvent.semimajoraxis);
-            Assert.AreEqual(0.960938, (double)theEvent.solarmass, 0.001);
+            Assert.AreEqual(0.960938, (double?)theEvent.solarmass ?? 0, 0.001);
             Assert.AreEqual("K", theEvent.stellarclass);
             Assert.AreEqual(5108, theEvent.temperature);
             Assert.AreEqual(5.375961M, theEvent.absolutemagnitude);
@@ -184,8 +181,8 @@ namespace UnitTests
             Assert.AreEqual(65, theEvent.radiusprobability);
             Assert.AreEqual(95, theEvent.tempprobability);
             Assert.AreEqual(7, theEvent.ageprobability);
-            Assert.AreEqual(303.548, (double)theEvent.estimatedhabzoneinner, .01);
-            Assert.AreEqual(604.861, (double)theEvent.estimatedhabzoneouter, .01);
+            Assert.AreEqual(303.548, (double?)theEvent.estimatedhabzoneinner ?? 0, .01);
+            Assert.AreEqual(604.861, (double?)theEvent.estimatedhabzoneouter ?? 0, .01);
             // Ring
             Assert.AreEqual("Metallic", theEvent.rings[0].Composition.invariantName);
         }
@@ -200,7 +197,7 @@ namespace UnitTests
             StarScannedEvent theEvent = (StarScannedEvent)events[0];
             Assert.AreEqual((decimal)659162.816, theEvent.radius);
             Assert.AreEqual(StarClass.solarradius((decimal)659162.816000000), theEvent.solarradius);
-            Assert.AreEqual(0.94775, (double)theEvent.solarradius, 0.01);
+            Assert.AreEqual(0.94775, (double?)theEvent.solarradius ?? 0, 0.01);
             Assert.IsTrue(theEvent.mainstar ?? false);
         }
 
@@ -282,7 +279,7 @@ namespace UnitTests
             Assert.AreEqual("AsteroidBase", theEvent.stationModel.edname);
 
             Assert.AreEqual(128169720, theEvent.marketId);
-            Assert.AreEqual(3107509474002, theEvent.systemAddress);
+            Assert.AreEqual((ulong)3107509474002, theEvent.systemAddress);
             Assert.AreEqual(1, theEvent.stationservices.Count);
             Assert.AreEqual("Refuel", theEvent.stationservices[0]);
             Assert.AreEqual(2, theEvent.economyShares.Count);
@@ -580,7 +577,7 @@ namespace UnitTests
             Assert.AreEqual("Vonarburg Co-operative", normalSpaceEvent.bodyname);
             Assert.AreEqual("Station", normalSpaceEvent.bodytype);
             Assert.AreEqual("Wyrd", normalSpaceEvent.systemname);
-            Assert.AreEqual(5031654888146, normalSpaceEvent.systemAddress);
+            Assert.AreEqual((ulong)5031654888146, normalSpaceEvent.systemAddress);
         }
 
         [TestMethod]
@@ -677,7 +674,7 @@ namespace UnitTests
             Assert.IsTrue(events.Count == 1);
             JumpedEvent jumpedEvent = (JumpedEvent)events[0];
             Assert.AreEqual("Diaguandri", jumpedEvent.system);
-            Assert.AreEqual(670417429889, jumpedEvent.systemAddress);
+            Assert.AreEqual((ulong)670417429889, jumpedEvent.systemAddress);
             Assert.AreEqual(-41.06250M, jumpedEvent.x);
             Assert.AreEqual(-62.15625M, jumpedEvent.y);
             Assert.AreEqual(-103.25000M, jumpedEvent.z);
@@ -694,7 +691,6 @@ namespace UnitTests
             Assert.AreEqual("Expansion", jumpedEvent.factionstate);
             Assert.AreEqual("Expansion", jumpedEvent.factions.FirstOrDefault(f => f.name == "EXO")?.presences.FirstOrDefault(p => p.systemName == "Diaguandri")?.FactionState?.invariantName);
         }
-
 
         [TestMethod]
         public void TestJournalJumpedEvent2()
@@ -883,7 +879,6 @@ namespace UnitTests
             Assert.AreEqual("High Tech", @event.Economy.invariantName);
             Assert.AreEqual("Refinery", @event.Economy2.invariantName);
 
-            Assert.AreEqual("EXO", @event.faction);
             Assert.AreEqual("EXO", @event.systemfaction);
             Assert.AreEqual("Independent", @event.controllingsystemfaction.Allegiance.invariantName);
             Assert.AreEqual("Democracy", @event.controllingsystemfaction.Government.invariantName);
@@ -899,7 +894,7 @@ namespace UnitTests
             Assert.AreEqual("Ray Gateway", @event.station);
             Assert.AreEqual("Coriolis Starport", @event.stationModel.invariantName);
             Assert.AreEqual("Diaguandri", @event.systemname);
-            Assert.AreEqual(670417429889, @event.systemAddress);
+            Assert.AreEqual((ulong)670417429889, @event.systemAddress);
             Assert.AreEqual(-41.06250M, @event.x);
             Assert.AreEqual(-62.15625M, @event.y);
             Assert.AreEqual(-103.25000M, @event.z);
@@ -913,7 +908,7 @@ namespace UnitTests
             NearSurfaceEvent @event = (NearSurfaceEvent)events[0];
 
             Assert.AreEqual("Ageno", @event.systemname);
-            Assert.AreEqual(18262335038849, @event.systemAddress);
+            Assert.AreEqual((ulong)18262335038849, @event.systemAddress);
             Assert.AreEqual("Ageno B 2 a", @event.bodyname);
 
             string line2 = @"{ ""timestamp"":""2018 - 07 - 24T07: 08:58Z"", ""event"":""LeaveBody"", ""StarSystem"":""Ageno"", ""SystemAddress"":18262335038849, ""Body"":""Ageno B 2 a"", ""BodyID"":17 }";
@@ -921,7 +916,7 @@ namespace UnitTests
             NearSurfaceEvent @event2 = (NearSurfaceEvent)events[0];
 
             Assert.AreEqual("Ageno", @event2.systemname);
-            Assert.AreEqual(18262335038849, @event2.systemAddress);
+            Assert.AreEqual((ulong)18262335038849, @event2.systemAddress);
             Assert.AreEqual("Ageno B 2 a", @event2.bodyname);
         }
 
@@ -946,7 +941,7 @@ namespace UnitTests
             SettlementApproachedEvent @event = (SettlementApproachedEvent)events[0];
 
             Assert.AreEqual(3510380288, @event.marketId);
-            Assert.AreEqual(670417429889, @event.systemAddress);
+            Assert.AreEqual((ulong)670417429889, @event.systemAddress);
             Assert.AreEqual("Bulmer Enterprise", @event.name);
             Assert.AreEqual(-23.121552M, @event.latitude);
             Assert.AreEqual(-98.177559M, @event.longitude);
@@ -1148,7 +1143,8 @@ namespace UnitTests
             SignalDetectedEvent @event = (SignalDetectedEvent)events[0];
             Assert.IsNotNull(@event);
             Assert.IsInstanceOfType(@event, typeof(SignalDetectedEvent));
-            Assert.AreEqual("PBSF SPACE ODDITY XBH-64Y", @event.signalSource.localizedName);
+            Assert.AreEqual("PBSF SPACE ODDITY", @event.signalSource.localizedName);
+            Assert.AreEqual("XBH-64Y", @event.signalSource.invariantName);
 
             var testSystem = new StarSystem() { systemname = "Test System" };
             testSystem.AddOrUpdateSignalSource(@event.signalSource);
@@ -1239,24 +1235,6 @@ namespace UnitTests
         }
 
         [TestMethod]
-        public void TestSurfaceSignalsEvent()
-        {
-            string line = "{ \"timestamp\":\"2019-09-24T02:40:34Z\", \"event\":\"SAASignalsFound\", \"BodyName\":\"HIP 41908 AB 1 c a\", \"SystemAddress\":61461226668, \"BodyID\":11, \"Signals\":[ { \"Type\":\"$SAA_SignalType_Biological;\", \"Type_Localised\":\"Biological\", \"Count\":16 }, { \"Type\":\"$SAA_SignalType_Geological;\", \"Type_Localised\":\"Geological\", \"Count\":17 }, { \"Type\":\"$SAA_SignalType_Human;\", \"Type_Localised\":\"Human\", \"Count\":4 } ] }";
-            List<Event> events = JournalMonitor.ParseJournalEntry(line);
-            SurfaceSignalsEvent surfaceSignalEvent = (SurfaceSignalsEvent)events[0];
-            Assert.AreEqual("HIP 41908 AB 1 c a", surfaceSignalEvent.bodyname);
-            Assert.AreEqual(61461226668, surfaceSignalEvent.systemAddress);
-            Assert.AreEqual(3, surfaceSignalEvent.surfacesignals.Count);
-            // The types of surface signals are ordered by count, so we expect geo signals before bio signals.
-            Assert.AreEqual("Geological Surface Signal", surfaceSignalEvent.surfacesignals[0].signalSource.invariantName);
-            Assert.AreEqual(17, surfaceSignalEvent.surfacesignals[0].amount);
-            Assert.AreEqual("Biological Surface Signal", surfaceSignalEvent.surfacesignals[1].signalSource.invariantName);
-            Assert.AreEqual(16, surfaceSignalEvent.surfacesignals[1].amount);
-            Assert.AreEqual("Human Surface Signal", surfaceSignalEvent.surfacesignals[2].signalSource.invariantName);
-            Assert.AreEqual(4, surfaceSignalEvent.surfacesignals[2].amount);
-        }
-
-        [TestMethod]
         public void TestTouchdownEventBio()
         {
             string line = "{ \"timestamp\":\"2019 - 09 - 26T06: 42:43Z\", \"event\":\"Touchdown\", \"PlayerControlled\":true, \"Taxi\":false, \"Multicrew\":false, \"StarSystem\":\"Nervi\", \"SystemAddress\":2518721481067, \"Body\":\"Nervi 2 a\", \"BodyID\":17, \"OnStation\":false, \"OnPlanet\":true, \"Latitude\":-44.165684, \"Longitude\":-123.219307, \"NearestDestination\":\"$SAA_Unknown_Signal:#type=$SAA_SignalType_Biological;:#index=15;\", \"NearestDestination_Localised\":\"Surface signal: Biological (15)\" }";
@@ -1325,7 +1303,7 @@ namespace UnitTests
             Assert.AreEqual(1, @event.carrierEconomies.Count);
             Assert.AreEqual("Private Enterprise", @event.carrierEconomies[0].economy.invariantName);
             Assert.AreEqual("Aparctias", @event.systemname);
-            Assert.AreEqual(358797513434, @event.systemAddress);
+            Assert.AreEqual((ulong)358797513434, @event.systemAddress);
             Assert.AreEqual(25.1875M, @event.x);
             Assert.AreEqual(-56.375M, @event.y);
             Assert.AreEqual(22.90625M, @event.z);
@@ -1523,22 +1501,22 @@ namespace UnitTests
         public void TestCommanderContinuedOnFoot()
         {
             string line = @"{
-	            ""timestamp"": ""2021-04-30T21:50:03Z"",
-	            ""event"": ""LoadGame"",
-	            ""FID"": ""F100000"",
-	            ""Commander"": ""John Jameson"",
-	            ""Horizons"": true,
-	            ""Odyssey"": true,
-	            ""Ship"": ""ExplorationSuit_Class1"",
-	            ""Ship_Localised"": ""Artemis Suit"",
-	            ""ShipID"": 4293000003,
-	            ""ShipName"": """",
-	            ""ShipIdent"": """",
-	            ""FuelLevel"": 1.000000,
-	            ""FuelCapacity"": 1.000000,
-	            ""GameMode"": ""Open"",
-	            ""Credits"": 294004749,
-	            ""Loan"": 0
+                ""timestamp"": ""2021-04-30T21:50:03Z"",
+                ""event"": ""LoadGame"",
+                ""FID"": ""F100000"",
+                ""Commander"": ""John Jameson"",
+                ""Horizons"": true,
+                ""Odyssey"": true,
+                ""Ship"": ""ExplorationSuit_Class1"",
+                ""Ship_Localised"": ""Artemis Suit"",
+                ""ShipID"": 4293000003,
+                ""ShipName"": """",
+                ""ShipIdent"": """",
+                ""FuelLevel"": 1.000000,
+                ""FuelCapacity"": 1.000000,
+                ""GameMode"": ""Open"",
+                ""Credits"": 294004749,
+                ""Loan"": 0
             }";
             var events = JournalMonitor.ParseJournalEntry(line);
             Assert.AreEqual(1, events.Count);
@@ -1565,17 +1543,17 @@ namespace UnitTests
         public void TestCommanderContinuedInApexTaxi()
         {
             string line = @"{
-	            ""timestamp"": ""2021-04-30T21:59:36Z"",
-	            ""event"": ""LoadGame"",
-	            ""FID"": ""F100000"",
-	            ""Commander"": ""John Jameson"",
-	            ""Horizons"": true,
-	            ""Odyssey"": true,
-	            ""Ship"": ""adder_taxi"",
-	            ""Ship_Localised"": ""$ADDER_NAME;"",
-	            ""GameMode"": ""Open"",
-	            ""Credits"": 294004649,
-	            ""Loan"": 0
+                ""timestamp"": ""2021-04-30T21:59:36Z"",
+                ""event"": ""LoadGame"",
+                ""FID"": ""F100000"",
+                ""Commander"": ""John Jameson"",
+                ""Horizons"": true,
+                ""Odyssey"": true,
+                ""Ship"": ""adder_taxi"",
+                ""Ship_Localised"": ""$ADDER_NAME;"",
+                ""GameMode"": ""Open"",
+                ""Credits"": 294004649,
+                ""Loan"": 0
             }";
             var events = JournalMonitor.ParseJournalEntry(line);
             Assert.AreEqual(1, events.Count);
@@ -1602,14 +1580,14 @@ namespace UnitTests
         public void TestCommanderContinuedCQC()
         {
             string line = @"{
-	            ""timestamp"": ""2021-04-30T21:59:36Z"",
-	            ""event"": ""LoadGame"",
-	            ""FID"": ""F100000"",
-	            ""Commander"": ""John Jameson"",
-	            ""Horizons"": true,
-	            ""Odyssey"": true,
+                ""timestamp"": ""2021-04-30T21:59:36Z"",
+                ""event"": ""LoadGame"",
+                ""FID"": ""F100000"",
+                ""Commander"": ""John Jameson"",
+                ""Horizons"": true,
+                ""Odyssey"": true,
                 ""Credits"": 594877206,
-	            ""Loan"": 0
+                ""Loan"": 0
             }";
             var events = JournalMonitor.ParseJournalEntry(line);
             Assert.AreEqual(1, events.Count);
@@ -1622,22 +1600,22 @@ namespace UnitTests
         public void TestCommanderContinuedShip()
         {
             string line = @"{
-	            ""timestamp"": ""2021-05-01T03:12:27Z"",
-	            ""event"": ""LoadGame"",
-	            ""FID"": ""F100000"",
-	            ""Commander"": ""John Jameson"",
-	            ""Horizons"": true,
-	            ""Odyssey"": true,
-	            ""Ship"": ""DiamondBackXL"",
-	            ""Ship_Localised"": ""Diamondback Explorer"",
-	            ""ShipID"": 38,
-	            ""ShipName"": ""Resolution"",
-	            ""ShipIdent"": ""TK-28D"",
-	            ""FuelLevel"": 32.000000,
-	            ""FuelCapacity"": 32.000000,
-	            ""GameMode"": ""Solo"",
-	            ""Credits"": 7795285167,
-	            ""Loan"": 0
+                ""timestamp"": ""2021-05-01T03:12:27Z"",
+                ""event"": ""LoadGame"",
+                ""FID"": ""F100000"",
+                ""Commander"": ""John Jameson"",
+                ""Horizons"": true,
+                ""Odyssey"": true,
+                ""Ship"": ""DiamondBackXL"",
+                ""Ship_Localised"": ""Diamondback Explorer"",
+                ""ShipID"": 38,
+                ""ShipName"": ""Resolution"",
+                ""ShipIdent"": ""TK-28D"",
+                ""FuelLevel"": 32.000000,
+                ""FuelCapacity"": 32.000000,
+                ""GameMode"": ""Solo"",
+                ""Credits"": 7795285167,
+                ""Loan"": 0
             }";
 
             var events = JournalMonitor.ParseJournalEntry(line);
@@ -1819,6 +1797,58 @@ namespace UnitTests
             Assert.AreEqual(expectedGrade, @event.Suit.grade);
             Assert.AreEqual(expectedSuitId, @event.Suit.suitId);
             Assert.AreEqual(expectedPrice, @event.price);
+        }
+
+        [DataTestMethod]
+        [DataRow(@"{ ""timestamp"":""2019-06-12T05:12:24Z"", ""event"":""EngineerContribution"", ""Engineer"":""Petra Olmanova"", ""EngineerID"":300130, ""Type"":""Commodity"", ""Commodity"":""progenitorcells"", ""Commodity_Localised"":""Progenitor Cells"", ""Quantity"":168, ""TotalQuantity"":168 }", "Petra Olmanova", "Commodity", "Progenitor Cells", null, "Medicines", 168, 168)]
+        [DataRow(@"{ ""timestamp"":""2022-02-02T23:13:17Z"", ""event"":""EngineerContribution"", ""Engineer"":""Chloe Sedesi"", ""EngineerID"":300300, ""Type"":""Materials"", ""Material"":""unknownenergysource"", ""Material_Localised"":""Sensor Fragment"", ""Quantity"":32, ""TotalQuantity"":200 }", "Chloe Sedesi", "Materials", null, "Sensor Fragment", "Manufactured", 32, 200)]
+        public void TestEngineerContributedEvent(string line, string engineer, string contributiontype, string commodity, string material, string category, int amount, int total)
+        {
+            var events = JournalMonitor.ParseJournalEntry(line);
+            Assert.AreEqual(1, events.Count);
+            var @event = (EngineerContributedEvent)events[0];
+
+            Assert.AreEqual(engineer, @event.Engineer.name);
+            Assert.AreEqual(contributiontype, @event.contributiontype);
+            var commodityDefinition = CommodityDefinition.FromEDName(@event.commodityAmount?.edname);
+            if (commodityDefinition != null)
+            {
+                Assert.AreEqual(commodity, commodityDefinition.invariantName);
+                Assert.AreEqual(category, commodityDefinition?.Category?.invariantName);
+            }
+            var materialDefinition = Material.FromEDName(@event.materialAmount?.edname);
+            if (materialDefinition != null)
+            {
+                Assert.AreEqual(material, materialDefinition.invariantName);
+                Assert.AreEqual(category, materialDefinition?.Category?.invariantName);
+            }
+            Assert.AreEqual(amount, @event.amount);
+            Assert.AreEqual(total, @event.total);
+        }
+
+        [DataTestMethod]
+        [DataRow(@"{ ""timestamp"":""2022-03-17T18:20:53Z"", ""event"":""FSSBodySignals"", ""BodyName"":""Phroi Blou EW-W d1-1056 2 a"", ""BodyID"":18, ""SystemAddress"":36293555558035, ""Signals"":[ { ""Type"":""$SAA_SignalType_Geological;"", ""Type_Localised"":""Geological"", ""Count"":3 } ] }", "FSS", "Phroi Blou EW-W d1-1056 2 a", 18, (ulong)36293555558035, 0, 3, 0, 0, 0, 0)]
+        [DataRow(@"{ ""timestamp"":""2019-04-17T13:40:39Z"", ""event"":""SAASignalsFound"", ""BodyName"":""Hermitage 4 b"", ""SystemAddress"":5363877956440, ""BodyID"":13, ""Signals"":[ { ""Type"":""$SAA_SignalType_Geological;"", ""Type_Localised"":""Geological"", ""Count"":14 } ] }", "SAA", "Hermitage 4 b", 13, (ulong)5363877956440, 0, 14, 0, 0, 0, 0)]
+        [DataRow(@"{ ""timestamp"":""2022-07-01T09:14:32Z"", ""event"":""SAASignalsFound"", ""BodyName"":""Asellus 3a"", ""SystemAddress"":1144348739947, ""BodyID"":10, ""Signals"":[ { ""Type"":""$SAA_SignalType_Biological;"", ""Type_Localised"":""Biological"", ""Count"":2 }, { ""Type"":""$SAA_SignalType_Geological;"", ""Type_Localised"":""Geological"", ""Count"":3 }, { ""Type"":""$SAA_SignalType_Human;"", ""Type_Localised"":""Human"", ""Count"":8 } ], ""Genuses"":[ { ""Genus"":""$Codex_Ent_Bacterial_Genus_Name;"", ""Genus_Localised"":""Bacterium"" }, { ""Genus"":""$Codex_Ent_Stratum_Genus_Name;"", ""Genus_Localised"":""Stratum"" } ] }", "SAA", "Asellus 3a", 10, (ulong)1144348739947, 2, 3, 0, 8, 0, 0)]
+        [DataRow("{ \"timestamp\":\"2019-09-24T02:40:34Z\", \"event\":\"SAASignalsFound\", \"BodyName\":\"HIP 41908 AB 1 c a\", \"SystemAddress\":61461226668, \"BodyID\":11, \"Signals\":[ { \"Type\":\"$SAA_SignalType_Biological;\", \"Type_Localised\":\"Biological\", \"Count\":16 }, { \"Type\":\"$SAA_SignalType_Geological;\", \"Type_Localised\":\"Geological\", \"Count\":17 }, { \"Type\":\"$SAA_SignalType_Human;\", \"Type_Localised\":\"Human\", \"Count\":4 } ] }", "SAA", "HIP 41908 AB 1 c a", 11, (ulong)61461226668, 16, 17, 0, 4, 0, 0)]
+        public void TestSurfaceSignalsEvent(string line, string expectedDetectionType, string expectedBodyName, int expectedBodyID,
+            ulong expectedSystemAddress, int expectedBioSignals, int expectedGeoSignals, int expectedGuardianSignals, int expectedHumanSignals,
+            int expectedThargoidSignals, int expectedOtherSignals)
+        {
+            var events = JournalMonitor.ParseJournalEntry(line);
+            Assert.AreEqual(1, events.Count);
+            var @event = (SurfaceSignalsEvent)events[0];
+
+            Assert.AreEqual(expectedDetectionType, @event.detectionType);
+            Assert.AreEqual(expectedBodyName, @event.bodyname);
+            Assert.AreEqual(expectedBodyID, @event.bodyId);
+            Assert.AreEqual(expectedSystemAddress, @event.systemAddress);
+            Assert.AreEqual(expectedBioSignals, @event.surfacesignals?.FirstOrDefault(s => s.signalSource.edname == "SAA_SignalType_Biological")?.amount ?? 0);
+            Assert.AreEqual(expectedGeoSignals, @event.surfacesignals?.FirstOrDefault(s => s.signalSource.edname == "SAA_SignalType_Geological")?.amount ?? 0);
+            Assert.AreEqual(expectedGuardianSignals, @event.surfacesignals?.FirstOrDefault(s => s.signalSource.edname == "SAA_SignalType_Guardian")?.amount ?? 0);
+            Assert.AreEqual(expectedHumanSignals, @event.surfacesignals?.FirstOrDefault(s => s.signalSource.edname == "SAA_SignalType_Human")?.amount ?? 0);
+            Assert.AreEqual(expectedThargoidSignals, @event.surfacesignals?.FirstOrDefault(s => s.signalSource.edname == "SAA_SignalType_Thargoid")?.amount ?? 0);
+            Assert.AreEqual(expectedOtherSignals, @event.surfacesignals?.FirstOrDefault(s => s.signalSource.edname == "SAA_SignalType_Other")?.amount ?? 0);
         }
     }
 }

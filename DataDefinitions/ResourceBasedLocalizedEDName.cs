@@ -53,6 +53,19 @@ namespace EddiDataDefinitions
                 // invoke the method
                 object[] parameters = new object[] { edname };
                 object result = method?.Invoke(null, parameters);
+
+                // add back in any secondary properties and fields in our derived classes (other than those associated with the `FromEDName` method)
+                var otherProperties = jsonObject.Values().Where(t => t.Path != "edname");
+                foreach (var prop in otherProperties)
+                {
+                    var propInfo = result?.GetType().GetProperty(prop.Path);
+                    if (propInfo != null && propInfo.CanWrite)
+                    {
+                        propInfo.SetValue(result, prop.ToObject(propInfo.PropertyType));
+                    }
+                    var fieldInfo = result?.GetType().GetField(prop.Path);
+                    fieldInfo?.SetValue(result, prop.ToObject(fieldInfo.FieldType));
+                }
                 return result;
             }
             catch (Exception)
@@ -69,7 +82,7 @@ namespace EddiDataDefinitions
     }
 
     [JsonObject(MemberSerialization.OptIn), JsonConverter(typeof(JsonConverterFromEDName))]
-    public abstract class ResourceBasedLocalizedEDName<T> where T : ResourceBasedLocalizedEDName<T>, new()
+    public abstract class ResourceBasedLocalizedEDName<T> : IEqualityComparer<T> where T : ResourceBasedLocalizedEDName<T>, new()
     {
         static ResourceBasedLocalizedEDName()
         {
@@ -96,13 +109,19 @@ namespace EddiDataDefinitions
         public readonly string basename;
 
         [PublicAPI, JsonIgnore]
-        public string invariantName => resourceManager.GetString(basename, CultureInfo.InvariantCulture) ?? basename;
+        public string invariantName => resourceManager.GetString(basename, CultureInfo.InvariantCulture) ?? fallbackInvariantName ?? basename;
 
+        /// <summary>
+        /// Used only for synthetic definitions derived from other object types
+        /// </summary>
         [JsonIgnore]
-        public string fallbackLocalizedName { get; set; } = null;
+        public string fallbackInvariantName { get; set; } = null;
 
         [JsonIgnore]
         public string localizedName => resourceManager.GetString(basename) ?? fallbackLocalizedName ?? basename;
+        
+        [JsonIgnore]
+        public string fallbackLocalizedName { get; set; } = null;
 
         [PublicAPI, JsonIgnore, Obsolete("Please be explicit and use localizedName or invariantName")]
         public string name => localizedName;
@@ -137,7 +156,7 @@ namespace EddiDataDefinitions
         public static T FromName(string from)
         {
             EnsureSubClassStaticConstructorHasRun();
-            if (from == null || from == string.Empty)
+            if (string.IsNullOrEmpty(from))
             {
                 return null;
             }
@@ -157,7 +176,7 @@ namespace EddiDataDefinitions
         public static T FromEDName(string from)
         {
             EnsureSubClassStaticConstructorHasRun();
-            if (from == null || from == string.Empty)
+            if (string.IsNullOrEmpty(from))
             {
                 return null;
             }
@@ -180,6 +199,16 @@ namespace EddiDataDefinitions
                 }
             }
             return result;
+        }
+
+        public bool Equals(T x, T y)
+        {
+            return x?.edname == y?.edname;
+        }
+
+        public int GetHashCode(T obj)
+        {
+            return obj.edname.GetHashCode();
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using EddiCore;
+﻿using EddiConfigService;
+using EddiCore;
 using EddiCrimeMonitor;
 using EddiDataDefinitions;
 using EddiEvents;
@@ -152,14 +153,15 @@ namespace UnitTests
         public void TestCrimeConfig()
         {
             // Save original data
-            CrimeMonitorConfiguration data = CrimeMonitorConfiguration.FromFile();
+            var data = ConfigService.Instance.crimeMonitorConfiguration;
 
-            CrimeMonitorConfiguration config = CrimeMonitorConfiguration.FromJsonString(crimeConfigJson);
+            var config = ConfigService.FromJson<CrimeMonitorConfiguration>(crimeConfigJson);
             Assert.AreEqual(3, config.criminalrecord.Count);
-            Assert.AreEqual(275915, config.claims);
-            Assert.AreEqual(400, config.fines);
+            Assert.AreEqual(275915, config.criminalrecord.Sum(r => r.claims));
+            Assert.AreEqual(400, config.criminalrecord.Sum(r => r.fines));
 
             record = config.criminalrecord.ToList().FirstOrDefault(r => r.faction == "Calennero State Industries");
+            Assert.IsNotNull(record);
             Assert.AreEqual(Superpower.Empire, record.Allegiance);
             Assert.AreEqual("Empire", record.allegiance);
             Assert.AreEqual(105168, record.bountiesAmount);
@@ -178,17 +180,18 @@ namespace UnitTests
             Assert.AreEqual("Fabian City", report.station);
 
             // Restore original data
-            data.ToFile();
+            ConfigService.Instance.crimeMonitorConfiguration = data;
         }
 
         [TestMethod]
         public void TestCrimeEventsScenario()
         {
             // Save original data
-            CrimeMonitorConfiguration data = CrimeMonitorConfiguration.FromFile();
+            var data = ConfigService.Instance.crimeMonitorConfiguration;
 
             var privateObject = new PrivateObject(crimeMonitor);
-            CrimeMonitorConfiguration config = CrimeMonitorConfiguration.FromJsonString(crimeConfigJson);
+
+            var config = ConfigService.FromJson<CrimeMonitorConfiguration>(crimeConfigJson);
             crimeMonitor.readRecord(config);
 
             // Bond Awarded Event
@@ -197,6 +200,7 @@ namespace UnitTests
             Assert.IsTrue(events.Count == 1);
             privateObject.Invoke("_handleBondAwardedEvent", new object[] { events[0] });
             record = crimeMonitor.criminalrecord.FirstOrDefault(r => r.faction == "Constitution Party of Aerial");
+            Assert.IsNotNull(record);
             Assert.AreEqual(3, record.factionReports.Count);
             Assert.AreEqual(94492, record.bondsAmount);
 
@@ -237,6 +241,7 @@ namespace UnitTests
             Assert.IsTrue(events.Count == 1);
             privateObject.Invoke("_handleBondRedeemedEvent", new object[] { events[0] });
             record = crimeMonitor.criminalrecord.FirstOrDefault(r => r.faction == "Constitution Party of Aerial");
+            Assert.IsNotNull(record);
             Assert.AreEqual(0, record.factionReports.Count(r => !r.bounty && r.crimeDef == Crime.None));
 
             // Redeem Bounty Event - Multiple
@@ -261,7 +266,7 @@ namespace UnitTests
             Assert.IsNull(record);
 
             // Restore original data
-            data.ToFile();
+            ConfigService.Instance.crimeMonitorConfiguration = data;
         }
 
         [TestMethod]
@@ -276,6 +281,7 @@ namespace UnitTests
             Assert.IsNotNull(crimeMonitor.shipTargets);
             Assert.AreEqual(1, crimeMonitor.shipTargets.Count);
             Target target = crimeMonitor.shipTargets.FirstOrDefault(t => t.name == "Kurt Pettersen");
+            Assert.IsNotNull(target);
             Assert.AreEqual(CombatRating.FromEDName("Deadly"), target.CombatRank);
             Assert.AreEqual("Calennero Crew", target.faction);
             Assert.AreEqual(Superpower.Independent, target.Allegiance);
@@ -286,6 +292,43 @@ namespace UnitTests
             Assert.IsTrue(events.Count == 1);
             privateObject.Invoke("_handleJumpedEvent", new object[] { events[0] });
             Assert.AreEqual(0, crimeMonitor.shipTargets.Count);
+        }
+
+        // Test that we're able to detect and correct for simple scenarios where a bounty has been converted to an interstellar bounty
+        [TestMethod]
+        public void TestCrimeInterstellarFactorsScenario()
+        {
+            var line1 = @"{ ""timestamp"":""2022-01-15T18:37:38Z"", ""event"":""CommitCrime"", ""CrimeType"":""assault"", ""Faction"":""Radio Sidewinder Crew"", ""Victim"":""Jim Grady"", ""Bounty"":100 }";
+            var line2 = @"{ ""timestamp"":""2022-01-15T18:41:31Z"", ""event"":""PayBounties"", ""Amount"":100, ""Faction"":""$faction_Independent;"", ""Faction_Localised"":""Independent"", ""ShipID"":38, ""BrokerPercentage"":25.000000 }";
+
+            // Save original data
+            var data = ConfigService.Instance.crimeMonitorConfiguration;
+
+            // Load a known empty state
+            var privateObject = new PrivateObject(crimeMonitor);
+            var config = new CrimeMonitorConfiguration();
+            crimeMonitor.readRecord(config);
+
+            // Set a bounty with `Radio Sidewinder Crew`
+            events = JournalMonitor.ParseJournalEntry(line1);
+            Assert.IsTrue(events.Count == 1);
+            privateObject.Invoke("_handleBountyIncurredEvent", events[0]);
+            Assert.AreEqual(1, crimeMonitor.criminalrecord.Count);
+            record = crimeMonitor.criminalrecord.FirstOrDefault(r => r.faction == "Radio Sidewinder Crew");
+            Assert.IsNotNull(record);
+            Assert.AreEqual(1, record.factionReports.Count(r => r.bounty && r.crimeDef != Crime.None));
+            Assert.AreEqual(100, record.bountiesIncurred.Sum(r => r.amount));
+
+            // Test whether we're able to identify and remove the bounty after it has been converted to an interstellar bounty
+            events = JournalMonitor.ParseJournalEntry(line2);
+            Assert.IsTrue(events.Count == 1);
+            privateObject.Invoke("_handleBountyPaidEvent", new object[] { events[0] });
+            record = crimeMonitor.criminalrecord.FirstOrDefault(r => r.faction == "Radio Sidewinder Crew");
+            Assert.IsNull(record);
+            Assert.AreEqual(0, crimeMonitor.criminalrecord.Count);
+
+            // Restore original data
+            ConfigService.Instance.crimeMonitorConfiguration = data;
         }
     }
 }

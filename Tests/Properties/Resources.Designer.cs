@@ -19,7 +19,7 @@ namespace Tests.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     public class Resources {
@@ -63,16 +63,6 @@ namespace Tests.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        public static byte[] Abasheli_Barracks {
-            get {
-                object obj = ResourceManager.GetObject("Abasheli_Barracks", resourceCulture);
-                return ((byte[])(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Byte[].
-        /// </summary>
         public static byte[] bgsEddbSystem {
             get {
                 object obj = ResourceManager.GetObject("bgsEddbSystem", resourceCulture);
@@ -106,6 +96,36 @@ namespace Tests.Properties {
         public static byte[] bgsFactionResponse {
             get {
                 object obj = ResourceManager.GetObject("bgsFactionResponse", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] capi_market_fleet_carrier {
+            get {
+                object obj = ResourceManager.GetObject("capi_market_fleet_carrier", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] capi_market_Libby_Horizons {
+            get {
+                object obj = ResourceManager.GetObject("capi_market_Libby_Horizons", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] capi_shipyard_Abasheli_Barracks {
+            get {
+                object obj = ResourceManager.GetObject("capi_shipyard_Abasheli_Barracks", resourceCulture);
                 return ((byte[])(obj));
             }
         }
@@ -193,6 +213,16 @@ namespace Tests.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        public static byte[] FCMaterials {
+            get {
+                object obj = ResourceManager.GetObject("FCMaterials", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         public static byte[] fighterLoadout {
             get {
                 object obj = ResourceManager.GetObject("fighterLoadout", resourceCulture);
@@ -206,16 +236,6 @@ namespace Tests.Properties {
         public static byte[] inaraCmdrs {
             get {
                 object obj = ResourceManager.GetObject("inaraCmdrs", resourceCulture);
-                return ((byte[])(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Byte[].
-        /// </summary>
-        public static byte[] Libby_Horizons {
-            get {
-                object obj = ResourceManager.GetObject("Libby_Horizons", resourceCulture);
                 return ((byte[])(obj));
             }
         }
@@ -243,6 +263,16 @@ namespace Tests.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        public static byte[] Outfitting {
+            get {
+                object obj = ResourceManager.GetObject("Outfitting", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         public static byte[] shipLocker {
             get {
                 object obj = ResourceManager.GetObject("shipLocker", resourceCulture);
@@ -256,6 +286,16 @@ namespace Tests.Properties {
         public static byte[] shipMonitor {
             get {
                 object obj = ResourceManager.GetObject("shipMonitor", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] Shipyard {
+            get {
+                object obj = ResourceManager.GetObject("Shipyard", resourceCulture);
                 return ((byte[])(obj));
             }
         }
@@ -296,6 +336,26 @@ namespace Tests.Properties {
         public static byte[] SolStations {
             get {
                 object obj = ResourceManager.GetObject("SolStations", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] SpanshCarrierResult {
+            get {
+                object obj = ResourceManager.GetObject("SpanshCarrierResult", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] SpanshGalaxyResult {
+            get {
+                object obj = ResourceManager.GetObject("SpanshGalaxyResult", resourceCulture);
                 return ((byte[])(obj));
             }
         }

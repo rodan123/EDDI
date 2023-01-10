@@ -1,4 +1,5 @@
 ﻿using JetBrains.Annotations;
+using Newtonsoft.Json;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -111,7 +112,7 @@ namespace Utilities
                     type = Nullable.GetUnderlyingType(type);
                 }
 
-                Logging.Debug("Handling key " + string.Join("/", keysPath));
+                Logging.Debug($"Handling {type?.Name ?? "<null>"} key {key} in path {string.Join("/", keysPath)}", value);
 
                 if (type == typeof(bool))
                 {
@@ -128,6 +129,10 @@ namespace Utilities
                 else if (type == typeof(long))
                 {
                     Results.Add(new MetaVariable(keysPath, type, description, (long?)value));
+                }
+                else if (type == typeof(ulong))
+                {
+                    Results.Add(new MetaVariable(keysPath, type, description, (ulong?)value));
                 }
                 else if (type == typeof(double))
                 {
@@ -158,7 +163,7 @@ namespace Utilities
                 else
                 {
                     if (undecomposedTypes.Contains(type)) { return; }
-                    else if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Dictionary<,>) || type.GetInterfaces().Contains(typeof(IDictionary)))
+                    else if ((type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Dictionary<,>)) || type.GetInterfaces().Contains(typeof(IDictionary)))
                     {
                         if (value != null)
                         {
@@ -222,15 +227,7 @@ namespace Utilities
             }
             catch (Exception ex)
             {
-                var data = new Dictionary<string, object>()
-                    {
-                        { "keysPath", string.Join("/", keysPath) },
-                        { "key", key },
-                        { "type", type },
-                        { "value", value },
-                        { "Exception", ex }
-                    };
-                Logging.Error("Failed to obtain variable metadata by reflection.", data);
+                Logging.Error("Failed to obtain variable metadata by reflection.", ex);
             }
             return;
         }
@@ -318,7 +315,7 @@ namespace Utilities
             this.description = description;
 
             // Convert doubles, floats, and longs to decimals
-            if (value is null && (variableType == typeof(double) || variableType == typeof(float) || variableType == typeof(long)))
+            if (value is null && (variableType == typeof(double) || variableType == typeof(float) || variableType == typeof(long) || variableType == typeof(ulong)))
             {
                 this.value = null;
                 this.variableType = typeof(decimal);
@@ -336,6 +333,11 @@ namespace Utilities
             else if (value is long l)
             {
                 this.value = Convert.ToDecimal(l);
+                this.variableType = typeof(decimal);
+            }
+            else if (value is ulong ul)
+            {
+                this.value = Convert.ToDecimal(ul);
                 this.variableType = typeof(decimal);
             }
             else
@@ -427,12 +429,7 @@ namespace Utilities
             }
             catch (Exception ex)
             {
-                var data = new Dictionary<string, object>()
-                    {
-                        { "Value", this },
-                        { "Exception", ex }
-                    };
-                Logging.Error($"Failed to write VoiceAttack value for key '{key}'", data);
+                Logging.Error($"Failed to write VoiceAttack value for key '{key}' with value {JsonConvert.SerializeObject(value)}", ex);
             }
         }
     }

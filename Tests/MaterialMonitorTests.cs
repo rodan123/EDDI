@@ -1,4 +1,5 @@
-﻿using EddiDataDefinitions;
+﻿using EddiConfigService;
+using EddiDataDefinitions;
 using EddiEvents;
 using EddiJournalMonitor;
 using EddiMaterialMonitor;
@@ -41,7 +42,7 @@ namespace UnitTests
         [TestMethod]
         public void TestMaterialMonitor()
         {
-            MaterialMonitorConfiguration config = MaterialMonitorConfiguration.FromJsonString(json);
+            var config = ConfigService.FromJson<MaterialMonitorConfiguration>(json);
             Assert.AreEqual(2, config.materials.Count);
 
             MaterialAmount zirconiumAmount = config.materials[1];
@@ -58,12 +59,23 @@ namespace UnitTests
         public void TestMaterialAmountFromJson()
         {
             string json = @"{
-                ""amount"": 1,
-                ""material"": ""Molybdenum""
+              ""edname"": ""molybdenum"",
+              ""amount"": 102,
+              ""minimum"": 60,
+              ""desired"": 100,
+              ""maximum"": 200,
+              ""Rarity"": {
+                ""edname"": ""standard""
+              }
             }";
             MaterialAmount materialAmount = JsonConvert.DeserializeObject<MaterialAmount>(json);
-            Assert.AreEqual(1, materialAmount.amount);
+            Assert.IsNotNull(materialAmount);
+            Assert.AreEqual(102, materialAmount.amount);
+            Assert.AreEqual(60, materialAmount.minimum);
+            Assert.AreEqual(100, materialAmount.desired);
+            Assert.AreEqual(200, materialAmount.maximum);
             Assert.AreEqual("Molybdenum", materialAmount.material);
+            Assert.AreEqual("standard", materialAmount.Rarity.edname);
         }
 
         [TestMethod]
@@ -125,7 +137,7 @@ namespace UnitTests
             var antimony = materialMonitor.inventory.Single(m => string.Equals(m.edname, "antimony", StringComparison.InvariantCultureIgnoreCase));
             if (antimony is null)
             {
-                antimony = new MaterialAmount("antimony", 5, 25, 50, 75);
+                antimony = new MaterialAmount("antimony", Rarity.Rare, 5, 25, 50, 75);
                 materialMonitor.inventory.Add(antimony);
             }
             else

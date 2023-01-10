@@ -16,6 +16,10 @@ namespace EddiBgsService
 
     public partial class BgsService : IBgsService
     {
+        // This API only returns data for the "live" galaxy, game version 4.0 or later.
+        private static readonly System.Version minGameVersion = new System.Version(4, 0);
+        private static System.Version currentGameVersion { get; set; }
+
         public readonly IBgsRestClient bgsRestClient;
         public readonly IBgsRestClient eddbRestClient;
 
@@ -44,7 +48,8 @@ namespace EddiBgsService
         /// <summary> Specify the endpoint (e.g. EddiBgsService.Endpoint.factions) and a list of queries as KeyValuePairs </summary>
         public List<object> GetData(IBgsRestClient restClient, string endpoint, List<KeyValuePair<string, object>> queries)
         {
-            if (queries == null) { return null; }
+            if (!(queries?.Any() ?? false)) { return null; }
+            if (currentGameVersion != null && currentGameVersion < minGameVersion) { return null; }
 
             var docs = new List<object>();
             var currentPage = 1;
@@ -72,16 +77,28 @@ namespace EddiBgsService
                     }
                 }
 
+                Logging.Debug($"Query: {JsonConvert.SerializeObject(request.Parameters)}. {endpoint} returned response: ", docs);
                 return docs;
             }
             return null;
+        }
+
+        public static void SetGameVersion(System.Version version)
+        {
+            currentGameVersion = version;
+            if (currentGameVersion != null && currentGameVersion < minGameVersion)
+            {
+                Logging.Warn($"Service disabled. Game version is {currentGameVersion}, service returns data for version {minGameVersion} or later.");
+            }
         }
 
         private PageResponse PageRequest(IBgsRestClient restClient, RestRequest request, int page)
         {
             request.AddOrUpdateParameter("page", page);
 
-            RestResponse<RestRequest> clientResponse = (RestResponse<RestRequest>)restClient.Execute<RestRequest>(request);
+            Logging.Debug($"Query: {JsonConvert.SerializeObject(request.Parameters)}. Sending request to {request.Resource}");
+            var clientResponse = (RestResponse<RestRequest>)restClient.Execute<RestRequest>(request);
+            Logging.Debug("Response received: ", clientResponse);
             if (clientResponse.IsSuccessful)
             {
                 string json = clientResponse.Content;
@@ -94,7 +111,7 @@ namespace EddiBgsService
             }
             else
             {
-                Logging.Debug("EliteBGS data error: Error obtaining data from " + request.Resource + ". Query: " + request.Parameters.ToArray());
+                Logging.Debug($"EliteBGS data error: Error obtaining data from {request.Resource}.", clientResponse);
             }
             return null; // No results
         }

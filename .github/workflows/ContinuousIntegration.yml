@@ -9,11 +9,12 @@ env:
 # Define our triggers
 on:
   push:
+    branches-ignore: [ l10n_develop ]
     # For CodeQL code scanning workflow files, don't use the paths-ignore or paths keywords with the on:push event 
     # as this is likely to cause missing analyses. For accurate results, CodeQL code scanning needs to be able to 
     # compare new changes with the analysis of the previous commit.
   pull_request:
-    branches: [ develop, experimental/github-actions-ci ]
+    branches: [ develop, '!l10n_develop', experimental/github-actions-ci ]
     paths-ignore:
     - docs/*        # Every file in the root docs folder
     - '**.html'     # HTML files anywhere in the repo
@@ -35,19 +36,19 @@ on:
 jobs:
   analyze:
     name: Analyze
-    runs-on: windows-latest
+    runs-on: windows-2019
 
     steps:
     - name: Check out the repository on the workflow runner
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v3.1.0
 
     # Setup our PATH
     - name: Add msbuild.exe to PATH
-      uses: microsoft/setup-msbuild@v1.0.2
+      uses: microsoft/setup-msbuild@v1.1.3
     - name: Add VSTest.console.exe to PATH
       uses: darenm/Setup-VSTest@v1.1.1
     - name: Add nuget to PATH
-      uses: nuget/setup-nuget@v1.0.5
+      uses: nuget/setup-nuget@v1.1.1
       with:
         nuget-version: 'latest'
 
@@ -65,7 +66,7 @@ jobs:
 
     # Initializes Github's CodeQL tools for scanning our build
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v1
+      uses: github/codeql-action/init@v2
       with:
         languages: csharp
         # If you wish to specify custom queries, you can do so here or in a config file.
@@ -81,7 +82,7 @@ jobs:
     - name: Compress build artifacts
       run: Compress-Archive -Path ./bin/Release/* -DestinationPath build-artifact.zip
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3.1.0
       with:
         name: build-artifact
         path: build-artifact.zip
@@ -93,18 +94,18 @@ jobs:
       uses: ./.github/actions/TestWithCoverage
       with:
         opencover-console-path: \.nuget\packages\OpenCover\4.6.519\tools\OpenCover.Console.exe
-        opencover-console-args: -mergebyhash -skipautoprops -excludebyattribute:*.ExcludeFromCodeCoverage*,*.GeneratedCodeAttribute* -excludebyfile:*\*.Designer.cs,*.xaml -filter:"+[Eddi*]* +[Utilities*]* +[Tests*]UnitTests*" -register:Path32
+        opencover-console-args: -mergebyhash -skipautoprops -excludebyattribute:*.ExcludeFromCodeCoverage*,*.GeneratedCodeAttribute* -excludebyfile:*\*.Designer.cs,*.xaml -filter:"+[Eddi*]* +[Utilities*]* +[Tests*]UnitTests*" -register:Path32 -returntargetcode
         target-path: vstest.console.exe
         target-args: Tests/bin/Release/Tests.dll /tests:UnitTests /Parallel /InIsolation /Blame
         output-path: ./TestResults/coverage.xml
 
     # Upload coverage results
     - name: Upload coverage to CodeCov (ref. https://github.com/codecov/codecov-action)
-      uses: codecov/codecov-action@master
+      uses: codecov/codecov-action@v3
       with:
         files: TestResults/coverage.xml
         fail_ci_if_error: false # Specify if CI pipeline should fail when Codecov runs into errors during upload. Defaults to false
 
     # Analyze our build for security vulnerabilities
     - name: Perform CodeQL Security Analysis
-      uses: github/codeql-action/analyze@v1
+      uses: github/codeql-action/analyze@v2

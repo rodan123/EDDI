@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using EddiConfigService;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +15,8 @@ namespace EddiInaraService
 
         public InaraCmdr GetCommanderProfile(string cmdrName)
         {
+            if (currentGameVersion != null && currentGameVersion < minGameVersion) { return null; }
+
             return GetCommanderProfiles(new[] { cmdrName })?.FirstOrDefault();
         }
 
@@ -29,7 +32,7 @@ namespace EddiInaraService
                     { "searchName", cmdrName }
                 }));
             }
-            var responses = SendEventBatch(events, InaraConfiguration.FromFile());
+            var responses = SendEventBatch(events, ConfigService.Instance.inaraConfiguration);
             foreach (InaraResponse inaraResponse in responses)
             {
                 string jsonCmdr = JsonConvert.SerializeObject(inaraResponse.eventData);

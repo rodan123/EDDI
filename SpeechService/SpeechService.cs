@@ -1,6 +1,8 @@
 ﻿using CSCore;
+using CSCore.Codecs;
 using CSCore.Codecs.WAV;
 using CSCore.SoundOut;
+using EddiCompanionAppService;
 using EddiDataDefinitions;
 using EddiSpeechService.SpeechPreparation;
 using EddiSpeechService.SpeechSynthesizers;
@@ -16,6 +18,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using Utilities;
 
 namespace EddiSpeechService
@@ -43,7 +46,10 @@ namespace EddiSpeechService
         private readonly WindowsMediaSynthesizer windowsMediaSynth;
 
         public List<VoiceDetails> allVoices { get; }
-        public List<string> allvoices => allVoices.Select(v => v.name).ToList();
+        public List<string> allvoices => allVoices
+            .Where(v => !v.hideVoice)
+            .Select(v => v.name)
+            .ToList();
 
         private static readonly object activeSpeechLock = new object();
         private ISoundOut _activeSpeech;
@@ -57,6 +63,7 @@ namespace EddiSpeechService
             }
         }
         private int activeSpeechPriority;
+        private ISoundOut activeAudio;
 
         public readonly SpeechQueue speechQueue = SpeechQueue.Instance;
 
@@ -73,6 +80,8 @@ namespace EddiSpeechService
                 }
             }
         }
+
+        public bool eddiAudioPlaying => activeAudio != null;
 
         private static SpeechService instance;
         private static readonly object instanceLock = new object();
@@ -112,7 +121,7 @@ namespace EddiSpeechService
             }
         }
 
-        private SpeechService()
+        public SpeechService()
         {
             Configuration = SpeechServiceConfiguration.FromFile();
             var voiceStore = new HashSet<VoiceDetails>(); // Use a Hashset to ensure no duplicates
@@ -136,6 +145,17 @@ namespace EddiSpeechService
             
             // Sort results alphabetically by voice name
             allVoices = voiceStore.OrderBy(v => v.name).ToList();
+
+            // Monitor and respond appropriately to changes in the state of the CompanionAppService
+            CompanionAppService.Instance.StateChanged += CompanionAppService_StateChanged;
+        }
+
+        private void CompanionAppService_StateChanged(CompanionAppService.State oldState, CompanionAppService.State newState)
+        {
+            if (newState == CompanionAppService.State.ConnectionLost)
+            {
+                Say(null, EddiCompanionAppService.Properties.CapiResources.frontier_api_lost, 0);
+            }
         }
 
         public void Say(Ship ship, string message, int priority = 3, string voice = null, bool radio = false, string eventType = null, bool invokedFromVA = false)
@@ -184,7 +204,7 @@ namespace EddiSpeechService
             Instance.Speak(speech.message, speech.voice, speech.echoDelay, speech.distortionLevel, speech.chorusLevel, speech.reverbLevel, speech.compressionLevel, speech.radio, speech.priority);
         }
 
-        public void Speak(string speech, string voice, int echoDelay, int distortionLevel, int chorusLevel, int reverbLevel, int compressLevel, bool radio = false, int priority = 3)
+        public void Speak(string speech, string defaultVoice, int echoDelay, int distortionLevel, int chorusLevel, int reverbLevel, int compressLevel, bool radio = false, int priority = 3)
         {
             if (speech == null || speech.Trim() == "") { return; }
 
@@ -194,30 +214,49 @@ namespace EddiSpeechService
                 speech = SpeechFormatter.DisableIPA(speech);
             }
 
-            if (string.IsNullOrWhiteSpace(voice))
-            {
-                voice = Configuration.StandardVoice;
-            }
-
             List<string> statements = SpeechFormatter.SeparateSpeechStatements(speech);
 
             foreach (string Statement in statements)
             {
-                string statement = Statement;
+                string voice = null;
+                string statement = null;
 
-                bool isAudio = statement.Contains("<audio"); // This is an audio file, we will disable voice effects processing
+                bool isAudio = Statement.Contains("<audio"); // This is an audio file, we will disable voice effects processing
                 if (isAudio)
                 {
-                    statement = SpeechFormatter.FormatAudioTags(statement);
+                    SpeechFormatter.UnpackAudioTags(Statement, out string fileName, out bool async, out decimal? volumeOverride);
+                    try
+                    {
+                        // Play the audio, waiting for the audio to complete unless we're in async mode
+                        if (async)
+                        {
+                            Task.Run(() => PlayAudio(fileName, volumeOverride));
+                        }
+                        else
+                        {
+                            PlayAudio(fileName, volumeOverride);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Logging.Warn(e.Message, e);
+                    }
+                    continue;
                 }
 
-                bool isRadio = statement.Contains("<transmit") || radio; // This is a radio transmission, we will enable radio voice effects processing
+                bool isRadio = Statement.Contains("<transmit") || radio; // This is a radio transmission, we will enable radio voice effects processing
                 if (isRadio)
                 {
-                    statement = SpeechFormatter.StripRadioTags(statement);
+                    statement = SpeechFormatter.StripRadioTags(Statement);
                 }
 
-                using (Stream stream = getSpeechStream(voice, statement))
+                bool isVoice = Statement.Contains("<voice") || radio; // This is a voice override
+                if (isVoice)
+                {
+                    SpeechFormatter.UnpackVoiceTags(Statement, out voice, out statement);
+                }
+
+                using (Stream stream = getSpeechStream(voice ?? defaultVoice, statement ?? Statement))
                 {
                     if (stream == null)
                     {
@@ -250,7 +289,7 @@ namespace EddiSpeechService
         // Play a source
         private void play(IWaveSource source, int priority)
         {
-            if (source == null)
+            if (source == null || source.Length == 0)
             {
                 Logging.Debug("Source is null; skipping");
                 return;
@@ -293,18 +332,22 @@ namespace EddiSpeechService
         }
 
         // Obtain the speech memory stream
-        private Stream getSpeechStream(string voice, string speech)
+        public Stream getSpeechStream(string voice, string speech)
         {
             try
             {
                 if (string.IsNullOrEmpty(voice))
                 {
-                    voice = windowsMediaSynth?.voice;
+                    voice = Configuration.StandardVoice;
                 }
 
-                if (string.IsNullOrEmpty(voice))
+                if (allVoices.All(v => v.name != voice))
                 {
-                    voice = systemSpeechSynth?.voice;
+                    voice = windowsMediaSynth?.voice ?? systemSpeechSynth?.voice;
+
+                    // If the prior selected voice is no longer a valid option, we revert to the system default.
+                    Configuration.StandardVoice = null;
+                    Configuration.ToFile();
                 }
 
                 if (string.IsNullOrEmpty(voice))
@@ -313,7 +356,7 @@ namespace EddiSpeechService
                 }
 
                 var stream = speak(voice, speech);
-                if (stream.Length == 0)
+                if (stream is null || stream.Length == 0)
                 {
                     // Try again, with speech devoid of SSML
                     stream = speak(voice, Regex.Replace(speech, "<.*?>", string.Empty));
@@ -342,11 +385,11 @@ namespace EddiSpeechService
 
         private Stream speak(VoiceDetails voiceDetails, string speech)
         {
-            if (voiceDetails?.synthType is nameof(System.Speech.Synthesis))
+            if (voiceDetails?.synthType is nameof(System))
             {
                 return systemSpeechSynth?.Speak(voiceDetails, speech, Configuration);
             }
-            else if (voiceDetails?.synthType is nameof(Windows.Media.SpeechSynthesis))
+            else if (voiceDetails?.synthType is nameof(Windows.Media))
             {
                 return windowsMediaSynth?.Speak(voiceDetails, speech, Configuration);
             }
@@ -385,7 +428,7 @@ namespace EddiSpeechService
                 if (activeSpeech != null)
                 {
                     Logging.Debug("Stopping active speech");
-                    FadeOutCurrentSpeech();
+                    FadeOut(activeSpeech);
                     activeSpeech.Stop();
                     Logging.Debug("Disposing of active speech");
                     activeSpeech.Dispose();
@@ -395,14 +438,14 @@ namespace EddiSpeechService
             }
         }
 
-        private void FadeOutCurrentSpeech()
+        private void FadeOut(ISoundOut soundOut)
         {
-            if (activeSpeech?.PlaybackState == PlaybackState.Playing)
+            if (soundOut?.PlaybackState == PlaybackState.Playing)
             {
-                float fadePer10Milliseconds = (activeSpeech.Volume / ActiveSpeechFadeOutMilliseconds) * 10;
-                while (activeSpeech.Volume > 0)
+                float fadePer10Milliseconds = (soundOut.Volume / ActiveSpeechFadeOutMilliseconds) * 10;
+                while (soundOut.Volume > 0)
                 {
-                    activeSpeech.Volume -= fadePer10Milliseconds;
+                    soundOut.Volume -= fadePer10Milliseconds;
                     Thread.Sleep(10);
                 }
             }
@@ -470,6 +513,36 @@ namespace EddiSpeechService
             }
             return false;
         }
+        
+        public void PlayAudio(string fileName, decimal? volumeOverride)
+        {
+            using (EventWaitHandle waitHandle = new EventWaitHandle(false, EventResetMode.AutoReset))
+            using (var soundOut = GetSoundOut())
+            {
+                var audioSource = CodecFactory.Instance.GetCodec(fileName);
+                var waitTime = audioSource.GetTime(audioSource.Length);
+                activeAudio = soundOut;
+                soundOut.Initialize(audioSource);
+                if (volumeOverride != null)
+                {
+                    soundOut.Volume = (float)volumeOverride / 100;
+                }
+                soundOut.Play();
+                waitHandle.WaitOne(waitTime);
+                StopAudio();
+            }
+        }
+
+        public void StopAudio()
+        {
+            if (eddiAudioPlaying)
+            {
+                FadeOut(activeAudio);
+                activeAudio.Stop();
+                activeAudio.Dispose();
+                activeAudio = null;
+            }
+        }
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -501,6 +574,8 @@ namespace EddiSpeechService
         public string culturename => Culture.NativeName;
 
         public CultureInfo Culture { get; }
+
+        public bool hideVoice { get; set; }
 
         internal VoiceDetails(string displayName, string gender, CultureInfo Culture, string synthType)
         {

@@ -154,7 +154,7 @@
     <value>Wing Disable</value>
   </data>
   <data name="GenericPermit1" xml:space="preserve">
-    <value>Разрешение на приобретение</value>
+    <value>Возможность получения разрешений</value>
   </data>
   <data name="Hack" xml:space="preserve">
     <value>Взлом базы</value>
@@ -186,9 +186,7 @@
   <data name="Piracy" xml:space="preserve">
     <value>Пиратские</value>
   </data>
-  <data name="Rescue" xml:space="preserve">
-    <value>Спасательный груз</value>
-  </data>
+  
   <data name="Salvage" xml:space="preserve">
     <value>Разборка</value>
   </data>
@@ -243,14 +241,6 @@
   </data>
   <data name="HackMegaship" xml:space="preserve">
     <value>Взлом Мегакоробля</value>
-  </data>
-  <data name="ConflictCivilWar" xml:space="preserve">
-    <value>Цели гражданской войны</value>
-    <comment>Massacre mission type</comment>
-  </data>
-  <data name="ConflictWar" xml:space="preserve">
-    <value>Цели войны</value>
-    <comment>Massacre mission type</comment>
   </data>
   <data name="Skimmer" xml:space="preserve">
     <value>Цели беспелотники</value>
@@ -308,4 +298,17 @@
     <value>Политический заключенный</value>
     <comment>Bulk passenger type</comment>
   </data>
+  <data name="Assassination" xml:space="preserve">
+    <value>Заказное убийство</value>
+  </data>
+  <data name="Heist" xml:space="preserve">
+    <value>Ограбление</value>
+  </data>
+  <data name="POI" xml:space="preserve">
+    <value>Точка интереса</value>
+  </data>
+  
+  
+  
+  
 </root>

@@ -202,7 +202,7 @@ namespace EddiDataDefinitions
                 new CommodityDefinition(128667681, 205, "BurnhamBileDistillate", Narcotics, 8466, true),
                 new CommodityDefinition(128667682, 206, "HIPOrganophosphates", Chemicals, 8169, true),
                 new CommodityDefinition(128667683, 207, "JaradharrePuzzleBox", ConsumerItems, 16816, true),
-                new CommodityDefinition(128667684, 208, "KoroKungPellets", Chemicals, 8067, true),
+                new CommodityDefinition(128667684, 208, "KorroKungPellets", Chemicals, 8067, true),
                 new CommodityDefinition(128667685, 209, "LFTVoidExtractCoffee", Foods, 9554, true),
                 new CommodityDefinition(128667686, 210, "HonestyPills", Medicines, 8860, true),
                 new CommodityDefinition(128667687, 211, "NonEuclidianExotanks", Machinery, 8526, true),
@@ -437,7 +437,12 @@ namespace EddiDataDefinitions
                 new CommodityDefinition(128924334, 360, "AgronomicTreatment", Chemicals, 3464, false),
                 new CommodityDefinition(128958679, 361, "ApaVietii", Narcotics, 10362, true),
                 new CommodityDefinition(128961249, 362, "Tritium", Chemicals, 41684, false),
-                new CommodityDefinition(128983059, null, "OnionHeadC", Narcotics, 5387, false),
+                new CommodityDefinition(128983059, 377, "OnionHeadC", Narcotics, 5387, false),
+                new CommodityDefinition(129002574, null, "ClassifiedExperimentalEquipment", Technology, 0, true),
+                new CommodityDefinition(129015433, null, "AncientRelicTG", Salvage, 4798, false),
+                new CommodityDefinition(129019258, null, "ThargoidTissueSampleType5", Salvage, 98368, false),
+                new CommodityDefinition(129019259, null, "ThargoidGeneratorTissueSample", Salvage, 67680, false),
+                new CommodityDefinition(129022087, null, "UnocuppiedEscapePod", Salvage, 3900, false),
 
                 // Items for which we do not have Elite IDs
             };
@@ -497,10 +502,7 @@ namespace EddiDataDefinitions
 
         public static CommodityDefinition FromNameOrEDName(string name)
         {
-            if (string.IsNullOrEmpty(name))
-            {
-                return null;
-            }
+            if (string.IsNullOrEmpty(name)) { return null; }
 
             string normalizedName = NormalizedName(name);
 
@@ -550,13 +552,14 @@ namespace EddiDataDefinitions
 
         new public static CommodityDefinition FromEDName(string rawName)
         {
+            if (string.IsNullOrEmpty(rawName)) { return null; }
             string edName = NormalizedName(rawName);
             return ResourceBasedLocalizedEDName<CommodityDefinition>.FromEDName(edName);
         }
 
         public static bool EDNameExists(string edName)
         {
-            if (edName == null) { return false; }
+            if (string.IsNullOrEmpty(edName)) { return false; }
             return AllOfThem.Any(v => string.Equals(v.edname, titiedEDName(edName), StringComparison.InvariantCultureIgnoreCase));
         }
 

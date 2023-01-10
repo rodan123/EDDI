@@ -19,8 +19,8 @@ namespace EddiDataProviderService
         public long SCHEMA_VERSION { get; private set; }
 
         // Append new table columns to the end of the list to maximize compatibility with schema version 0.
-        // systemaddress and edsmid must each be unique. 
-        // Furthermore, any combination of name, systemaddress, and edsmid must also be unique.
+        // systemaddress. 
+        // Furthermore, any combination of name and systemaddress must also be unique.
         private const string CREATE_TABLE_SQL = @" 
                     CREATE TABLE IF NOT EXISTS starsystems
                     (
@@ -31,16 +31,13 @@ namespace EddiDataProviderService
                         starsystemlastupdated DATETIME NOT NULL,
                         comment TEXT,
                         systemaddress INT UNIQUE,
-                        edsmid INT UNIQUE,
-                        CONSTRAINT combined_uniques UNIQUE (name, systemaddress, edsmid)
+                        CONSTRAINT combined_uniques UNIQUE (name, systemaddress)
                      );";
         private const string CREATE_INDEX_SQL = @" 
                     CREATE INDEX IF NOT EXISTS 
                         starsystems_idx_1 ON starsystems(name COLLATE NOCASE);
                     CREATE UNIQUE INDEX IF NOT EXISTS 
                         starsystems_idx_2 ON starsystems(systemaddress) WHERE systemaddress IS NOT NULL;
-                    CREATE UNIQUE INDEX IF NOT EXISTS 
-                        starsystems_idx_3 ON starsystems(edsmid) WHERE edsmid IS NOT NULL;
                     ";
         private const string TABLE_INFO_SQL = @"PRAGMA table_info(starsystems)";
         private const string REPLACE_TABLE_SQL = @" 
@@ -56,8 +53,7 @@ namespace EddiDataProviderService
                         starsystem,
                         starsystemlastupdated,
                         comment,
-                        systemaddress,
-                        edsmid
+                        systemaddress
                     FROM old_starsystems;
                     DROP TABLE old_starsystems;
                     COMMIT;
@@ -74,8 +70,7 @@ namespace EddiDataProviderService
                         starsystem,
                         starsystemlastupdated,
                         comment,
-                        systemaddress,
-                        edsmid
+                        systemaddress
                     )";
         private const string UPDATE_SQL = @" 
                     UPDATE starsystems
@@ -85,8 +80,7 @@ namespace EddiDataProviderService
                             starsystem = @starsystem,
                             starsystemlastupdated = @starsystemlastupdated,
                             comment = @comment,
-                            systemaddress = @systemaddress,
-                            edsmid = @edsmid
+                            systemaddress = @systemaddress
                     ";
         private const string DELETE_SQL = @"DELETE FROM starsystems ";
         private const string SELECT_SQL = @"SELECT * FROM starsystems ";
@@ -99,11 +93,9 @@ namespace EddiDataProviderService
                         @starsystem, 
                         @starsystemlastupdated,
                         @comment,
-                        @systemaddress,
-                        @edsmid
+                        @systemaddress
                     )";
         private const string WHERE_SYSTEMADDRESS = @"WHERE systemaddress = @systemaddress; PRAGMA optimize;";
-        private const string WHERE_EDSMID = @"WHERE edsmid = @edsmid; PRAGMA optimize;";
         private const string WHERE_NAME = @"WHERE name = @name; PRAGMA optimize;";
 
         private readonly IEdsmService edsmService;
@@ -228,7 +220,7 @@ namespace EddiDataProviderService
                             // Data is stale or we have no record of ever updating this star system
                             needToUpdate = true;
                         }
-                        else if (SCHEMA_VERSION >= 2 && (dbStarSystem.systemAddress is null || dbStarSystem.edsmId is null))
+                        else if (SCHEMA_VERSION >= 2 && (dbStarSystem.systemAddress is null))
                         {
                             // Obtain data for optimized data searches starting with schema version 2
                             needToUpdate = true;
@@ -345,17 +337,17 @@ namespace EddiDataProviderService
             oldStarSystem.TryGetValue("bodies", out object bodiesVal);
             try
             {
-                List<Body> oldBodies = JsonConvert.DeserializeObject<List<Body>>(JsonConvert.SerializeObject(bodiesVal));
-                updatedSystem.PreserveBodyData(oldBodies, updatedSystem.bodies);
+                if (bodiesVal != null)
+                {
+                    var oldBodiesString = JsonConvert.SerializeObject(bodiesVal);
+                    Logging.Debug($"Reading old body properties from {updatedSystem.systemname} from database", oldBodiesString);
+                    List<Body> oldBodies = JsonConvert.DeserializeObject<List<Body>>(oldBodiesString);
+                    updatedSystem.PreserveBodyData(oldBodies, updatedSystem.bodies);
+                }
             }
             catch (Exception e) when (e is JsonReaderException || e is JsonWriterException || e is JsonException)
             {
-                Dictionary<string, object> data = new Dictionary<string, object>()
-                {
-                    { "value", bodiesVal },
-                    { "exception", e }
-                };
-                Logging.Error("Failed to read exploration data for bodies in " + updatedSystem.systemname + " from database.", data);
+                Logging.Error($"Failed to read exploration data for bodies in {updatedSystem.systemname} from database.", e);
             }
         }
 
@@ -367,7 +359,9 @@ namespace EddiDataProviderService
             {
                 if (factionsVal != null)
                 {
-                    List<Faction> oldFactions = JsonConvert.DeserializeObject<List<Faction>>(JsonConvert.SerializeObject(factionsVal));
+                    var oldFactionsString = JsonConvert.SerializeObject(factionsVal);
+                    Logging.Debug($"Reading old faction properties from {updatedSystem.systemname} from database", oldFactionsString);
+                    List<Faction> oldFactions = JsonConvert.DeserializeObject<List<Faction>>(oldFactionsString);
                     if (oldFactions?.Count > 0)
                     {
                         foreach (var updatedFaction in updatedSystem.factions)
@@ -385,12 +379,7 @@ namespace EddiDataProviderService
             }
             catch (Exception e) when (e is JsonReaderException || e is JsonWriterException || e is JsonException)
             {
-                Dictionary<string, object> data = new Dictionary<string, object>()
-                {
-                    { "value", factionsVal },
-                    { "exception", e }
-                };
-                Logging.Error("Failed to read commander faction reputation data for " + updatedSystem.systemname + " from database.", data);
+                Logging.Error("Failed to read commander faction reputation data for " + updatedSystem.systemname + " from database.", e);
             }
         }
 
@@ -413,7 +402,7 @@ namespace EddiDataProviderService
                                 cmd.Prepare();
                                 cmd.Parameters.AddWithValue("@name", name);
                                 cmd.CommandText = SELECT_SQL + WHERE_NAME;
-                                results.Add(ReadStarSystemEntry(cmd) ?? new DatabaseStarSystem(name, null, null, string.Empty));
+                                results.Add(ReadStarSystemEntry(cmd) ?? new DatabaseStarSystem(name, null, string.Empty));
                             }
                             catch (SQLiteException)
                             {
@@ -449,17 +438,12 @@ namespace EddiDataProviderService
                                     cmd.Parameters.AddWithValue("@systemaddress", starSystem.systemAddress);
                                     cmd.CommandText = SELECT_SQL + WHERE_SYSTEMADDRESS;
                                 }
-                                else if (starSystem.EDSMID != null)
-                                {
-                                    cmd.Parameters.AddWithValue("@edsmid", starSystem.EDSMID);
-                                    cmd.CommandText = SELECT_SQL + WHERE_EDSMID;
-                                }
                                 else
                                 {
                                     cmd.Parameters.AddWithValue("@name", starSystem.systemname);
                                     cmd.CommandText = SELECT_SQL + WHERE_NAME;
                                 }
-                                results.Add(ReadStarSystemEntry(cmd) ?? new DatabaseStarSystem(starSystem.systemname, starSystem.systemAddress, starSystem.EDSMID, string.Empty));
+                                results.Add(ReadStarSystemEntry(cmd) ?? new DatabaseStarSystem(starSystem.systemname, starSystem.systemAddress, string.Empty));
                             }
                             catch (SQLiteException)
                             {
@@ -477,8 +461,7 @@ namespace EddiDataProviderService
         private DatabaseStarSystem ReadStarSystemEntry(SQLiteCommand cmd)
         {
             string systemName = string.Empty;
-            long? systemAddress = null;
-            long? edsmId = null;
+            ulong? systemAddress = null;
             string starSystemJson = string.Empty;
             string comment = string.Empty;
             DateTime lastUpdated = DateTime.MinValue;
@@ -493,11 +476,7 @@ namespace EddiDataProviderService
                     {
                         if (SCHEMA_VERSION >= 2 && rdr.GetName(i) == "systemaddress")
                         {
-                            systemAddress = rdr.IsDBNull(i) ? null : (long?)rdr.GetInt64(i);
-                        }
-                        if (SCHEMA_VERSION >= 2 && rdr.GetName(i) == "edsmid")
-                        {
-                            edsmId = rdr.IsDBNull(i) ? null : (long?)rdr.GetInt64(i);
+                            systemAddress = rdr.IsDBNull(i) ? null : (ulong?)rdr.GetInt64(i);
                         }
                         if (rdr.GetName(i) == "name")
                         {
@@ -526,7 +505,7 @@ namespace EddiDataProviderService
                     }
                 }
             }
-            return new DatabaseStarSystem(systemName, systemAddress, edsmId, starSystemJson)
+            return new DatabaseStarSystem(systemName, systemAddress,  starSystemJson)
             {
                 comment = comment,
                 lastUpdated = lastUpdated,
@@ -608,13 +587,11 @@ namespace EddiDataProviderService
             {
                 DatabaseStarSystem dbSystem = dbSystems.FirstOrDefault(s =>
                     s.systemAddress != null && s.systemAddress == system.systemAddress ||
-                    s.edsmId != null && s.edsmId == system.EDSMID ||
                     s.systemName == system.systemname);
 
                 if (dbSystem?.systemJson is null ||
-                    dbSystem?.systemAddress is null && dbSystem?.edsmId is null)
+                    dbSystem?.systemAddress is null)
                 {
-                    // If we're updating to schema version 2, systemAddress and edsmId will both be null. 
                     // Use our delete method to purge all obsolete copies of the star system from the database,
                     // then re-add the star system.
                     delete.Add(system);
@@ -666,7 +643,6 @@ namespace EddiDataProviderService
                                 cmd.Prepare();
                                 cmd.Parameters.AddWithValue("@name", system.systemname);
                                 cmd.Parameters.AddWithValue("@systemaddress", system.systemAddress);
-                                cmd.Parameters.AddWithValue("@edsmid", system.EDSMID);
                                 cmd.Parameters.AddWithValue("@totalvisits", system.visits);
                                 cmd.Parameters.AddWithValue("@lastvisit", system.lastvisit ?? DateTime.UtcNow);
                                 cmd.Parameters.AddWithValue("@starsystem", JsonConvert.SerializeObject(system));
@@ -703,13 +679,15 @@ namespace EddiDataProviderService
                         {
                             foreach (StarSystem system in systems)
                             {
+                                var serializedSystem = string.Empty;
+                                LockManager.GetLock(system.systemname, () =>
+                                {
+                                    serializedSystem = JsonConvert.SerializeObject(system);
+                                });
+                                if (string.IsNullOrEmpty(serializedSystem)) { continue; }
                                 if (system.systemAddress != null)
                                 {
                                     cmd.CommandText = UPDATE_SQL + WHERE_SYSTEMADDRESS;
-                                }
-                                else if (system.EDSMID != null)
-                                {
-                                    cmd.CommandText = UPDATE_SQL + WHERE_EDSMID;
                                 }
                                 else
                                 {
@@ -719,11 +697,10 @@ namespace EddiDataProviderService
                                 cmd.Parameters.AddWithValue("@name", system.systemname);
                                 cmd.Parameters.AddWithValue("@totalvisits", system.visits);
                                 cmd.Parameters.AddWithValue("@lastvisit", system.lastvisit ?? DateTime.UtcNow);
-                                cmd.Parameters.AddWithValue("@starsystem", JsonConvert.SerializeObject(system));
+                                cmd.Parameters.AddWithValue("@starsystem", serializedSystem);
                                 cmd.Parameters.AddWithValue("@starsystemlastupdated", system.lastupdated);
                                 cmd.Parameters.AddWithValue("@comment", system.comment);
                                 cmd.Parameters.AddWithValue("@systemaddress", system.systemAddress);
-                                cmd.Parameters.AddWithValue("@edsmid", system.EDSMID);
                                 cmd.ExecuteNonQuery();
                             }
                             transaction.Commit();
@@ -761,13 +738,6 @@ namespace EddiDataProviderService
                                     cmd.CommandText = DELETE_SQL + WHERE_SYSTEMADDRESS;
                                     cmd.Prepare();
                                     cmd.Parameters.AddWithValue("@systemaddress", system.systemAddress);
-                                    cmd.ExecuteNonQuery();
-                                }
-                                if (system.EDSMID != null)
-                                {
-                                    cmd.CommandText = DELETE_SQL + WHERE_EDSMID;
-                                    cmd.Prepare();
-                                    cmd.Parameters.AddWithValue("@edsmid", system.EDSMID);
                                     cmd.ExecuteNonQuery();
                                 }
                                 if (!string.IsNullOrEmpty(system.systemname))
@@ -825,7 +795,6 @@ namespace EddiDataProviderService
 
                         // Allocate our new columns
                         AddColumnIfMissing(con, "systemaddress");
-                        AddColumnIfMissing(con, "edsmid");
 
                         // We have to replace our table with a new copy to assign our new columns as unique
                         using (var cmd = new SQLiteCommand(REPLACE_TABLE_SQL, con))
@@ -833,6 +802,18 @@ namespace EddiDataProviderService
                             cmd.ExecuteNonQuery();
                         }
                         Instance.SCHEMA_VERSION = 2;
+                    }
+                    if (Instance.SCHEMA_VERSION < 3)
+                    {
+                        Logging.Debug("Updating starsystem repository to schema version 3");
+
+                        // We will recreate our table without the "edsmid" column as we won't be indexing based on this value nor using it to evaluate uniqueness
+                        // We have to replace our table with a new copy to reassign unique columns
+                        using (var cmd = new SQLiteCommand(REPLACE_TABLE_SQL, con))
+                        {
+                            cmd.ExecuteNonQuery();
+                        }
+                        Instance.SCHEMA_VERSION = 3;
                     }
 
                     // Add our indices
@@ -857,7 +838,7 @@ namespace EddiDataProviderService
             Logging.Debug("Starsystem repository ready.");
         }
 
-        /// <summary> Valid columnNames are "systemaddress", "edsmid", and "comment" </summary>
+        /// <summary> Valid columnNames are "systemaddress" and "comment" </summary>
         private static void AddColumnIfMissing(SQLiteConnection con, string columnName)
         {
             // Parameters like `DISTINCT` cannot be set on columns by this method
@@ -866,9 +847,6 @@ namespace EddiDataProviderService
             {
                 case "systemaddress":
                     command = @"ALTER TABLE starsystems ADD COLUMN systemaddress INT";
-                    break;
-                case "edsmid":
-                    command = @"ALTER TABLE starsystems ADD COLUMN edsmid int";
                     break;
                 case "comment":
                     command = @"ALTER TABLE starsystems ADD COLUMN comment TEXT;";
@@ -931,7 +909,7 @@ namespace EddiDataProviderService
 
         private static void handleSqlLiteException(SQLiteConnection con, SQLiteException ex)
         {
-            Logging.Warn("SQLite error: {0}", ex.ToString());
+            Logging.Warn("SQLite error: ", ex.ToString());
 
             try
             {
@@ -939,10 +917,8 @@ namespace EddiDataProviderService
             }
             catch (SQLiteException ex2)
             {
-
                 Logging.Warn("SQLite transaction rollback failed.");
-                Logging.Warn("SQLite error: {0}", ex2.ToString());
-
+                Logging.Warn("SQLite error: ", ex2.ToString());
             }
             finally
             {

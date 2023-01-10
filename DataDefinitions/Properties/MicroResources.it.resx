@@ -564,7 +564,7 @@
     <comment>A component from an electrical system.</comment>
   </data>
   <data name="MetalCoil" xml:space="preserve">
-    <value>Molla metallica</value>
+    <value>Bobina metallica</value>
     <comment>Commonplace metal for use in electrical circuits and hydraulic systems.</comment>
   </data>
   <data name="Motor" xml:space="preserve">
@@ -604,7 +604,7 @@
     <value>Registri audio</value>
   </data>
   <data name="AXCombatLogs" xml:space="preserve">
-    <value>Registri di combattimenti AntiXeno</value>
+    <value>Registri di combattimenti AX</value>
     <comment>Data related to anti-xeno operations and encounters with hostile Thargoid forces.</comment>
   </data>
   <data name="BallisticsData" xml:space="preserve">
@@ -784,7 +784,7 @@
     <comment>Analysis of the performance and effectiveness of newly designed weaponry or related enhancements.</comment>
   </data>
   <data name="XenoDefenceProtocols" xml:space="preserve">
-    <value>Protocolli di difesa AntiXeno</value>
+    <value>Protocolli di difesa AX</value>
     <comment>Combatant tactics and settlement instructions in the event of a non-human attack.</comment>
   </data>
   <data name="ChemicalCatalyst" xml:space="preserve">
@@ -828,7 +828,7 @@
     <comment>An optical component designed to converge or diverge light.</comment>
   </data>
   <data name="WeaponComponent" xml:space="preserve">
-    <value>Componenti per armamenti</value>
+    <value>Componente per arma</value>
     <comment>A component from a personal firearm.</comment>
   </data>
   <data name="SyntheticGenome" xml:space="preserve">

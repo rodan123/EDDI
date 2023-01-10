@@ -110,7 +110,7 @@
     <comment>Data scan type ListeningPost</comment>
   </data>
   <data name="AbandonedDataLog" xml:space="preserve">
-    <value>Log di Dati Abbandonato</value>
+    <value>Registro abbandonato</value>
     <comment>Data scan type AbandonedDataLog</comment>
   </data>
   <data name="WreckedShip" xml:space="preserve">
@@ -126,7 +126,7 @@
     <comment>Data scan type ShipUplink</comment>
   </data>
   <data name="UnknownUplink" xml:space="preserve">
-    <value>Connessione Sconosciuta</value>
+    <value>Collegamento Thargoid</value>
     <comment>Data scan type UnknownUplink</comment>
   </data>
   <data name="SettlementUnknown" xml:space="preserve">

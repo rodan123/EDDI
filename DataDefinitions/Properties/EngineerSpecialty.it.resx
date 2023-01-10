@@ -127,7 +127,7 @@
     <value>Cannoni</value>
   </data>
   <data name="ChaffAndHeatSinkLaunchers" xml:space="preserve">
-    <value>Emettitore di Bersagli Fantasma e Dispersori di Calore</value>
+    <value>Sistemi AntiRadar e Dissipatori Termici</value>
   </data>
   <data name="ECMs" xml:space="preserve">
     <value>Contromisure Elettroniche</value>
@@ -136,10 +136,10 @@
     <value>Cannoni a Frammentazione</value>
   </data>
   <data name="FrameShiftDriveInterdictors" xml:space="preserve">
-    <value>Interdittore a Modulazione di Sistema</value>
+    <value>Interdittore di Modulazione</value>
   </data>
   <data name="FrameShiftDrives" xml:space="preserve">
-    <value>Motori a Modulazione di Sistema</value>
+    <value>Motori a Modulazione</value>
   </data>
   <data name="FuelScoops" xml:space="preserve">
     <value>Concentratori di Carburante</value>
@@ -163,13 +163,13 @@
     <value>Missili</value>
   </data>
   <data name="MultiCannons" xml:space="preserve">
-    <value>Cannoni multipli</value>
+    <value>Cannoni rotanti</value>
   </data>
   <data name="PlasmaAccelerators" xml:space="preserve">
     <value>Acceleratori di plasma</value>
   </data>
   <data name="PointDefence" xml:space="preserve">
-    <value>Punto di Difesa Automatizzata</value>
+    <value>Torretta difensiva a puntamento</value>
   </data>
   <data name="PowerDistributors" xml:space="preserve">
     <value>Distributori di energia</value>

@@ -130,15 +130,15 @@
     <comment>Unidentified Signal Source</comment>
   </data>
   <data name="Warzone_PointRace_High" xml:space="preserve">
-    <value>Zona di combattimento ad alta intensità</value>
+    <value>Combattimento intenso</value>
     <comment>Conflict Zone (High Intensity)</comment>
   </data>
   <data name="Warzone_PointRace_Med" xml:space="preserve">
-    <value>Zona di combattimento a media intensità</value>
+    <value>Combattimento moderato</value>
     <comment>Conflict Zone (Medium Intensity)</comment>
   </data>
   <data name="Warzone_PointRace_Low" xml:space="preserve">
-    <value>Zona di combattimento a bassa intensità</value>
+    <value>Combattimento leggero</value>
     <comment>Conflict Zone (Low Intensity)</comment>
   </data>
   <data name="USS_Type_Salvage" xml:space="preserve">
@@ -170,7 +170,7 @@
     <comment>NonHuman signal</comment>
   </data>
   <data name="USS_Type_WeaponsFire" xml:space="preserve">
-    <value>Colpi di Arma da Fuoco</value>
+    <value>Spari</value>
     <comment>WeaponsFire signal</comment>
   </data>
   <data name="USS_Type_MissionTarget" xml:space="preserve">
@@ -190,19 +190,19 @@
     <comment>TradingBeacon signal</comment>
   </data>
   <data name="MULTIPLAYER_SCENARIO78_TITLE" xml:space="preserve">
-    <value>Sito di estrazione mineraria ad alta pericolosità</value>
+    <value>Sito minerario pericoloso</value>
     <comment>ResourceExtraction Site (High Intensity)</comment>
   </data>
   <data name="MULTIPLAYER_SCENARIO77_TITLE" xml:space="preserve">
-    <value>Sito di estrazione mineraria a bassa pericolosità</value>
+    <value>Sito minerario poco pericoloso</value>
     <comment>Resource Extraction site (Low)</comment>
   </data>
   <data name="MULTIPLAYER_SCENARIO14_TITLE" xml:space="preserve">
-    <value>Sito di estrazione mineraria</value>
+    <value>Sito minerario</value>
     <comment>Resource Extraction Site</comment>
   </data>
   <data name="MULTIPLAYER_SCENARIO79_TITLE" xml:space="preserve">
-    <value>Sito di estrazione mineraria ad altissima pericolosità</value>
+    <value>Sito minerario molto pericoloso</value>
     <comment>Resource Extraction Site [Hazardous]</comment>
   </data>
   <data name="NumberStation" xml:space="preserve">
@@ -210,7 +210,7 @@
     <comment>NumberStation</comment>
   </data>
   <data name="Warzone_TG" xml:space="preserve">
-    <value>Zona di combattimento Alieni</value>
+    <value>Zona di combattimento AX</value>
     <comment>Thargoid conflict zone</comment>
   </data>
   <data name="ListeningPost" xml:space="preserve">
@@ -222,7 +222,7 @@
     <comment>Notable Stellar Phenomena</comment>
   </data>
   <data name="FIXED_EVENT_CAPSHIP" xml:space="preserve">
-    <value>Mega Bastimento</value>
+    <value>Nave ammiraglia</value>
     <comment>Capital Ship</comment>
   </data>
   <data name="Fixed_Event_Life_Ring" xml:space="preserve">
@@ -263,61 +263,29 @@
   </data>
   <data name="FIXED_EVENT_HIGHTHREATSCENARIO_T6" xml:space="preserve">
     <value>Attività Piratesca</value>
-    <comment>Pirate Activity</comment>
+    <comment>Pirate Activity Detected [Threat 6]</comment>
   </data>
   <data name="FIXED_EVENT_HIGHTHREATSCENARIO_T7" xml:space="preserve">
     <value>Attività Piratesca</value>
-    <comment>Pirate Activity</comment>
+    <comment>Pirate Activity Detected [Threat 7]</comment>
   </data>
   <data name="SAA_SignalType_Guardian" xml:space="preserve">
     <value>Segnale di superficie dei Guardiani</value>
     <comment>Guardian Surface Signal</comment>
   </data>
-  <data name="Ancient_Tiny_003" xml:space="preserve">
-    <value>Struttura dei Guardiani</value>
-    <comment>Guardian Structure</comment>
-  </data>
   <data name="Ancient" xml:space="preserve">
     <value>Antiche Rovine</value>
     <comment>Ancient (Guardian) Ruins</comment>
   </data>
-  <data name="Ancient_Small_005" xml:space="preserve">
+  <data name="Ancient_Small" xml:space="preserve">
     <value>Struttura dei Guardiani</value>
     <comment>Guardian Structure</comment>
   </data>
-  <data name="Ancient_Small_001" xml:space="preserve">
+  <data name="Ancient_Tiny" xml:space="preserve">
     <value>Struttura dei Guardiani</value>
     <comment>Guardian Structure</comment>
   </data>
-  <data name="Ancient_Tiny_001" xml:space="preserve">
-    <value>Struttura dei Guardiani</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Small_002" xml:space="preserve">
-    <value>Struttura dei Guardiani</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Small_003" xml:space="preserve">
-    <value>Struttura dei Guardiani</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Tiny_002" xml:space="preserve">
-    <value>Struttura dei Guardiani</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Medium_003" xml:space="preserve">
-    <value>Struttura dei Guardiani</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Small_004" xml:space="preserve">
-    <value>Struttura dei Guardiani</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Medium_001" xml:space="preserve">
-    <value>Struttura dei Guardiani</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Medium_002" xml:space="preserve">
+  <data name="Ancient_Medium" xml:space="preserve">
     <value>Struttura dei Guardiani</value>
     <comment>Guardian Structure</comment>
   </data>
@@ -348,5 +316,105 @@
   <data name="AttackAftermath" xml:space="preserve">
     <value>Chiamata di Soccorso</value>
     <comment>Distress Call</comment>
+  </data>
+  <data name="Abandoned_Buggy" xml:space="preserve">
+    <value>Radiofaro di emergenza</value>
+    <comment>Distress Beacon</comment>
+  </data>
+  <data name="Damaged_Eagle_Assassination" xml:space="preserve">
+    <value>SEGNALE CRIPTATO</value>
+    <comment>ENCRYPTED SIGNAL</comment>
+  </data>
+  <data name="Damaged_Sidewinder_Assassination" xml:space="preserve">
+    <value>SEGNALE CRIPTATO</value>
+    <comment>ENCRYPTED SIGNAL</comment>
+  </data>
+  <data name="Damaged_Eagle" xml:space="preserve">
+    <value>Radiofaro di emergenza</value>
+    <comment>Distress Beacon</comment>
+  </data>
+  <data name="Damaged_Sidewinder" xml:space="preserve">
+    <value>Radiofaro di emergenza</value>
+    <comment>Distress Beacon</comment>
+  </data>
+  <data name="Smugglers_Cache" xml:space="preserve">
+    <value>Marcatori irregolari</value>
+    <comment>Irregular Markers</comment>
+  </data>
+  <data name="Trap_Cargo" xml:space="preserve">
+    <value>Marcatori irregolari</value>
+    <comment>Irregular Markers</comment>
+  </data>
+  <data name="Wreckage_Buggy" xml:space="preserve">
+    <value>Relitto minore</value>
+    <comment>Minor Wreckage</comment>
+  </data>
+  <data name="Wreckage_Probe" xml:space="preserve">
+    <value>Luogo dell'impatto</value>
+    <comment>Impact Site</comment>
+  </data>
+  <data name="Wreckage_Satellite" xml:space="preserve">
+    <value>Luogo dell'impatto</value>
+    <comment>Impact Site</comment>
+  </data>
+  <data name="Wreckage_Cargo" xml:space="preserve">
+    <value>Relitto minore</value>
+    <comment>Minor Wreckage</comment>
+  </data>
+  <data name="Wrecks_Eagle" xml:space="preserve">
+    <value>Luogo dello schianto</value>
+    <comment>Crash Site</comment>
+  </data>
+  <data name="Wrecks_Sidewinder" xml:space="preserve">
+    <value>Luogo dello schianto</value>
+    <comment>Crash Site</comment>
+  </data>
+  <data name="CrashedShip" xml:space="preserve">
+    <value>Nave schiantata</value>
+    <comment>POI CrashedShip</comment>
+  </data>
+  <data name="Gro_controlScenarioTitle" xml:space="preserve">
+    <value>Rivolta armata</value>
+    <comment>Gro_controlScenarioTitle</comment>
+  </data>
+  <data name="Trap_Data" xml:space="preserve">
+    <value>Marcatori irregolari</value>
+    <comment>Irregular Markers</comment>
+  </data>
+  <data name="Perimeter" xml:space="preserve">
+    <value>Fonte attiva di energia</value>
+    <comment>Active Power Source</comment>
+  </data>
+  <data name="GenericSignalSource" xml:space="preserve">
+    <value>Sorgente di segnale</value>
+    <comment>When the signal source may be one of several types</comment>
+  </data>
+  <data name="SAA_SignalType_PlanetAnomaly" xml:space="preserve">
+    <value>Anomalia planetaria</value>
+    <comment>Planetary Anomaly Surface Signal</comment>
+  </data>
+  <data name="Cargo" xml:space="preserve">
+    <value>Relitto minore</value>
+    <comment>Minor Wreckage</comment>
+  </data>
+  <data name="Warzone_TG_Med" xml:space="preserve">
+    <value>Combattimento AX moderato</value>
+    <comment>Medium Intensity Thargoid Conflict Zone</comment>
+  </data>
+  <data name="Warzone_TG_Low" xml:space="preserve">
+    <value>Combattimento AX leggero</value>
+    <comment>Low Intensity Thargoind Conflict Zone</comment>
+  </data>
+  <data name="Warzone_TG_High" xml:space="preserve">
+    <value>Combattimento AX intenso</value>
+    <comment>High Intensity Thargoid Conflict Zone</comment>
+  </data>
+  <data name="Warzone_TG_VeryHigh" xml:space="preserve">
+    <value>Combattimento AX molto intenso</value>
+    <comment>Very High Intensity AX Conflict Zone</comment>
+  </data>
+  <data name="Wreckage_AncientProbe" xml:space="preserve">
+    <value>Relitto minore</value>
+    <comment>Minor Wreckage</comment>
   </data>
 </root>

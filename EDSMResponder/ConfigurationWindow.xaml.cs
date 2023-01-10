@@ -1,5 +1,4 @@
-﻿using EddiCore;
-using EddiDataDefinitions;
+﻿using EddiConfigService;
 using EddiDataProviderService;
 using EddiStarMapService;
 using System;
@@ -8,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using Utilities;
 
 namespace EddiEdsmResponder
 {
@@ -16,11 +16,14 @@ namespace EddiEdsmResponder
     /// </summary>
     public partial class ConfigurationWindow : UserControl
     {
-        public ConfigurationWindow()
+        private readonly EDSMResponder edsmResponder;
+
+        public ConfigurationWindow(EDSMResponder edsmResponder)
         {
+            this.edsmResponder = edsmResponder;
             InitializeComponent();
 
-            StarMapConfiguration starMapConfiguration = StarMapConfiguration.FromFile();
+            var starMapConfiguration = ConfigService.Instance.edsmConfiguration;
             edsmApiKeyTextBox.Text = starMapConfiguration.apiKey;
             edsmCommanderNameTextBox.Text = starMapConfiguration.commanderName;
             edsmFetchLogsButton.Content = String.IsNullOrEmpty(edsmApiKeyTextBox.Text) ? Properties.EDSMResources.log_button_empty_api_key : Properties.EDSMResources.log_button;
@@ -42,7 +45,7 @@ namespace EddiEdsmResponder
 
         private void updateEdsmConfiguration()
         {
-            StarMapConfiguration edsmConfiguration = StarMapConfiguration.FromFile();
+            var edsmConfiguration = ConfigService.Instance.edsmConfiguration;
             if (!string.IsNullOrWhiteSpace(edsmApiKeyTextBox.Text))
             {
                 edsmConfiguration.apiKey = edsmApiKeyTextBox.Text.Trim();
@@ -51,8 +54,8 @@ namespace EddiEdsmResponder
             {
                 edsmConfiguration.commanderName = edsmCommanderNameTextBox.Text.Trim();
             }
-            edsmConfiguration.ToFile();
-            EDDI.Instance.Reload("EDSM responder");
+            ConfigService.Instance.edsmConfiguration = edsmConfiguration;
+            edsmResponder.Reload();
         }
 
         /// <summary>
@@ -60,7 +63,7 @@ namespace EddiEdsmResponder
         /// </summary>
         private async void edsmObtainLogClicked(object sender, RoutedEventArgs e)
         {
-            StarMapConfiguration starMapConfiguration = StarMapConfiguration.FromFile();
+            var starMapConfiguration = ConfigService.Instance.edsmConfiguration;
 
             if (string.IsNullOrEmpty(starMapConfiguration.apiKey))
             {
@@ -68,37 +71,16 @@ namespace EddiEdsmResponder
                 edsmFetchLogsButton.Content = Properties.EDSMResources.log_button_empty_api_key;
                 return;
             }
-
-            string commanderName;
-            if (string.IsNullOrEmpty(starMapConfiguration.commanderName))
-            {
-                // Fetch the commander name from the companion app
-                Commander cmdr = EDDI.Instance.Cmdr;
-                if (cmdr != null && cmdr.name != null)
-                {
-                    commanderName = cmdr.name;
-                }
-                else
-                {
-                    edsmFetchLogsButton.IsEnabled = false;
-                    edsmFetchLogsButton.Content = Properties.EDSMResources.log_button_companion_unconfigured;
-                    return;
-                }
-            }
-            else
-            {
-                commanderName = starMapConfiguration.commanderName;
-            }
-
+            
             edsmFetchLogsButton.IsEnabled = false;
             edsmFetchLogsButton.Content = Properties.EDSMResources.log_button_fetching;
 
             var progress = new Progress<string>(s => edsmFetchLogsButton.Content = s);
-            IEdsmService edsmService = new StarMapService();
+            IEdsmService edsmService = new StarMapService(null, true);
             await Task.Factory.StartNew(() => obtainEdsmLogs(edsmService, progress), TaskCreationOptions.LongRunning);
 
             starMapConfiguration.lastFlightLogSync = DateTime.UtcNow;
-            starMapConfiguration.ToFile();
+            ConfigService.Instance.edsmConfiguration = starMapConfiguration;
         }
 
         public static void obtainEdsmLogs(IEdsmService edsmService, IProgress<string> progress)
@@ -126,6 +108,7 @@ namespace EddiEdsmResponder
                 catch (EDSMException edsme)
                 {
                     progress.Report(Properties.EDSMResources.log_button_error_received + edsme.Message);
+                    Logging.Warn(Properties.EDSMResources.log_button_error_received + edsme.Message, edsme);
                 }
             }
         }

@@ -176,5 +176,10 @@
   </data>
   <data name="Starter" xml:space="preserve">
     <value>repetidores de plasma duplos</value>
+    <comment>Default loadout for a Scarab SRV</comment>
+  </data>
+  <data name="Default" xml:space="preserve">
+    <value>canhão pesado e uma estante de míssil</value>
+    <comment>Default loadout for a Scorpion Combat SRV</comment>
   </data>
 </root>

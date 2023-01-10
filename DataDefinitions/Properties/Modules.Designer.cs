@@ -19,7 +19,7 @@ namespace EddiDataDefinitions.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     public class Modules {
@@ -133,7 +133,7 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to AX Missile Rack.
+        ///   Looks up a localized string similar to Anti-Xeno Missile Rack.
         /// </summary>
         public static string AXMissileRack {
             get {
@@ -142,7 +142,7 @@ namespace EddiDataDefinitions.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to AX Multi-Cannon.
+        ///   Looks up a localized string similar to Anti-Xeno Multi-Cannon.
         /// </summary>
         public static string AXMulti_Cannon {
             get {
@@ -363,6 +363,24 @@ namespace EddiDataDefinitions.Properties {
         public static string Enforcer {
             get {
                 return ResourceManager.GetString("Enforcer", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enhanced Anti-Xeno Missile Rack.
+        /// </summary>
+        public static string Enhanced_AXMissileRack {
+            get {
+                return ResourceManager.GetString("Enhanced_AXMissileRack", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enhanced Anti-Xeno Multi-Cannon.
+        /// </summary>
+        public static string Enhanced_AXMulti_Cannon {
+            get {
+                return ResourceManager.GetString("Enhanced_AXMulti_Cannon", resourceCulture);
             }
         }
         
@@ -741,6 +759,51 @@ namespace EddiDataDefinitions.Properties {
         public static string Multi_Cannon {
             get {
                 return ResourceManager.GetString("Multi_Cannon", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Mining Multi Limpet Controller.
+        /// </summary>
+        public static string MultiDroneControl_Mining {
+            get {
+                return ResourceManager.GetString("MultiDroneControl_Mining", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Operations Multi Limpet Controller.
+        /// </summary>
+        public static string MultiDroneControl_Operations {
+            get {
+                return ResourceManager.GetString("MultiDroneControl_Operations", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Rescue Multi Limpet Controller.
+        /// </summary>
+        public static string MultiDroneControl_Rescue {
+            get {
+                return ResourceManager.GetString("MultiDroneControl_Rescue", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Universal Multi Limpet Controller.
+        /// </summary>
+        public static string MultiDroneControl_Universal {
+            get {
+                return ResourceManager.GetString("MultiDroneControl_Universal", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Xeno Multi Limpet Controller.
+        /// </summary>
+        public static string MultiDroneControl_Xeno {
+            get {
+                return ResourceManager.GetString("MultiDroneControl_Xeno", resourceCulture);
             }
         }
         

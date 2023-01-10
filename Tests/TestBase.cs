@@ -1,5 +1,8 @@
-﻿using EddiCore;
+﻿using EddiCompanionAppService;
+using EddiConfigService;
+using EddiCore;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.IO;
 
@@ -19,10 +22,12 @@ namespace UnitTests
         internal void MakeSafe()
         {
             // Prevent telemetry data from being reported based on test results
-            Utilities._Rollbar.TelemetryEnabled = false;
+            Utilities.Telemetry.TelemetryEnabled = false;
 
             // Don't write to permanent storage (do this before we initialize our EDDI instance)
             Utilities.Files.unitTesting = true;
+            ConfigService.unitTesting = true;
+            CompanionAppService.unitTesting = true;
 
             // Set ourselves as in a beta game session to stop automatic sending of data to remote systems
             PrivateObject privateObject = new PrivateObject(EDDI.Instance);
@@ -30,19 +35,22 @@ namespace UnitTests
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")]
-        public static T DeserializeJsonResource<T>(byte[] data) where T : class
+        public static T DeserializeJsonResource<T>(byte[] data, JsonSerializerSettings settings = null) where T : class
         {
             using (var stream = new MemoryStream(data))
             {
                 using (var reader = new StreamReader(stream, System.Text.Encoding.UTF8))
                 {
+                    var jsonSerializer = settings is null 
+                        ? JsonSerializer.Create() 
+                        : JsonSerializer.Create(settings);
                     if (typeof(T) == typeof(string))
                     {
-                        return Newtonsoft.Json.JsonSerializer.Create().Deserialize(reader, typeof(JObject)).ToString() as T;
+                        return jsonSerializer.Deserialize(reader, typeof(JObject))?.ToString() as T;
                     }
                     else
                     {
-                        return Newtonsoft.Json.JsonSerializer.Create().Deserialize(reader, typeof(T)) as T;
+                        return jsonSerializer.Deserialize(reader, typeof(T)) as T;
                     }
                 }
             }

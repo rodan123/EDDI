@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Security;
 using System.Text.RegularExpressions;
+using System.Xml;
 using Utilities;
 
 namespace EddiSpeechService.SpeechPreparation
@@ -12,7 +13,7 @@ namespace EddiSpeechService.SpeechPreparation
         // Identify any statements that need to be separated into their own speech streams (e.g. audio or special voice effects)
         private static readonly string[] separatorsList =
         {
-            @"(<audio.*?>)",
+            @"(<audio.*?\/>)",
             @"(<transmit.*?>[\s\S]*?<\/transmit>)",
             @"(<voice.*?>[\s\S]*?<\/voice>)",
         };
@@ -29,15 +30,23 @@ namespace EddiSpeechService.SpeechPreparation
                 var speakHeader = $@"<speak version=""1.0"" xmlns=""http://www.w3.org/2001/10/synthesis"" xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xsi:schemaLocation=""http://www.w3.org/2001/10/synthesis http://www.w3.org/TR/speech-synthesis/synthesis.xsd"" xml:lang=""{voice.culturecode}"">";
                 var speakFooter = @"</speak>";
 
-                // Lexicons are applied as a child element to the `speak` element
-                var lexiconString = lexicons.Aggregate(string.Empty, (current, lexiconFile) => current + $"<lexicon uri=\"{lexiconFile}\" type=\"application/pls+xml\"/>");
+                // Lexicons are applied as a child element to the `speak` element. For Amazon Polly voices, the lexicon must be managed via the AWS Management Console.
+                var lexiconString = lexicons.Any() && !voice.name.StartsWith("Amazon Polly ") 
+                    ? lexicons.Aggregate(string.Empty, (current, lexiconFile) => current + $"<lexicon uri=\"{lexiconFile}\" type=\"application/pls+xml\"/>") 
+                    : string.Empty;
 
                 var speakBody = lexiconString + EscapeSSML(speech);
 
                 // Put it all together
                 speech = xmlHeader + speakHeader + speakBody + speakFooter;
 
-                if (voice.name.StartsWith("CereVoice "))
+                if (voice.name.StartsWith("Amazon Polly "))
+                {
+                    // Amazon Polly voices do not respect `SpeakSsml` (particularly for IPA), but they do handle SSML via the `Speak` method.
+                    Logging.Debug("Working around Amazon Polly SSML support");
+                    useSSML = false;
+                }
+                else if (voice.name.StartsWith("CereVoice "))
                 {
                     // Cereproc voices do not respect `SpeakSsml` (particularly for IPA), but they do handle SSML via the `Speak` method.
                     Logging.Debug("Working around CereVoice SSML support");
@@ -131,18 +140,58 @@ namespace EddiSpeechService.SpeechPreparation
             return statements;
         }
 
-        public static string FormatAudioTags(string statement)
-        {
-            statement = Regex.Replace(statement, "^.*<audio", "<audio");
-            statement = Regex.Replace(statement, ">.*$", ">");
-            return statement;
-        }
-
         public static string StripRadioTags(string statement)
         {
             statement = statement.Replace("<transmit>", "");
             statement = statement.Replace("</transmit>", "");
             return statement;
+        }
+        public static void UnpackAudioTags(string inputStatement, out string fileName, out bool async, out decimal? volumeOverride)
+        {
+            fileName = string.Empty;
+            async = false;
+            volumeOverride = null;
+            var xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml(inputStatement);
+            if (xmlDoc.FirstChild?.Attributes != null)
+            {
+                foreach (XmlAttribute attribute in xmlDoc.FirstChild.Attributes)
+                {
+                    switch (attribute.Name)
+                    {
+                        case "src":
+                        {
+                            fileName = attribute.Value;
+                            break;
+                        }
+                        case "async":
+                        {
+                            async = bool.Parse(attribute.Value);
+                            break;
+                        }
+                        case "volume":
+                        {
+                            volumeOverride = decimal.Parse(attribute.Value);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        public static void UnpackVoiceTags(string inputStatement, out string voice, out string outputStatement)
+        {
+            var match = Regex.Match(inputStatement, @"(?<=<voice name="")(.+)(?="" )(?>.)*(?<=>)(.+)(?=<\/voice>)");
+            if (match.Groups.Count >= 2)
+            {
+                voice = match.Groups[1].ToString();
+                outputStatement = match.Groups[2].ToString();
+            }
+            else
+            {
+                voice = null;
+                outputStatement = null;
+            }
         }
 
         public static string DisableIPA(string speech)

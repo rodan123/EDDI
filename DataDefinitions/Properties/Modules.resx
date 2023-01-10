@@ -130,11 +130,11 @@
     <comment>Module AutoField_MaintenanceUnit</comment>
   </data>
   <data name="AXMissileRack" xml:space="preserve">
-    <value>AX Missile Rack</value>
+    <value>Anti-Xeno Missile Rack</value>
     <comment>Module AXMissileRack</comment>
   </data>
   <data name="AXMulti_Cannon" xml:space="preserve">
-    <value>AX Multi-Cannon</value>
+    <value>Anti-Xeno Multi-Cannon</value>
     <comment>Module AXMulti_Cannon</comment>
   </data>
   <data name="BasicDiscoveryScanner" xml:space="preserve">
@@ -592,5 +592,33 @@
   <data name="RetributorBeamLaser" xml:space="preserve">
     <value>Retributor Beam Laser</value>
     <comment>Module RetributorBeamLaser</comment>
+  </data>
+  <data name="MultiDroneControl_Mining" xml:space="preserve">
+    <value>Mining Multi Limpet Controller</value>
+    <comment>Module MultiDroneControl_Mining</comment>
+  </data>
+  <data name="MultiDroneControl_Operations" xml:space="preserve">
+    <value>Operations Multi Limpet Controller</value>
+    <comment>Module MultiDroneControl_Operations</comment>
+  </data>
+  <data name="MultiDroneControl_Rescue" xml:space="preserve">
+    <value>Rescue Multi Limpet Controller</value>
+    <comment>Module MultiDroneControl_Rescue</comment>
+  </data>
+  <data name="MultiDroneControl_Xeno" xml:space="preserve">
+    <value>Xeno Multi Limpet Controller</value>
+    <comment>Module MultiDroneControl_Xeno</comment>
+  </data>
+  <data name="MultiDroneControl_Universal" xml:space="preserve">
+    <value>Universal Multi Limpet Controller</value>
+    <comment>Module MultiDroneControl_Universal</comment>
+  </data>
+  <data name="Enhanced_AXMissileRack" xml:space="preserve">
+    <value>Enhanced Anti-Xeno Missile Rack</value>
+    <comment>Module Enhanced AX Missile Rack</comment>
+  </data>
+  <data name="Enhanced_AXMulti_Cannon" xml:space="preserve">
+    <value>Enhanced Anti-Xeno Multi-Cannon</value>
+    <comment>Module Enhanced AX Multi-Cannon</comment>
   </data>
 </root>

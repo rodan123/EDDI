@@ -263,61 +263,29 @@
   </data>
   <data name="FIXED_EVENT_HIGHTHREATSCENARIO_T6" xml:space="preserve">
     <value>Активность пиратов</value>
-    <comment>Pirate Activity</comment>
+    <comment>Pirate Activity Detected [Threat 6]</comment>
   </data>
   <data name="FIXED_EVENT_HIGHTHREATSCENARIO_T7" xml:space="preserve">
     <value>Активность пиратов</value>
-    <comment>Pirate Activity</comment>
+    <comment>Pirate Activity Detected [Threat 7]</comment>
   </data>
   <data name="SAA_SignalType_Guardian" xml:space="preserve">
     <value>Поверхностный сигнал стражей</value>
     <comment>Guardian Surface Signal</comment>
   </data>
-  <data name="Ancient_Tiny_003" xml:space="preserve">
-    <value>Структура стражей</value>
-    <comment>Guardian Structure</comment>
-  </data>
   <data name="Ancient" xml:space="preserve">
     <value>Древние руины</value>
     <comment>Ancient (Guardian) Ruins</comment>
   </data>
-  <data name="Ancient_Small_005" xml:space="preserve">
+  <data name="Ancient_Small" xml:space="preserve">
     <value>Структура стражей</value>
     <comment>Guardian Structure</comment>
   </data>
-  <data name="Ancient_Small_001" xml:space="preserve">
+  <data name="Ancient_Tiny" xml:space="preserve">
     <value>Структура стражей</value>
     <comment>Guardian Structure</comment>
   </data>
-  <data name="Ancient_Tiny_001" xml:space="preserve">
-    <value>Структура стражей</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Small_002" xml:space="preserve">
-    <value>Структура стражей</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Small_003" xml:space="preserve">
-    <value>Структура стражей</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Tiny_002" xml:space="preserve">
-    <value>Структура стражей</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Medium_003" xml:space="preserve">
-    <value>Структура стражей</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Small_004" xml:space="preserve">
-    <value>Структура стражей</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Medium_001" xml:space="preserve">
-    <value>Структура стражей</value>
-    <comment>Guardian Structure</comment>
-  </data>
-  <data name="Ancient_Medium_002" xml:space="preserve">
+  <data name="Ancient_Medium" xml:space="preserve">
     <value>Структура стражей</value>
     <comment>Guardian Structure</comment>
   </data>
@@ -349,4 +317,83 @@
     <value>Сигнал о помощи</value>
     <comment>Distress Call</comment>
   </data>
+  <data name="Abandoned_Buggy" xml:space="preserve">
+    <value>Маяк бедствия</value>
+    <comment>Distress Beacon</comment>
+  </data>
+  <data name="Damaged_Eagle_Assassination" xml:space="preserve">
+    <value>Зашифрованный сигнал</value>
+    <comment>ENCRYPTED SIGNAL</comment>
+  </data>
+  <data name="Damaged_Sidewinder_Assassination" xml:space="preserve">
+    <value>Зашифрованный сигнал</value>
+    <comment>ENCRYPTED SIGNAL</comment>
+  </data>
+  <data name="Damaged_Eagle" xml:space="preserve">
+    <value>Маяк бедствия</value>
+    <comment>Distress Beacon</comment>
+  </data>
+  <data name="Damaged_Sidewinder" xml:space="preserve">
+    <value>Маяк бедствия</value>
+    <comment>Distress Beacon</comment>
+  </data>
+  <data name="Smugglers_Cache" xml:space="preserve">
+    <value>Нерегулярные маркеры</value>
+    <comment>Irregular Markers</comment>
+  </data>
+  <data name="Trap_Cargo" xml:space="preserve">
+    <value>Нерегулярные маркеры</value>
+    <comment>Irregular Markers</comment>
+  </data>
+  <data name="Wreckage_Buggy" xml:space="preserve">
+    <value>Незначительные обломки</value>
+    <comment>Minor Wreckage</comment>
+  </data>
+  <data name="Wreckage_Probe" xml:space="preserve">
+    <value>Место удара</value>
+    <comment>Impact Site</comment>
+  </data>
+  <data name="Wreckage_Satellite" xml:space="preserve">
+    <value>Место удара</value>
+    <comment>Impact Site</comment>
+  </data>
+  <data name="Wreckage_Cargo" xml:space="preserve">
+    <value>Незначительные обломки</value>
+    <comment>Minor Wreckage</comment>
+  </data>
+  <data name="Wrecks_Eagle" xml:space="preserve">
+    <value>Место крушения</value>
+    <comment>Crash Site</comment>
+  </data>
+  <data name="Wrecks_Sidewinder" xml:space="preserve">
+    <value>Место крушения</value>
+    <comment>Crash Site</comment>
+  </data>
+  <data name="CrashedShip" xml:space="preserve">
+    <value>Потерпевший крушение корабль</value>
+    <comment>POI CrashedShip</comment>
+  </data>
+  <data name="Gro_controlScenarioTitle" xml:space="preserve">
+    <value>Вооруженное восстание</value>
+    <comment>Gro_controlScenarioTitle</comment>
+  </data>
+  <data name="Trap_Data" xml:space="preserve">
+    <value>Нерегулярные маркеры</value>
+    <comment>Irregular Markers</comment>
+  </data>
+  <data name="Perimeter" xml:space="preserve">
+    <value>Активный источник энергии</value>
+    <comment>Active Power Source</comment>
+  </data>
+  <data name="GenericSignalSource" xml:space="preserve">
+    <value>Источник сигнала</value>
+    <comment>When the signal source may be one of several types</comment>
+  </data>
+  
+  
+  
+  
+  
+  
+  
 </root>
